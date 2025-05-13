@@ -1,0 +1,42 @@
+/* src/components/features/dag/ControlBar/ControlBar.module.css */
+.controlBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 10px;
+  background-color: var(--color-background-control-bar); /* #F5F5F5 */
+  border-bottom: 1px solid var(--color-light-gray); /* Light border to separate from viz area */
+}
+
+.toggleButton,
+.zoomButton {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 20px; /* Adjust for icon size */
+  color: var(--color-dark-gray);
+  padding: 5px;
+}
+
+.toggleButton:hover,
+.zoomButton:hover {
+  color: var(--color-primary-blue);
+}
+
+.title {
+  font-size: var(--font-size-normal); /* 14px */
+  font-weight: 500;
+  color: var(--color-dark-gray);
+}
+
+.zoomControls {
+  display: flex;
+  align-items: center;
+}
+
+/* For specific icon styling if needed based on state */
+.toggleButtonCollapsed span, 
+.toggleButtonExpanded span {
+  display: inline-block; 
+} 

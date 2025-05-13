@@ -1,0 +1,77 @@
+/* src/components/layout/MainLayout/MainLayout.module.css */
+.mainLayoutContainer {
+  display: flex;
+  height: 100vh;
+  overflow: hidden; /* Prevent scrollbars on the main container */
+}
+
+.dagRegion {
+  flex-basis: 25%; /* Default width */
+  min-width: 200px; /* Minimum width before collapsing further */
+  background-color: #f0f0f0;
+  height: 100%; /* Fill parent height */
+  overflow-y: hidden; /* Let child (DagVisualizationArea) handle its own scroll */
+  display: flex; /* Add flex display */
+  flex-direction: column; /* Stack ControlBar and VizArea vertically */
+  transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out; /* Smooth transition */
+}
+
+.dagRegionCollapsed {
+  flex-basis: 50px; /* Collapsed width, just enough for the control bar or an icon */
+  min-width: 50px;
+  overflow: hidden; /* Hide content that doesn't fit */
+}
+
+.solverRegion {
+  flex-grow: 1; /* Takes up remaining space */
+  background-color: #e0e0e0;
+  height: 100%;
+  /* overflow-y: auto; Remove this, children will manage scroll */
+  border-left: var(--width-separator) solid var(--color-light-gray);
+  border-right: var(--width-separator) solid var(--color-light-gray);
+  display: flex; /* Add flex display */
+  flex-direction: column; /* Stack ProblemBlock, StepsContainer, SolverActions vertically */
+  overflow-y: auto; /* Allow scrolling for solution steps */
+  padding: 10px;
+  transition: margin-left 0.3s ease-in-out; /* For potential adjustments if needed */
+}
+
+.solutionStepsContainer {
+  flex-grow: 1; /* This container will take up available space and scroll */
+  overflow-y: auto;
+  /* background-color: #f9f9f9; /* Optional: slight differentiation */
+}
+
+.aiPanelRegion {
+  flex-basis: 25%; /* Default width */
+  min-width: 250px; /* Minimum width for AI panels */
+  max-width: 50%; /* Maximum width for AI panels */
+  background-color: #f8f8f8;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid #cccccc; /* Add a border for visual separation initially */
+}
+
+.draggableSeparatorHorizontal {
+  height: 5px;
+  background-color: #cccccc;
+  cursor: ns-resize; /* North-South resize cursor for horizontal separator */
+  flex-shrink: 0; /* Prevent separator from shrinking */
+}
+
+.draggableSeparatorVertical {
+  width: 5px;
+  background-color: #cccccc;
+  cursor: ew-resize; /* East-West resize cursor for vertical separator */
+  align-self: stretch; /* Make it take full height of the flex container */
+  flex-shrink: 0; /* Prevent separator from shrinking */
+}
+
+/* For Step 1.4 - Placeholder text styling */
+.placeholderText {
+  padding: 20px;
+  font-size: 18px;
+  color: #555;
+  text-align: center;
+} 

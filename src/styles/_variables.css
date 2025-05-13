@@ -1,0 +1,30 @@
+/* CSS Variables */
+:root {
+  /* Colors */
+  --color-primary-blue: #1976D2;
+  --color-white: #FFFFFF;
+  --color-light-gray: #E0E0E0;
+  --color-dark-gray: #616161;
+  --color-background-light-blue: #F0F8FF; /* DAG background */
+  --color-background-panel-header-light-blue: #E3F2FD; /* LaTeX panel header */
+  --color-background-panel-header-light-green: #E8F5E9; /* Explain panel header */
+  --color-background-panel-header-light-purple: #F3E5F5; /* Summary panel header */
+  --color-background-control-bar: #F5F5F5; /* DAG control bar, input field */
+
+
+  /* Fonts */
+  --font-family-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-size-title: 30px;
+  --font-size-large: 18px;
+  --font-size-medium: 16px;
+  --font-size-normal: 14px;
+  --font-size-small: 12px;
+
+  /* Dimensions */
+  --height-title-bar: 60px;
+  --width-separator: 2px;
+
+  /* Target Dimensions (for reference, actual will be responsive/percentage based) */
+  --app-target-width: 1920px;
+  --app-target-height: 1080px;
+} 

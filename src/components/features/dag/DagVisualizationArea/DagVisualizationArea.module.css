@@ -1,0 +1,95 @@
+/* src/components/features/dag/DagVisualizationArea/DagVisualizationArea.module.css */
+.visualizationArea {
+  flex-grow: 1; /* Takes remaining space in the dagRegion after ControlBar */
+  background-color: var(--color-background-light-blue); /* #F0F8FF */
+  /* For grid background */
+  background-image: linear-gradient(to right, rgba(128, 128, 128, 0.1) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(128, 128, 128, 0.1) 1px, transparent 1px);
+  background-size: 10px 10px; /* Design says 5px, but 10px might be less busy for initial display */
+  padding: 20px;
+  position: relative; /* For positioning nodes and lines */
+  overflow: auto; /* If many nodes, allow scrolling */
+}
+
+.node {
+  position: absolute; /* For static placement in this example */
+  border-radius: 10px;
+  padding: 10px;
+  font-size: var(--font-size-small); /* 12px */
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background-color: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.problemNode {
+  width: 100px; /* Adjusted for more text space than 80px */
+  height: 70px; /* Adjusted for more text space than 60px */
+  background-color: #BBDEFB; /* Light blue */
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.stepNode {
+  width: 120px; /* Adjusted for more text */
+  height: 60px;  /* Adjusted for more text */
+}
+
+.stepNode1 { /* "使用特征方程法" */
+  top: 160px; /* problemNode.height (70) + verticalGap (60) + padding (20) = approx 150 */
+  left: 50%;
+  transform: translateX(-50%);
+  border: 2px solid #4CAF50; /* Green border */
+}
+
+.stepNode2 { /* "求解特征方程" - Active */
+  top: 280px; /* stepNode1.top (160) + stepNode.height(60) + verticalGap(60) */
+  left: 50%;
+  transform: translateX(-50%);
+  border: 3px solid #2196F3; /* Blue highlight border */
+  /* box-shadow: 0 0 8px #2196F3; */ /* Optional: glow effect for active */
+}
+
+.stepNode3 { /* "计算特征根" - Error */
+  top: 400px; /* stepNode2.top (280) + stepNode.height(60) + verticalGap(60) */
+  left: 50%;
+  transform: translateX(-50%);
+  border: 2px solid #F44336; /* Red border */
+}
+
+/* Static line example - for real DAGs, use SVG <line> or <path> */
+.line {
+  position: absolute;
+  background-color: black;
+  z-index: -1; /* Behind nodes */
+}
+
+/* Example line from problemNode to stepNode1 */
+.lineToStep1 {
+  width: 2px;
+  height: 60px; /* Vertical gap */
+  top: 100px; /* problemNode.top + problemNode.height */
+  left: 50%;
+  transform: translateX(-1px); /* Center the line */
+}
+
+/* Example line from stepNode1 to stepNode2 */
+.lineToStep2 {
+  width: 2px;
+  height: 60px;
+  top: 220px; /* stepNode1.top + stepNode.height */
+  left: 50%;
+  transform: translateX(-1px);
+}
+
+/* Example line from stepNode2 to stepNode3 */
+.lineToStep3 {
+  width: 2px;
+  height: 60px;
+  top: 340px; /* stepNode2.top + stepNode.height */
+  left: 50%;
+  transform: translateX(-1px);
+} 

@@ -1,0 +1,78 @@
+/* src/components/features/solver/SolutionStep/SolutionStep.module.css */
+.solutionStep {
+  height: 100px;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-light-gray);
+  margin: 10px 20px; /* Top/Bottom, Left/Right */
+  display: flex;
+  align-items: center; /* Vertically center content */
+  position: relative;
+  padding: 10px;
+}
+
+.stepNumber {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--color-primary-blue);
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-normal);
+  font-weight: bold;
+  margin-right: 15px;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.statusMark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 20px;
+}
+
+.statusMarkCorrect {
+  color: #4CAF50; /* Green */
+}
+
+/* No specific style for "not yet validated", so no .statusMarkNeutral or similar needed yet */
+
+.contentArea {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center LaTeX content */
+  font-size: var(--font-size-medium); /* 16px or as per spec for solution steps */
+  overflow: auto;
+  padding-right: 40px; /* Space for action buttons if they were on the right of content */
+}
+
+.actionButtons {
+  position: absolute;
+  right: 10px;
+  bottom: 10px; /* Aligned to bottom right as per ProblemBlock for consistency */
+  display: flex;
+  gap: 8px;
+}
+
+/* Reusing iconButton style from ProblemBlock. Ideally, this would be a common component */
+.iconButton {
+  background-color: transparent;
+  border: 1px solid var(--color-light-gray);
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--color-dark-gray);
+}
+
+.iconButton:hover {
+  background-color: #f0f0f0;
+  border-color: var(--color-primary-blue);
+  color: var(--color-primary-blue);
+} 

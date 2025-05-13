@@ -1,0 +1,25 @@
+/* Global Styles */
+body {
+  font-family: var(--font-family-sans-serif);
+  background-color: var(--color-white); /* Or a very light gray if preferred */
+  color: #333; /* Default text color */
+  margin: 0; /* Ensure no margin from user agent stylesheet */
+  padding: 0; /* Ensure no padding */
+  height: 100vh; /* Full viewport height */
+  width: 100vw; /* Full viewport width */
+  overflow: hidden; /* Prevent body scrollbars for a fixed layout app */
+}
+
+/* This will be the main app container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  /*
+    For simulating 1920x1080, one could set fixed dimensions here,
+    but for a web app, it's better to be responsive.
+    We'll assume the browser window itself or dev tools handle the "1920x1080 view".
+  */
+  /* background-color: #f0f0f0; /* Optional: slight off-white for the entire app background */
+} 

@@ -1,0 +1,11 @@
+/* src/App.css */
+/* .app-container is already defined in global.css,
+   but we keep this file for any App-specific root level styles if needed later.
+   For now, it can be mostly empty or just a comment.
+*/
+
+/* Example of an App-specific style if needed:
+.app-container {
+  border: 5px solid red; // For debugging layout
+}
+*/ 

@@ -1,0 +1,68 @@
+/* src/components/common/CollapsiblePanel/CollapsiblePanel.module.css */
+.panel {
+  border: 1px solid var(--color-light-gray);
+  border-radius: 4px;
+  margin-bottom: 10px; /* Space between panels */
+  background-color: var(--color-white);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel:last-child {
+  margin-bottom: 0;
+}
+
+.header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  cursor: pointer; /* Indicates it's clickable for collapse/expand */
+  border-bottom: 1px solid var(--color-light-gray); /* Separator for when content is visible */
+}
+
+.title {
+  font-size: var(--font-size-normal);
+  font-weight: 500;
+}
+
+.controls button { /* Basic styling for control buttons */
+  background: none;
+  border: none;
+  font-size: 16px;
+  margin-left: 8px;
+  cursor: pointer;
+  color: var(--color-dark-gray);
+}
+.controls button:hover {
+  color: var(--color-primary-blue);
+}
+
+.content {
+  padding: 15px;
+  /* display: none; Will be controlled by state later for collapse/expand */
+}
+
+.previewText {
+  font-size: var(--font-size-small);
+  color: var(--color-dark-gray);
+  font-style: italic;
+}
+
+.statusIndicator {
+  font-size: var(--font-size-small);
+  color: #a0a0a0; /* Lighter gray for inactive status */
+  margin-top: 5px;
+}
+
+/* Specific header background colors will be passed via props or styled by parent */
+.latexHeader {
+  background-color: var(--color-background-panel-header-light-blue); /* #E3F2FD */
+}
+.explainHeader {
+  background-color: var(--color-background-panel-header-light-green); /* #E8F5E9 */
+}
+.summaryHeader {
+  background-color: var(--color-background-panel-header-light-purple); /* #F3E5F5 */
+} 

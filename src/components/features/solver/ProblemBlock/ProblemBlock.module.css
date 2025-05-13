@@ -1,0 +1,134 @@
+/* src/components/features/solver/ProblemBlock/ProblemBlock.module.css */
+.problemBlockContainer {
+  background-color: #f9f9f9; /* Light background for the block */
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px; /* Space below the block */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.problemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.problemTitle {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #333;
+}
+
+.problemActions {
+  display: flex;
+  gap: 8px; /* Space between action buttons */
+}
+
+.actionButton {
+  background-color: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: #555;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.actionButton:hover {
+  background-color: #f0f0f0;
+  color: #222;
+}
+
+.actionButton span {
+  display: flex;
+  align-items: center;
+}
+
+.problemTextarea {
+  width: 100%;
+  min-height: 100px; /* Minimum height for the textarea */
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit; /* Use the main font family */
+  font-size: 1em;
+  line-height: 1.5;
+  resize: vertical; /* Allow vertical resizing */
+  box-sizing: border-box; /* Ensure padding and border don't add to width */
+}
+
+.problemDisplay {
+  width: 100%;
+  min-height: 100px; /* Consistent minimum height with textarea */
+  padding: 10px;
+  border: 1px solid #e0e0e0; /* Slightly lighter border for display mode */
+  border-radius: 4px;
+  background-color: #fff; /* White background for display */
+  font-size: 1em;
+  line-height: 1.5;
+  white-space: pre-wrap; /* Preserve whitespace and newlines for display */
+  overflow-y: auto; /* Add scroll if content overflows */
+  box-sizing: border-box;
+}
+
+/* Legacy styles - can be removed or refactored if no longer used */
+.problemBlock {
+  display: flex;
+  align-items: stretch; /* Make children fill height */
+  margin-bottom: 10px;
+  background-color: #fff; /* Example background */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 80px; /* Example min height */
+}
+
+.verticalLabel {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding: 10px 5px;
+  background-color: #f0f0f0;
+  color: #555;
+  font-size: 0.9em;
+  border-right: 1px solid #ddd;
+  text-align: center;
+  flex-shrink: 0; /* Prevent label from shrinking */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contentArea {
+  padding: 15px;
+  flex-grow: 1; /* Take up remaining space */
+  overflow-x: auto; /* Allow horizontal scrolling for long LaTeX */
+  font-size: 1.1em;
+}
+
+.actionButtons {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Align buttons to the top */
+  padding: 10px;
+  border-left: 1px solid #ddd;
+  background-color: #f8f8f8;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  font-size: 1.5em; /* Adjust icon size */
+  padding: 5px;
+  cursor: pointer;
+  color: #666;
+}
+
+.iconButton:hover {
+  color: #333;
+} 

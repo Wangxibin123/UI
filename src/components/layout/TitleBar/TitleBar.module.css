@@ -1,0 +1,17 @@
+/* src/components/layout/TitleBar/TitleBar.module.css */
+.titleBarContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--height-title-bar); /* 60px from variables.css */
+  background-color: var(--color-primary-blue); /* #1976D2 from variables.css */
+  width: 100%;
+}
+
+.title {
+  color: var(--color-white); /* #FFFFFF from variables.css */
+  font-size: var(--font-size-title); /* 30px from variables.css */
+  font-family: var(--font-family-sans-serif); /* Global sans-serif */
+  font-weight: bold; /* Titles are often bold */
+  line-height: 1; /* Ensure text is vertically centered within its own box */
+} 

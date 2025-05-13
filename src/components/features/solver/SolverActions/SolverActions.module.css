@@ -1,0 +1,67 @@
+/* src/components/features/solver/SolverActions/SolverActions.module.css */
+.actionsContainer {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-top: 1px solid var(--color-light-gray);
+  background-color: var(--color-white); /* Or a very light grey like control bar */
+  gap: 10px;
+}
+
+.inputField {
+  flex-grow: 1;
+  height: 40px;
+  padding: 0 15px;
+  border-radius: 8px; /* More rounded */
+  border: 1px solid var(--color-light-gray);
+  background-color: var(--color-background-control-bar); /* #F5F5F5 */
+  font-size: var(--font-size-normal);
+}
+
+.inputField:focus {
+  outline: none;
+  border-color: var(--color-primary-blue);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* Reusing iconButton style for consistency for most buttons */
+.iconButton {
+  background-color: transparent;
+  border: 1px solid var(--color-light-gray);
+  border-radius: 4px;
+  width: 30px; /* As per spec */
+  height: 30px; /* As per spec */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px; /* Slightly larger for these specific icons */
+  color: var(--color-dark-gray);
+}
+.iconButton:hover {
+  background-color: #f0f0f0;
+  border-color: var(--color-primary-blue);
+  color: var(--color-primary-blue);
+}
+
+.submitButton {
+  width: 80px;
+  height: 30px;
+  background-color: var(--color-primary-blue);
+  color: var(--color-white);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--font-size-normal);
+  font-weight: 500;
+}
+.submitButton:hover {
+  opacity: 0.9;
+}
+
+.buttonGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Spacing between buttons in the group */
+} 
