@@ -1,37 +1,41 @@
 import React from 'react';
+import { useReactFlow, Panel } from '@reactflow/core';
 import styles from './ControlBar.module.css';
-
-// Updated placeholder icons
-const ExpandIcon = () => <span className={styles.toggleButtonExpanded}>→</span>; // For collapsed state, shows "Expand"
-const CollapseIcon = () => <span className={styles.toggleButtonCollapsed}>⟷</span>; // For expanded state, shows "Collapse"
-const PlusIcon = () => <span>+</span>;
-const MinusIcon = () => <span>-</span>;
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2 } from 'lucide-react';
 
 interface ControlBarProps {
   isDagCollapsed: boolean;
   onToggleCollapse: () => void;
+  // No need for zoom/fitview props anymore, as we'll use the hook
 }
 
 const ControlBar: React.FC<ControlBarProps> = ({ isDagCollapsed, onToggleCollapse }) => {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+
+  const handleZoomIn = () => zoomIn({ duration: 300 });
+  const handleZoomOut = () => zoomOut({ duration: 300 });
+  const handleFitView = () => fitView({ duration: 300, padding: 0.1 });
+
   return (
-    <div className={styles.controlBar}>
-      <button
-        className={styles.toggleButton}
-        onClick={onToggleCollapse}
-        aria-label={isDagCollapsed ? "展开DAG" : "折叠DAG"}
-      >
-        {isDagCollapsed ? <ExpandIcon /> : <CollapseIcon />}
+    <Panel position="top-left" className={styles.controlBarContainer}>
+      <button onClick={onToggleCollapse} className={styles.iconButton} title={isDagCollapsed ? "展开DAG区域" : "收起DAG区域"}>
+        {isDagCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
-      {!isDagCollapsed && <span className={styles.controlBarTitle}>DAG历史</span>}
-      <div className={styles.zoomControls}>
-        <button className={styles.zoomButton} aria-label="Zoom In">
-          <PlusIcon />
-        </button>
-        <button className={styles.zoomButton} aria-label="Zoom Out">
-          <MinusIcon />
-        </button>
-      </div>
-    </div>
+      <div className={styles.title}>{!isDagCollapsed && "DAG 控制与概览"}</div>
+      {!isDagCollapsed && (
+        <div className={styles.zoomControls}>
+          <button onClick={handleZoomIn} className={styles.iconButton} title="放大">
+            <ZoomIn size={18} />
+          </button>
+          <button onClick={handleZoomOut} className={styles.iconButton} title="缩小">
+            <ZoomOut size={18} />
+          </button>
+          <button onClick={handleFitView} className={styles.iconButton} title="适应屏幕">
+            <Minimize2 size={18} />
+          </button>
+        </div>
+      )}
+    </Panel>
   );
 };
 

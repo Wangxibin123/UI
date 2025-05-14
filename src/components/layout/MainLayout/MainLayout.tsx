@@ -9,6 +9,7 @@ import SolverActions from '../../features/solver/SolverActions/SolverActions';
 import CollapsiblePanel from '../../common/CollapsiblePanel/CollapsiblePanel';
 import { type SolutionStepData, type DagNode, type DagEdge, type ProblemData, VerificationStatus } from '../../../types';
 import { MarkerType } from '@reactflow/core';
+import { ReactFlowProvider } from '@reactflow/core';
 
 // initialSolutionStepsData should use SolutionStepData type
 const initialSolutionStepsData: SolutionStepData[] = [
@@ -211,10 +212,20 @@ const MainLayout: React.FC = () => {
 
   return (
     <main className={styles.mainLayoutContainer}>
-      <div className={`${styles.dagRegion} ${isDagCollapsed ? styles.dagRegionCollapsed : ''}`}>
-        <ControlBar isDagCollapsed={isDagCollapsed} onToggleCollapse={handleToggleDagCollapse} />
-        {!isDagCollapsed && <DagVisualizationArea dagNodes={dagNodes} dagEdges={dagEdges} />}
-      </div>
+      <ReactFlowProvider>
+        <div className={`${styles.dagRegion} ${isDagCollapsed ? styles.dagRegionCollapsed : ''}`}>
+          <ControlBar 
+            isDagCollapsed={isDagCollapsed} 
+            onToggleCollapse={handleToggleDagCollapse} 
+          />
+          {!isDagCollapsed && 
+            <DagVisualizationArea 
+              dagNodes={dagNodes} 
+              dagEdges={dagEdges} 
+            />
+          }
+        </div>
+      </ReactFlowProvider>
       <div 
         className={styles.draggableSeparatorVertical} 
         onMouseDown={handleMouseDownOnSeparator}
