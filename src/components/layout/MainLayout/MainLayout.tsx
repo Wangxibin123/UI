@@ -8,13 +8,40 @@ import SolutionStep from '../../features/solver/SolutionStep/SolutionStep';
 import SolverActions from '../../features/solver/SolverActions/SolverActions';
 import CollapsiblePanel from '../../common/CollapsiblePanel/CollapsiblePanel';
 import DraggableSeparator from '../../common/DraggableSeparator/DraggableSeparator';
-import { type SolutionStepData, type DagNode, type DagEdge, type ProblemData, VerificationStatus } from '../../../types';
+import {
+  type SolutionStepData,
+  type DagNode,
+  type DagEdge,
+  type ProblemData,
+  VerificationStatus,
+  LayoutMode,
+} from '../../../types';
 import { MarkerType, ReactFlowProvider } from '@reactflow/core';
 
 interface PanelWidthsType {
   dag: number;
   solver: number;
   ai: number;
+}
+
+const LOCAL_STORAGE_PREFIX = 'aiMath_layoutPrefs_';
+
+function saveUserPreferenceForMode(mode: LayoutMode, widths: PanelWidthsType): void {
+  try {
+    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${mode}`, JSON.stringify(widths));
+  } catch (error) {
+    console.warn("Could not save user layout preference:", error);
+  }
+}
+
+function loadUserPreferenceForMode(mode: LayoutMode): PanelWidthsType | null {
+  try {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${mode}`);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.warn("Could not load user layout preference:", error);
+    return null;
+  }
 }
 
 // initialSolutionStepsData should use SolutionStepData type
@@ -27,7 +54,10 @@ const initialSolutionStepsData: SolutionStepData[] = [
 const MIN_PANEL_PERCENTAGE = 10; // Minimum width for any panel in percentage
 
 const MainLayout: React.FC = () => {
-  const [isDagCollapsed, setIsDagCollapsed] = useState(false);
+  const [currentLayoutMode, setCurrentLayoutMode] = useState<LayoutMode>(() => {
+    return LayoutMode.DEFAULT_THREE_COLUMN;
+  });
+
   const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
     return [];
   });
@@ -37,11 +67,12 @@ const MainLayout: React.FC = () => {
 
   const mainLayoutRef = useRef<HTMLDivElement>(null);
   
-  const initialPanelWidths = useRef<PanelWidthsType>({ dag: 27.5, solver: 45, ai: 22.5 });
+  const initialPanelWidths = useRef<PanelWidthsType>({ dag: 25, solver: 50, ai: 25 });
   
-  const [panelWidths, setPanelWidths] = useState<PanelWidthsType>(initialPanelWidths.current);
-  
-  const [userSetPanelWidths, setUserSetPanelWidths] = useState<PanelWidthsType | null>(null);
+  const [panelWidths, setPanelWidths] = useState<PanelWidthsType>(() => {
+    const persistedDefault = loadUserPreferenceForMode(LayoutMode.DEFAULT_THREE_COLUMN);
+    return persistedDefault || initialPanelWidths.current;
+  });
 
   useEffect(() => {
     const generateDagData = () => {
@@ -117,24 +148,6 @@ const MainLayout: React.FC = () => {
     setSolutionSteps(initialStepsExample);
   }, []);
 
-  // Effect to handle panel width restoration when DAG is un-collapsed
-  useEffect(() => {
-    if (!isDagCollapsed) {
-      // When DAG is expanded
-      if (userSetPanelWidths) {
-        setPanelWidths(userSetPanelWidths); // Restore user's last dragged widths
-      } else {
-        setPanelWidths(initialPanelWidths.current); // Restore initial default widths
-      }
-    }
-    // If isDagCollapsed is true, panelWidths.dag is effectively ignored by the inline style
-    // due to the conditional className, and the CSS rule for .dagRegionCollapsed takes over.
-    // The other panel widths (solver, ai) remain as they were, which is the desired behavior
-    // unless we explicitly want them to resize when DAG collapses.
-  }, [isDagCollapsed, userSetPanelWidths]); // Dependency: userSetPanelWidths to re-apply if it changes while uncollapsed (e.g. future load state)
-
-  const handleToggleDagCollapse = () => setIsDagCollapsed(!isDagCollapsed);
-
   const handleAddSolutionStep = (latexInput: string) => {
     if (!latexInput.trim()) return;
     const newStep: SolutionStepData = {
@@ -146,62 +159,285 @@ const MainLayout: React.FC = () => {
     setSolutionSteps(prevSteps => [...prevSteps, newStep]);
   };
 
+  // <<< 辅助函数：确保宽度总和为100%并处理精度 >>>
+  const ensurePanelWidthsSumTo100AndPrecision = useCallback((widths: PanelWidthsType): PanelWidthsType => {
+    let { dag, solver, ai } = widths;
+    dag = parseFloat(dag.toFixed(1));
+    solver = parseFloat(solver.toFixed(1));
+    ai = parseFloat((100 - dag - solver).toFixed(1));
+
+    if (ai < 0) { 
+        const deficit = -ai;
+        ai = 0;
+        const totalDagSolver = dag + solver + deficit; 
+        if (totalDagSolver > 0) {
+            const dagProportion = (dag + deficit/2) / totalDagSolver; 
+            dag = parseFloat((dagProportion * (100 - ai)).toFixed(1));
+            solver = parseFloat((100 - ai - dag).toFixed(1));
+        } else { 
+            dag = 50; 
+            solver = 50;
+            ai = 0;
+        }
+    }
+    // Ensure no panel is negative after adjustment, especially if MIN_PANEL_PERCENTAGE is involved elsewhere
+    // This is a simplified ensure sum, primary clamping should happen before this.
+    if (dag < 0) dag = 0;
+    if (solver < 0) solver = 0;
+    if (ai < 0) ai = 0;
+    // Re-check sum after clamping negatives (though ideally clamping prevents this)
+    const currentSum = dag + solver + ai;
+    if (currentSum !== 100 && currentSum > 0) {
+        const scale = 100 / currentSum;
+        dag = parseFloat((dag*scale).toFixed(1));
+        solver = parseFloat((solver*scale).toFixed(1));
+        ai = parseFloat((100 - dag - solver).toFixed(1)); // last one gets remainder
+    }
+
+    return { dag, solver, ai };
+  }, []);
+
+  // <<< 核心 useEffect，用于根据 currentLayoutMode 设置 panelWidths >>>
+  useEffect(() => {
+    let targetWidths: PanelWidthsType;
+    const userPrefsForMode = loadUserPreferenceForMode(currentLayoutMode);
+
+    switch (currentLayoutMode) {
+      case LayoutMode.DAG_EXPANDED_FULL:
+        targetWidths = userPrefsForMode || { dag: 70, solver: 30, ai: 0 };
+        break;
+      case LayoutMode.AI_PANEL_ACTIVE:
+        targetWidths = userPrefsForMode || { dag: 2, solver: 49, ai: 49 }; 
+        break;
+      case LayoutMode.DAG_COLLAPSED_SIMPLE:
+        if (userPrefsForMode) {
+          targetWidths = userPrefsForMode;
+        } else {
+          const defaultModeUserPrefs = loadUserPreferenceForMode(LayoutMode.DEFAULT_THREE_COLUMN);
+          const lastKnownDefaultWidths = defaultModeUserPrefs || initialPanelWidths.current;
+          const solverAiTotalInDefault = lastKnownDefaultWidths.solver + lastKnownDefaultWidths.ai;
+          if (solverAiTotalInDefault > 0) {
+            const solverProportion = lastKnownDefaultWidths.solver / solverAiTotalInDefault;
+            const availableForSolverAndAi = 98; 
+            let calculatedSolver = Math.round(availableForSolverAndAi * solverProportion);
+            let calculatedAi = availableForSolverAndAi - calculatedSolver;
+            
+            const minSolverAiWidth = MIN_PANEL_PERCENTAGE > 0 ? MIN_PANEL_PERCENTAGE : 1;
+            if (calculatedSolver < minSolverAiWidth && (calculatedSolver + calculatedAi) >= minSolverAiWidth + minSolverAiWidth ) {
+                calculatedSolver = minSolverAiWidth;
+                calculatedAi = availableForSolverAndAi - calculatedSolver;
+            } else if (calculatedAi < minSolverAiWidth && (calculatedSolver + calculatedAi) >= minSolverAiWidth + minSolverAiWidth ) {
+                calculatedAi = minSolverAiWidth;
+                calculatedSolver = availableForSolverAndAi - calculatedAi;
+            }
+            // Ensure they are not negative after adjustment
+            if(calculatedSolver < 0) calculatedSolver = 0;
+            if(calculatedAi < 0) calculatedAi = 0;
+            if(calculatedSolver + calculatedAi > availableForSolverAndAi) { // if sum too high, adjust
+                const excess = (calculatedSolver + calculatedAi) - availableForSolverAndAi;
+                // reduce proportionally, or just from the larger one
+                if (calculatedSolver > calculatedAi) calculatedSolver -= excess;
+                else calculatedAi -= excess;
+            }
+
+            targetWidths = { dag: 2, solver: calculatedSolver, ai: calculatedAi };
+          } else {
+            targetWidths = { dag: 2, solver: 58, ai: 40 };
+          }
+        }
+        break;
+      case LayoutMode.DEFAULT_THREE_COLUMN:
+      default:
+        targetWidths = userPrefsForMode || initialPanelWidths.current;
+        break;
+    }
+    setPanelWidths(ensurePanelWidthsSumTo100AndPrecision(targetWidths));
+  }, [currentLayoutMode, ensurePanelWidthsSumTo100AndPrecision]); // ensurePanelWidthsSumTo100AndPrecision is memoized
+
+  // <<< 模式切换处理函数 >>>
+  const handleToggleDagCollapse = () => {
+    setCurrentLayoutMode(prevMode => {
+      if (prevMode === LayoutMode.DAG_COLLAPSED_SIMPLE ||
+          prevMode === LayoutMode.AI_PANEL_ACTIVE ||
+          prevMode === LayoutMode.DAG_EXPANDED_FULL) {
+        return LayoutMode.DEFAULT_THREE_COLUMN;
+      } else { 
+        return LayoutMode.DAG_COLLAPSED_SIMPLE;
+      }
+    });
+  };
+
+  const handleExpandDagFully = () => {
+    setCurrentLayoutMode(LayoutMode.DAG_EXPANDED_FULL);
+  };
+
+  const handleActivateAiPanel = () => {
+    setCurrentLayoutMode(LayoutMode.AI_PANEL_ACTIVE);
+  };
+  
   // Separator Drag Handlers
   const handleSeparator1Drag = useCallback(({ dx }: { dx: number }) => {
     setPanelWidths(prevWidths => {
       if (!mainLayoutRef.current) return prevWidths;
       const containerWidth = mainLayoutRef.current.offsetWidth;
       if (containerWidth === 0) return prevWidths;
-
       const dxPercent = (dx / containerWidth) * 100;
-      
-      const currentDagWidth = prevWidths.dag;
-      const currentSolverWidth = prevWidths.solver;
-      // The combined space of DAG and Solver is what we are redistributing
-      const combinedSpace = currentDagWidth + currentSolverWidth;
 
-      let newDagWidth = currentDagWidth + dxPercent;
-      
-      // Clamp newDagWidth:
-      // It cannot be less than MIN_PANEL_PERCENTAGE.
-      // It cannot be so large that solver becomes less than MIN_PANEL_PERCENTAGE.
-      newDagWidth = Math.max(MIN_PANEL_PERCENTAGE, newDagWidth);
-      newDagWidth = Math.min(newDagWidth, combinedSpace - MIN_PANEL_PERCENTAGE);
-      
-      const newSolverWidth = combinedSpace - newDagWidth;
+      let newDag = prevWidths.dag;
+      let newSolver = prevWidths.solver;
+      let newAi = prevWidths.ai;
 
-      const newCalculatedWidths: PanelWidthsType = { ...prevWidths, dag: newDagWidth, solver: newSolverWidth };
-      setUserSetPanelWidths(newCalculatedWidths); // Save this user-dragged state
-      return newCalculatedWidths;
+      switch (currentLayoutMode) {
+        case LayoutMode.DAG_EXPANDED_FULL: // AI is 0, separator 1 adjusts DAG vs Solver
+          newDag = prevWidths.dag + dxPercent;
+          newSolver = prevWidths.solver - dxPercent;
+          newAi = 0;
+          // Clamp DAG and Solver
+          newDag = Math.max(MIN_PANEL_PERCENTAGE, newDag);
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          // Ensure sum is 100 (since AI is 0)
+          if (newDag + newSolver > 100) {
+            if (prevWidths.dag + dxPercent > newDag) { // Dragged to increase DAG
+              newSolver = 100 - newDag;
+            } else { // Dragged to increase Solver (or DAG hit min and dx was negative)
+              newDag = 100 - newSolver;
+            }
+          }
+          // Final check for min widths after sum adjustment
+          newDag = Math.max(MIN_PANEL_PERCENTAGE, newDag);
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, 100 - newDag);
+          break;
+
+        case LayoutMode.AI_PANEL_ACTIVE: // DAG is ~2%, separator 1 adjusts this nominal DAG vs Solver, AI is passive recipient
+          newDag = prevWidths.dag + dxPercent;
+          newSolver = prevWidths.solver - dxPercent;
+          // newAi = 100 - newDag - newSolver; (calculated later by ensure)
+          
+          newDag = Math.max(2, newDag); // DAG nominal min
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          newAi = Math.max(MIN_PANEL_PERCENTAGE, 100 - newDag - newSolver);
+
+          // If AI becomes too small, adjust solver and dag
+          if (100 - newDag - newSolver < MIN_PANEL_PERCENTAGE) {
+            newAi = MIN_PANEL_PERCENTAGE;
+            const remainingForDagSolver = 100 - newAi;
+            if (prevWidths.dag + dxPercent > newDag) { // Dragged to increase DAG
+              newDag = Math.min(newDag, remainingForDagSolver - MIN_PANEL_PERCENTAGE); // Solver needs min
+              newSolver = remainingForDagSolver - newDag;
+            } else { // Dragged to increase Solver
+              newSolver = Math.min(newSolver, remainingForDagSolver - 2); // DAG needs min (2)
+              newDag = remainingForDagSolver - newSolver;
+            }
+          }
+          newDag = Math.max(2, newDag);
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          break;
+
+        case LayoutMode.DEFAULT_THREE_COLUMN:
+        case LayoutMode.DAG_COLLAPSED_SIMPLE: // Separator 1 adjusts DAG vs Solver, AI is passive
+        default:
+          newDag = prevWidths.dag + dxPercent;
+          newSolver = prevWidths.solver - dxPercent;
+          // newAi = 100 - newDag - newSolver; (calculated later by ensure)
+          
+          const minDagCurrentMode = currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE ? 2 : MIN_PANEL_PERCENTAGE;
+          newDag = Math.max(minDagCurrentMode, newDag);
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          newAi = Math.max(MIN_PANEL_PERCENTAGE, 100 - newDag - newSolver);
+
+          // If AI becomes too small due to dag/solver expansion, take from the one that expanded
+          if (100 - newDag - newSolver < MIN_PANEL_PERCENTAGE) {
+            newAi = MIN_PANEL_PERCENTAGE;
+            const remainingForDagSolver = 100 - newAi;
+            if (prevWidths.dag + dxPercent > newDag) { // DAG was expanding
+              newDag = Math.min(newDag, remainingForDagSolver - MIN_PANEL_PERCENTAGE); // Solver needs min
+              newSolver = remainingForDagSolver - newDag;
+            } else { // Solver was expanding (or DAG shrinking)
+              newSolver = Math.min(newSolver, remainingForDagSolver - minDagCurrentMode); // DAG needs its min
+              newDag = remainingForDagSolver - newSolver;
+            }
+          }
+          newDag = Math.max(minDagCurrentMode, newDag);
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          break;
+      }
+
+      const finalWidths = ensurePanelWidthsSumTo100AndPrecision({ dag: newDag, solver: newSolver, ai: newAi });
+      saveUserPreferenceForMode(currentLayoutMode, finalWidths);
+      return finalWidths;
     });
-  }, []); // No dependencies needed if MIN_PANEL_PERCENTAGE is a const outside component
+  }, [currentLayoutMode, MIN_PANEL_PERCENTAGE, ensurePanelWidthsSumTo100AndPrecision]);
 
   const handleSeparator2Drag = useCallback(({ dx }: { dx: number }) => {
     setPanelWidths(prevWidths => {
       if (!mainLayoutRef.current) return prevWidths;
       const containerWidth = mainLayoutRef.current.offsetWidth;
       if (containerWidth === 0) return prevWidths;
-
       const dxPercent = (dx / containerWidth) * 100;
 
-      const currentSolverWidth = prevWidths.solver;
-      const currentAiWidth = prevWidths.ai;
-      // The combined space of Solver and AI is what we are redistributing
-      const combinedSpace = currentSolverWidth + currentAiWidth;
+      let newDag = prevWidths.dag;
+      let newSolver = prevWidths.solver;
+      let newAi = prevWidths.ai;
 
-      let newSolverWidth = currentSolverWidth + dxPercent;
+      switch (currentLayoutMode) {
+        case LayoutMode.DAG_EXPANDED_FULL: // AI is 0, separator 2 should be inactive/hidden
+          // No change expected if separator is somehow active
+          return prevWidths; 
 
-      // Clamp newSolverWidth:
-      newSolverWidth = Math.max(MIN_PANEL_PERCENTAGE, newSolverWidth);
-      newSolverWidth = Math.min(newSolverWidth, combinedSpace - MIN_PANEL_PERCENTAGE);
+        case LayoutMode.AI_PANEL_ACTIVE: // DAG is ~2% (fixed), separator 2 adjusts Solver vs AI
+          newDag = prevWidths.dag; // DAG width remains fixed (e.g. 2%)
+          newSolver = prevWidths.solver + dxPercent;
+          newAi = prevWidths.ai - dxPercent;
 
-      const newAiWidth = combinedSpace - newSolverWidth;
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          newAi = Math.max(MIN_PANEL_PERCENTAGE, newAi);
+
+          // Ensure sum of Solver + AI is (100 - newDag)
+          const availableForSolverAi = 100 - newDag;
+          if (newSolver + newAi > availableForSolverAi) {
+            if (prevWidths.solver + dxPercent > newSolver) { // Dragged to increase Solver
+              newAi = availableForSolverAi - newSolver;
+            } else { // Dragged to increase AI (or Solver hit min)
+              newSolver = availableForSolverAi - newAi;
+            }
+          }
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          newAi = Math.max(MIN_PANEL_PERCENTAGE, availableForSolverAi - newSolver);
+          break;
+
+        case LayoutMode.DEFAULT_THREE_COLUMN:
+        case LayoutMode.DAG_COLLAPSED_SIMPLE: // Separator 2 adjusts Solver vs AI, DAG is passive
+        default:
+          newDag = prevWidths.dag; // DAG width is not directly changed by separator 2
+          newSolver = prevWidths.solver + dxPercent;
+          newAi = prevWidths.ai - dxPercent;
+
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          newAi = Math.max(MIN_PANEL_PERCENTAGE, newAi);
+          
+          // DAG must also be respected, it might get squashed if Solver+AI take too much
+          const minDagCurrentMode = currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE ? 2 : MIN_PANEL_PERCENTAGE;
+          if (100 - newSolver - newAi < minDagCurrentMode) {
+             newDag = minDagCurrentMode;
+             const availableForSolverAiActive = 100 - newDag;
+             if (prevWidths.solver + dxPercent > newSolver) { // Solver expanding
+                newSolver = Math.min(newSolver, availableForSolverAiActive - MIN_PANEL_PERCENTAGE); // AI needs min
+                newAi = availableForSolverAiActive - newSolver;
+             } else { // AI expanding
+                newAi = Math.min(newAi, availableForSolverAiActive - MIN_PANEL_PERCENTAGE); // Solver needs min
+                newSolver = availableForSolverAiActive - newAi;
+             }
+          }
+          newSolver = Math.max(MIN_PANEL_PERCENTAGE, newSolver);
+          newAi = Math.max(MIN_PANEL_PERCENTAGE, newAi);
+          break;
+      }
       
-      const newCalculatedWidths: PanelWidthsType = { ...prevWidths, solver: newSolverWidth, ai: newAiWidth };
-      setUserSetPanelWidths(newCalculatedWidths); // Save this user-dragged state
-      return newCalculatedWidths;
+      const finalWidths = ensurePanelWidthsSumTo100AndPrecision({ dag: newDag, solver: newSolver, ai: newAi });
+      saveUserPreferenceForMode(currentLayoutMode, finalWidths);
+      return finalWidths;
     });
-  }, []);
+  }, [currentLayoutMode, MIN_PANEL_PERCENTAGE, ensurePanelWidthsSumTo100AndPrecision]);
 
   const handleProblemChange = (newLatexContent: string) => {
     if (problemData) {
@@ -302,27 +538,44 @@ const MainLayout: React.FC = () => {
     <main className={styles.mainLayoutContainer} ref={mainLayoutRef}>
       <ReactFlowProvider>
         <div 
-          className={`${styles.dagRegion} ${isDagCollapsed ? styles.dagRegionCollapsed : ''}`}
-          style={{ flexBasis: isDagCollapsed ? undefined : `${panelWidths.dag}%` }} // Let CSS handle collapsed width
+          className={`${styles.dagRegion} ${ // Conditional class for collapsed state
+            (currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE || currentLayoutMode === LayoutMode.AI_PANEL_ACTIVE) ? styles.dagRegionCollapsed : ''
+          }`}
+          style={{
+            flexBasis: (currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE || currentLayoutMode === LayoutMode.AI_PANEL_ACTIVE) 
+                       ? undefined // Rely on CSS for fixed width when collapsed to icon
+                       : `${panelWidths.dag}%` // Use percentage from state otherwise
+          }}
         >
           <ControlBar 
-            isDagCollapsed={isDagCollapsed} 
-            onToggleCollapse={handleToggleDagCollapse} 
+            isDagCollapsed={currentLayoutMode !== LayoutMode.DEFAULT_THREE_COLUMN && currentLayoutMode !== LayoutMode.DAG_EXPANDED_FULL}
+            onToggleCollapse={handleToggleDagCollapse} // Correctly passed the new handler
           />
-          {!isDagCollapsed && 
-            <DagVisualizationArea 
-              dagNodes={dagNodes} 
-              dagEdges={dagEdges} 
+          {/* Conditional rendering of DagVisualizationArea based on mode and width */}
+          { (currentLayoutMode !== LayoutMode.DAG_COLLAPSED_SIMPLE && 
+             currentLayoutMode !== LayoutMode.AI_PANEL_ACTIVE && 
+             panelWidths.dag > 5) && // Only show if not icon-collapsed and has some width
+            <DagVisualizationArea
+              dagNodes={dagNodes}
+              dagEdges={dagEdges}
             />
           }
         </div>
       </ReactFlowProvider>
 
-      <DraggableSeparator orientation="vertical" onDrag={handleSeparator1Drag} />
+      {/* Separator 1: Between DAG and Solver */}
+      {/* Show unless AI Panel is active (where DAG is an icon and only one separator matters) */}
+      {/* OR unless DAG is fully expanded (where AI panel is hidden, so separator 1 acts between DAG/Solver) - this logic needs refinement for DAG_EXPANDED_FULL */}
+      { currentLayoutMode !== LayoutMode.AI_PANEL_ACTIVE && (
+          <DraggableSeparator orientation="vertical" onDrag={handleSeparator1Drag} />
+      )}
       
       <div 
         className={styles.solverRegion}
-        style={{ flexBasis: `${panelWidths.solver}%` }}
+        style={{
+          flexBasis: `${panelWidths.solver}%`,
+          display: panelWidths.solver === 0 ? 'none' : 'flex',
+        }}
       >
         <ProblemBlock data={problemData} onContentChange={handleProblemChange} />
         <div className={styles.solutionStepsContainer}>
@@ -342,11 +595,18 @@ const MainLayout: React.FC = () => {
         <SolverActions onAddStep={handleAddSolutionStep} />
       </div>
 
-      <DraggableSeparator orientation="vertical" onDrag={handleSeparator2Drag} />
+      {/* Separator 2: Between Solver and AI */}
+      {/* Show unless DAG is fully expanded (AI panel is hidden, so separator 2 is not needed) */}
+      {currentLayoutMode !== LayoutMode.DAG_EXPANDED_FULL && panelWidths.ai > 0 && (
+        <DraggableSeparator orientation="vertical" onDrag={handleSeparator2Drag} />
+      )}
 
       <div 
         className={styles.aiPanelRegion}
-        style={{ flexBasis: `${panelWidths.ai}%` }}
+        style={{
+          flexBasis: `${panelWidths.ai}%`,
+          display: panelWidths.ai === 0 ? 'none' : 'flex',
+        }}
       >
         <CollapsiblePanel title="LaTeX格式化" headerStyle={panelStyles.latexHeader} previewTextWhenCollapsed="点击展开LaTeX格式优化面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
         <div className={styles.draggableSeparatorHorizontal}></div>
