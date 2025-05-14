@@ -1,4 +1,68 @@
 /* CustomStepNode.module.css */
+.nodeBase {
+  padding: 10px 15px;
+  border-radius: 8px; /* 稍微调整圆角以匹配更现代的风格 */
+  background-color: var(--color-white, #ffffff);
+  border: 2px solid var(--color-border-neutral, #ccc);
+  min-width: 150px; /* 给予更多空间 */
+  text-align: center;
+  font-size: var(--font-size-small, 13px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column; /* 允许图标和文本垂直排列 */
+  align-items: center;
+  justify-content: center;
+  gap: 5px; /* 图标和文本之间的间距 */
+}
+
+.nodeLabel {
+  font-weight: 500;
+}
+
+/* 状态样式 */
+.verifiedCorrect {
+  border-color: var(--color-success-dark, #4CAF50);
+  background-color: var(--color-success-light, #E8F5E9);
+}
+
+.verifiedIncorrect {
+  border-color: var(--color-error-dark, #F44336);
+  background-color: var(--color-error-light, #FFEBEE);
+}
+
+.notVerified {
+  border-color: var(--color-warning-dark, #FFC107);
+  background-color: var(--color-warning-light, #FFF8E1);
+}
+
+.verifying {
+  border-color: var(--color-info-dark, #2196F3);
+  background-color: var(--color-info-light, #E3F2FD);
+  /* 可以添加一个细微的动画效果来表示正在验证 */
+}
+
+/* 可选：为图标本身添加一些通用样式 */
+.statusIcon {
+  font-size: 16px; /* 或者根据 lucide-react 图标的 size prop 调整 */
+}
+
+/* 针对特定状态图标的颜色，确保对比度 */
+.iconCorrect {
+  color: var(--color-success-dark, #4CAF50);
+}
+
+.iconIncorrect {
+  color: var(--color-error-dark, #F44336);
+}
+
+.iconNotVerified {
+  color: var(--color-warning-dark, #FFC107);
+}
+
+.iconVerifying {
+  color: var(--color-info-dark, #2196F3);
+}
+
 .customNode {
   padding: 10px 15px;
   border: 1px solid #9e9e9e; /* Default border color */

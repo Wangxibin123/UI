@@ -3,50 +3,53 @@ import { Handle, Position, NodeProps } from '@reactflow/core';
 import type { DagNodeRfData } from '../../../../types';
 import { VerificationStatus } from '../../../../types';
 import styles from './CustomStepNode.module.css';
-import Latex from 'react-latex-next'; // Assuming katex.min.css is globally imported
+import Latex from 'react-latex-next';
+import {
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  HelpCircle
+} from 'lucide-react';
 
 const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id }) => {
-  let nodeClassName = styles.customNode;
-  if (selected) {
-    nodeClassName += ` ${styles.selected}`;
-  }
-  // Apply verification status class directly for styling
-  if (data.verificationStatus === VerificationStatus.VerifiedCorrect) {
-    nodeClassName += ` ${styles.correct}`;
-  } else if (data.verificationStatus === VerificationStatus.VerifiedIncorrect) {
-    nodeClassName += ` ${styles.incorrect}`;
-  }
+  const getStatusStyleAndIcon = (status?: VerificationStatus) => {
+    switch (status) {
+      case VerificationStatus.VerifiedCorrect:
+        return { className: styles.verifiedCorrect, IconComponent: CheckCircle2, iconClass: styles.iconCorrect };
+      case VerificationStatus.VerifiedIncorrect:
+        return { className: styles.verifiedIncorrect, IconComponent: XCircle, iconClass: styles.iconIncorrect };
+      case VerificationStatus.Verifying:
+        return { className: styles.verifying, IconComponent: Loader2, iconClass: styles.iconVerifying };
+      case VerificationStatus.NotVerified:
+      default:
+        return { className: styles.notVerified, IconComponent: HelpCircle, iconClass: styles.iconNotVerified };
+    }
+  };
 
-  // Truncate LaTeX for display in node, prevent overly long strings
-  const displayLatex = data.fullLatexContent.length > 40 
-    ? `${data.fullLatexContent.substring(0, 37)}...` 
-    : data.fullLatexContent;
+  const { className: statusClassName, IconComponent, iconClass: statusIconSpecificClass } = getStatusStyleAndIcon(data.verificationStatus);
+
+  const baseNodeClasses = selected ? `${styles.nodeBase} ${styles.selected}` : styles.nodeBase;
+
+  const displayLatex = data.fullLatexContent && data.fullLatexContent.length > 40
+    ? `${data.fullLatexContent.substring(0, 37)}...`
+    : data.fullLatexContent || '';
 
   return (
-    <div className={nodeClassName}>
-      {/* NodeResizer can be added if you want nodes to be user-resizable */}
-      {/* <NodeResizer minWidth={180} minHeight={80} /> */}
-      
-      {/* Handles: Connection points */}
+    <div className={`${baseNodeClasses} ${statusClassName}`}>
       <Handle type="target" position={Position.Top} className={styles.handle} id={`${id}-target`} />
       
-      <div className={styles.nodeHeader}>
-        <span>{data.label}</span>
-        {data.verificationStatus === VerificationStatus.VerifiedCorrect && 
-          <span className={styles.icon} title="Verified Correct">✅</span>}
-        {data.verificationStatus === VerificationStatus.VerifiedIncorrect && 
-          <span className={styles.icon} title="Verified Incorrect">❌</span>}
-        {data.verificationStatus === VerificationStatus.NotVerified && 
-          <span className={styles.icon} title="Not Verified">❔</span>}
-        {data.verificationStatus === VerificationStatus.Verifying && 
-          <span className={styles.icon} title="Verifying...">⏳</span>}
-      </div>
+      {IconComponent && (
+        <IconComponent className={`${styles.statusIcon} ${statusIconSpecificClass}`} size={20} />
+      )}
       
-      <div className={styles.nodeContent}>
-        {/* Render the (potentially truncated) LaTeX content */}
-        {/* Ensure LaTeX delimiters are present if react-latex-next requires them explicitly */}
-        <Latex>{`$$${displayLatex.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
-      </div>
+      <div className={styles.nodeLabel}>{data.label}</div>
+      
+      {displayLatex && (
+        <div className={styles.nodeContent}>
+          <Latex>{`$$${displayLatex.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
+        </div>
+      )}
       
       <Handle type="source" position={Position.Bottom} className={styles.handle} id={`${id}-source`} />
     </div>
