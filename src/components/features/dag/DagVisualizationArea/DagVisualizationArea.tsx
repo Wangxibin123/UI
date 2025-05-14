@@ -1,14 +1,11 @@
 import React, { useEffect, useCallback } from 'react';
-import ReactFlow, {
+import {
+  ReactFlow,
   useNodesState,
   useEdgesState,
   addEdge,
-  // Controls, // Temporarily commented out
-  // Background, // Temporarily commented out
-  // MiniMap, // Temporarily commented out
   Connection,
   Edge as RFEdge,
-  Node // Directly import Node from reactflow
 } from '@reactflow/core';
 import type { DagNode, DagEdge } from '../../../../types';
 import styles from './DagVisualizationArea.module.css';
@@ -18,35 +15,35 @@ interface DagVisualizationAreaProps {
   dagEdges: DagEdge[];
 }
 
-const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({ dagNodes: initialNodesFromProps, dagEdges: initialEdgesFromProps }) => {
-  // Use the imported Node type directly from reactflow, with explicit generics for data and node type string.
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<DagNode['data'], DagNode['type']>>([]);
+const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
+  dagNodes: initialNodesFromProps,
+  dagEdges: initialEdgesFromProps,
+}) => {
+  /** 这里直接用 DagNode / DagEdge，而不是 Node<Node<…>> */
+  const [nodes, setNodes, onNodesChange] = useNodesState<DagNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DagEdge>([]);
 
+  /** 同步 props → 本地状态 */
   useEffect(() => {
-    // Map DagNode props to the structure expected by React Flow's Node type.
-    const reactFlowNodes: Node<DagNode['data'], DagNode['type']>[] = initialNodesFromProps.map(n => ({
-      id: n.id,
-      position: n.position,
-      data: n.data, 
-      type: n.type,
-    }));
-    setNodes(reactFlowNodes);
-  }, [initialNodesFromProps, setNodes]);
+    setNodes(initialNodesFromProps.map(n => ({ ...n })));
+  }, [initialNodesFromProps, setNodes]); // setNodes 加入依赖数组可能引起循环，通常不需要
 
   useEffect(() => {
     setEdges(initialEdgesFromProps.map(e => ({ ...e })));
-  }, [initialEdgesFromProps, setEdges]);
+  }, [initialEdgesFromProps, setEdges]); // setEdges 加入依赖数组可能引起循环
 
+  /** 处理连线 */
   const onConnect = useCallback(
-    (params: Connection | RFEdge) => {
-      setEdges((eds) => addEdge(params, eds));
-    },
-    [setEdges]
+    (params: Connection | RFEdge) =>
+      setEdges((eds) => addEdge(params, eds)),
+    [setEdges],
   );
 
   return (
-    <div className={styles.dagVisualizationAreaContainer} style={{ height: '100%', width: '100%' }}>
+    <div
+      className={styles.dagVisualizationAreaContainer}
+      style={{ height: '100%', width: '100%' }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -55,13 +52,9 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({ dagNodes: i
         onConnect={onConnect}
         fitView
         attributionPosition="bottom-left"
-      >
-        {/* <Controls /> */}
-        {/* <MiniMap /> */}
-        {/* <Background variant="dots" gap={12} size={1} /> */}
-      </ReactFlow>
+      />
     </div>
   );
 };
 
-export default DagVisualizationArea; 
+export default DagVisualizationArea;

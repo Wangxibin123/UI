@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 考虑从 public 目录移动 favicon.ico 到项目根目录或 public 目录并相应修改路径 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-MATH App</title>
+    <!-- React Flow CSS (可以从 src/index.tsx 移到这里，或者保留在 JS 中导入) -->
+    <link rel="stylesheet" href="/node_modules/@reactflow/core/dist/style.css" />
+    <!-- KaTeX CSS (可以从 src/index.tsx 移到这里，或者保留在 JS 中导入) -->
+    <link rel="stylesheet" href="/node_modules/katex/dist/katex.min.css" />
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- 明确指定使用 src/main.tsx 作为入口 -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

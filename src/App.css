@@ -9,3 +9,34 @@
   border: 5px solid red; // For debugging layout
 }
 */ 
+
+/* -----------  App.css  (拷贝整段)  ---------------- */
+
+/* 1️⃣ 让根节点占满整个视口 —— React Flow 才能铺满父元素 */
+html, body, #root, .App {
+  height: 100%;
+  width: 100%;
+  margin: 0;          /* 去掉浏览器默认 margin */
+  padding: 0;         /* 保持零内边距 */
+  box-sizing: border-box;
+  /* 可选：统一字体，让开发环境更友好 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* 2️⃣ 让 Flex 布局里的区域不溢出（可选加强版，防止出现水平滚动条） */
+* {
+  box-sizing: inherit;          /* 继承 box-sizing: border-box */
+}
+
+body {
+  overflow: hidden;             /* 防止出现双滚动（全局滚动交给 MainLayout 内部） */
+}
+
+/* 3️⃣ 仅在需要调试布局时取消注释 ↓ */
+/*
+.App {
+  outline: 3px dashed red;
+}
+*/
+
+/* -----------  End  ---------------- */
