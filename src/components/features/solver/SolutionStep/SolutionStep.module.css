@@ -1,28 +1,106 @@
 /* src/components/features/solver/SolutionStep/SolutionStep.module.css */
 .solutionStep {
-  height: 100px;
-  background-color: var(--color-white);
-  border: 1px solid var(--color-light-gray);
-  margin: 10px 20px; /* Top/Bottom, Left/Right */
   display: flex;
-  align-items: center; /* Vertically center content */
-  position: relative;
-  padding: 10px;
+  align-items: flex-start;
+  padding: 15px;
+  background-color: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  min-height: 70px; /* Adjusted from 100px for a more compact look if needed */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.stepNumberContainer {
+  margin-right: 15px;
+  display: flex;
+  align-items: center; /* Vertically center the number in its container */
+  /* height: 100%; Remove if number shouldn't stretch container height */
 }
 
 .stepNumber {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: var(--color-primary-blue);
-  color: var(--color-white);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-normal);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #2196F3;
+  color: white;
   font-weight: bold;
-  margin-right: 15px;
+  font-size: 0.9em;
   flex-shrink: 0; /* Prevent shrinking */
+}
+
+.contentWrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 20px; /* Ensure space for icons even if content is short */
+  margin-bottom: 5px;
+}
+
+.icon {
+  font-size: 1em;
+  margin-left: 5px; /* Space between multiple icons if any */
+}
+
+.correct {
+  color: green;
+}
+
+.incorrect {
+  color: red;
+}
+
+.notVerified {
+  color: gray; /* Or a light blue, or remove if no icon for not verified */
+}
+
+.contentArea {
+  flex-grow: 1;
+  display: flex;
+  align-items: center; /* Vertically center LaTeX content */
+  word-break: break-all; /* Prevent long LaTeX strings from breaking layout */
+}
+
+.latexEditor {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: monospace;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  margin-left: 15px;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 5px;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.iconButton:hover {
+  color: #000;
 }
 
 .statusMark {
@@ -37,16 +115,6 @@
 }
 
 /* No specific style for "not yet validated", so no .statusMarkNeutral or similar needed yet */
-
-.contentArea {
-  flex-grow: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* Center LaTeX content */
-  font-size: var(--font-size-medium); /* 16px or as per spec for solution steps */
-  overflow: auto;
-  padding-right: 40px; /* Space for action buttons if they were on the right of content */
-}
 
 .actionButtons {
   position: absolute;

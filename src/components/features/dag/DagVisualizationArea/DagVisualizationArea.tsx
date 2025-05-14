@@ -6,8 +6,10 @@ import {
   addEdge,
   Connection,
   Edge as RFEdge,
+  Node as RFNode,
+  Position,
 } from '@reactflow/core';
-import type { DagNode, DagEdge } from '../../../../types';
+import type { DagNode, DagEdge, DagNodeRfData } from '../../../../types';
 import styles from './DagVisualizationArea.module.css';
 
 interface DagVisualizationAreaProps {
@@ -19,20 +21,26 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   dagNodes: initialNodesFromProps,
   dagEdges: initialEdgesFromProps,
 }) => {
-  /** 这里直接用 DagNode / DagEdge，而不是 Node<Node<…>> */
-  const [nodes, setNodes, onNodesChange] = useNodesState<DagNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<DagEdge>([]);
-
-  /** 同步 props → 本地状态 */
-  useEffect(() => {
-    setNodes(initialNodesFromProps.map(n => ({ ...n })));
-  }, [initialNodesFromProps, setNodes]); // setNodes 加入依赖数组可能引起循环，通常不需要
+  const [nodes, setNodes, onNodesChange] = useNodesState<DagNodeRfData>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   useEffect(() => {
-    setEdges(initialEdgesFromProps.map(e => ({ ...e })));
-  }, [initialEdgesFromProps, setEdges]); // setEdges 加入依赖数组可能引起循环
+    const reactFlowNodes: RFNode<DagNodeRfData>[] = initialNodesFromProps.map(appNode => ({
+      id: appNode.id,
+      type: appNode.type,
+      position: appNode.position,
+      data: appNode.data,
+      style: appNode.style,
+      sourcePosition: appNode.sourcePosition as Position | undefined,
+      targetPosition: appNode.targetPosition as Position | undefined,
+    }));
+    setNodes(reactFlowNodes);
+  }, [initialNodesFromProps, setNodes]);
 
-  /** 处理连线 */
+  useEffect(() => {
+    setEdges(initialEdgesFromProps.map(e => ({ ...e } as RFEdge)));
+  }, [initialEdgesFromProps, setEdges]);
+
   const onConnect = useCallback(
     (params: Connection | RFEdge) =>
       setEdges((eds) => addEdge(params, eds)),

@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+// 在 src/main.tsx 或 src/index.tsx 文件的顶部添加
+import 'katex/dist/katex.min.css';
 
 // Import global styles
 import './styles/_reset.css';      // CSS Reset

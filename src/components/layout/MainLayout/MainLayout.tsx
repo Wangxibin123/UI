@@ -7,21 +7,24 @@ import ProblemBlock from '../../features/solver/ProblemBlock/ProblemBlock';
 import SolutionStep from '../../features/solver/SolutionStep/SolutionStep';
 import SolverActions from '../../features/solver/SolverActions/SolverActions';
 import CollapsiblePanel from '../../common/CollapsiblePanel/CollapsiblePanel';
-import type { SolutionStepData, DagNode, DagEdge } from '../../../types'; // Import types
+import { type SolutionStepData, type DagNode, type DagEdge, type ProblemData, VerificationStatus } from '../../../types';
 
 // initialSolutionStepsData should use SolutionStepData type
 const initialSolutionStepsData: SolutionStepData[] = [
-  { id: 'step-1', stepNumber: 1, latexContent: "$$\\lambda^2 + 4\\lambda + 4 = 0$$", isCorrect: true },
-  { id: 'step-2', stepNumber: 2, latexContent: "$$(\\lambda + 2)^2 = 0$$", isCorrect: true },
-  { id: 'step-3', stepNumber: 3, latexContent: "$$\\lambda = -2 \\text{ (重根)}$$", isCorrect: undefined },
+  { id: 'step-1', stepNumber: 1, latexContent: "$$\\lambda^2 + 4\\lambda + 4 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect },
+  { id: 'step-2', stepNumber: 2, latexContent: "$$(\\lambda + 2)^2 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect },
+  { id: 'step-3', stepNumber: 3, latexContent: "$$\\lambda = -2 \\text{ (重根)}$$", verificationStatus: VerificationStatus.NotVerified },
 ];
 
 const MainLayout: React.FC = () => {
   const [isDagCollapsed, setIsDagCollapsed] = useState(false);
   const [aiPanelWidth, setAiPanelWidth] = useState(300);
-  const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(initialSolutionStepsData);
+  const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
+    return [];
+  });
   const [dagNodes, setDagNodes] = useState<DagNode[]>([]);
   const [dagEdges, setDagEdges] = useState<DagEdge[]>([]);
+  const [problemData, setProblemData] = useState<ProblemData | null>(null);
 
   const isDraggingRef = useRef(false);
   const startXRef = useRef(0);
@@ -56,6 +59,21 @@ const MainLayout: React.FC = () => {
     generateDagData();
   }, [solutionSteps]);
 
+  useEffect(() => {
+    setProblemData({
+      id: 'problem-init-1',
+      title: '示例题目',
+      latexContent: '$$\\frac{d^2y}{dx^2} + 5\\frac{dy}{dx} + 6y = 0$$'
+    });
+
+    const initialStepsExample: SolutionStepData[] = [
+      { id: 'step-init-1', stepNumber: 1, latexContent: '$$\\lambda^2 + 5\\lambda + 6 = 0$$', verificationStatus: VerificationStatus.NotVerified },
+      { id: 'step-init-2', stepNumber: 2, latexContent: '$$(\\lambda+2)(\\lambda+3) = 0$$', verificationStatus: VerificationStatus.NotVerified },
+      { id: 'step-init-3', stepNumber: 3, latexContent: '$$\\lambda_1 = -2, \\lambda_2 = -3$$', verificationStatus: VerificationStatus.NotVerified },
+    ];
+    setSolutionSteps(initialStepsExample);
+  }, []);
+
   const handleToggleDagCollapse = () => setIsDagCollapsed(!isDagCollapsed);
 
   const handleAddSolutionStep = (latexInput: string) => {
@@ -64,7 +82,7 @@ const MainLayout: React.FC = () => {
       id: `step-${Date.now()}`,
       stepNumber: solutionSteps.length + 1,
       latexContent: latexInput,
-      isCorrect: undefined,
+      verificationStatus: VerificationStatus.NotVerified,
     };
     setSolutionSteps(prevSteps => [...prevSteps, newStep]);
   };
@@ -110,6 +128,56 @@ const MainLayout: React.FC = () => {
     };
   }, [handleMouseMove, handleMouseUp]);
 
+  const handleProblemChange = (newLatexContent: string) => {
+    if (problemData) {
+      setProblemData({ ...problemData, latexContent: newLatexContent });
+    } else {
+      // Create a new problem if one doesn't exist
+      setProblemData({
+        id: `problem-${Date.now()}`,
+        title: '新问题',
+        latexContent: newLatexContent,
+      });
+    }
+  };
+
+  const handleStepContentChange = (stepId: string, newLatexContent: string) => {
+    setSolutionSteps(prevSteps =>
+      prevSteps.map(step =>
+        step.id === stepId ? { ...step, latexContent: newLatexContent } : step
+      )
+    );
+  };
+
+  const handleDeleteStep = (stepId: string) => {
+    setSolutionSteps(prevSteps => {
+      const updatedSteps = prevSteps.filter(step => step.id !== stepId);
+      // Re-calculate step numbers
+      return updatedSteps.map((step, index) => ({
+        ...step,
+        stepNumber: index + 1,
+      }));
+    });
+  };
+
+  const handleAnalyzeStep = (stepId: string) => {
+    console.log("Analyze step requested:", stepId);
+    // Future: Trigger AI analysis, update step verificationStatus, etc.
+    // For now, let's toggle verification status as a demo
+    setSolutionSteps(prevSteps =>
+      prevSteps.map(step => {
+        if (step.id === stepId) {
+          let newStatus = VerificationStatus.NotVerified;
+          if (step.verificationStatus === VerificationStatus.NotVerified) newStatus = VerificationStatus.VerifiedCorrect;
+          else if (step.verificationStatus === VerificationStatus.VerifiedCorrect) newStatus = VerificationStatus.VerifiedIncorrect;
+          else if (step.verificationStatus === VerificationStatus.VerifiedIncorrect) newStatus = VerificationStatus.NotVerified;
+          return { ...step, verificationStatus: newStatus };
+        }
+        return step;
+      })
+    );
+  };
+
   return (
     <main className={styles.mainLayoutContainer}>
       <div className={`${styles.dagRegion} ${isDagCollapsed ? styles.dagRegionCollapsed : ''}`}>
@@ -122,18 +190,19 @@ const MainLayout: React.FC = () => {
       >
       </div>
       <div className={styles.solverRegion}>
-        <ProblemBlock />
+        <ProblemBlock data={problemData} onContentChange={handleProblemChange} />
         <div className={styles.solutionStepsContainer}>
           {solutionSteps.map((step) => (
             <SolutionStep
               key={step.id} 
-              stepNumber={step.stepNumber}
-              latexContent={step.latexContent}
-              isCorrect={step.isCorrect}
+              step={step}
+              onContentChange={handleStepContentChange}
+              onDelete={handleDeleteStep}
+              onAnalyze={handleAnalyzeStep}
             />
           ))}
         </div>
-        <SolverActions onAddNewStep={handleAddSolutionStep} />
+        <SolverActions onAddStep={handleAddSolutionStep} />
       </div>
       <div 
         className={styles.aiPanelRegion}

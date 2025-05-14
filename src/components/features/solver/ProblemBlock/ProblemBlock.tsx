@@ -1,52 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ProblemData } from '../../../../types';
+import Latex from 'react-latex-next';
 import styles from './ProblemBlock.module.css';
-import Latex from 'react-latex-next'; // Import Latex component
 
-// Placeholder icons (can be replaced with actual icons later)
-const EditIcon = () => <span>✏️</span>; // Placeholder for an edit icon
-const FormatIcon = () => <span>✒️</span>; // Placeholder for a formatting icon
+interface ProblemBlockProps {
+  data: ProblemData | null;
+  onContentChange: (newLatexContent: string) => void;
+  // onUploadClick: () => void; // Future implementation
+}
 
-const ProblemBlock: React.FC = () => {
-  const [problemText, setProblemText] = useState<string>("请在此输入或粘贴您的问题（支持LaTeX格式）：\n例如： $$\int_0^1 x^2 dx$$");
-  const [isEditing, setIsEditing] = useState<boolean>(true); // Start in editing mode initially
+const ProblemBlock: React.FC<ProblemBlockProps> = ({ data, onContentChange }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
 
-  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setProblemText(event.target.value);
-  };
+  useEffect(() => {
+    // Update editText when data.latexContent changes and not in editing mode
+    if (data && !isEditing) {
+      setEditText(data.latexContent);
+    }
+  }, [data, isEditing]);
 
-  const toggleEditMode = () => {
+  const handleEditToggle = () => {
+    if (isEditing && data) {
+      if (editText !== data.latexContent) {
+        onContentChange(editText);
+      }
+    } else if (data) {
+      setEditText(data.latexContent); // Load current content when starting to edit
+    }
     setIsEditing(!isEditing);
   };
 
-  return (
-    <div className={styles.problemBlockContainer}>
-      <div className={styles.problemHeader}>
-        <span className={styles.problemTitle}>问题描述</span>
-        <div className={styles.problemActions}>
-          <button onClick={toggleEditMode} className={styles.actionButton} aria-label={isEditing ? "完成编辑" : "编辑问题"}>
-            {isEditing ? "完成" : <EditIcon />}
+  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditText(event.target.value);
+  };
+
+  if (!data) {
+    // Display a message or a loader if there's no problem data yet
+    // Or, allow creating a new problem directly from here
+    return (
+      <div className={styles.problemBlock}>
+        <div className={styles.sideLabel}>题目</div>
+        <div className={styles.contentArea}>
+          <textarea
+            value={editText}
+            onChange={handleTextChange}
+            className={styles.latexEditor}
+            placeholder="在此输入或粘贴您的问题（支持LaTeX格式）：\n例如：\nint_1^x t^2 dt"
+          />
+        </div>
+        <div className={styles.actions}>
+          <button onClick={() => onContentChange(editText)} className={styles.iconButton} title="保存新题目">
+            💾
           </button>
-          {/* Placeholder for a potential formatting action */}
-          {!isEditing && (
-            <button className={styles.actionButton} aria-label="格式化LaTeX">
-              <FormatIcon />
-            </button>
-          )}
         </div>
       </div>
-      {isEditing ? (
-        <textarea
-          className={styles.problemTextarea}
-          value={problemText}
-          onChange={handleTextChange}
-          placeholder="在此输入或粘贴您的问题（支持LaTeX格式）"
-        />
-      ) : (
-        <div className={styles.problemDisplay}>
-          {/* Use Latex component here */}
-          <Latex>{problemText}</Latex>
-        </div>
-      )}
+    );
+  }
+
+  return (
+    <div className={styles.problemBlock}>
+      <div className={styles.sideLabel}>题目</div>
+      <div className={styles.contentArea}>
+        {isEditing ? (
+          <textarea
+            value={editText}
+            onChange={handleTextChange}
+            className={styles.latexEditor}
+            placeholder="在此输入或粘贴您的问题（支持LaTeX格式）：\n例如：\nint_1^x t^2 dt"
+          />
+        ) : (
+          <div className={styles.latexDisplay}>
+            {/* Add $$ if not present for react-latex-next default delimiters */}
+            <Latex>{`$$${data.latexContent.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
+          </div>
+        )}
+      </div>
+      <div className={styles.actions}>
+        <button onClick={handleEditToggle} className={styles.iconButton} title={isEditing ? "保存" : "编辑"}>
+          {isEditing ? '💾' : '✏️'}
+        </button>
+        <button className={styles.iconButton} title="上传图片 (暂未实现)">
+          📷
+        </button>
+      </div>
     </div>
   );
 };

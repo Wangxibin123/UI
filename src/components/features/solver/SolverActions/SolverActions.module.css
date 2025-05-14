@@ -1,4 +1,70 @@
 /* src/components/features/solver/SolverActions/SolverActions.module.css */
+.solverActions {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f9f9f9;
+  border-top: 1px solid #e0e0e0;
+  /* height: 60px; Fixed height, or remove for dynamic height based on content */
+  box-sizing: border-box;
+  margin-top: auto; /* Pushes to the bottom if solverRegion is flex column */
+}
+
+.inputArea {
+  flex-grow: 1;
+  margin-right: 15px;
+}
+
+.stepInput {
+  width: 100%;
+  padding: 10px 12px; /* Increased padding for better touch/click */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95em;
+  box-sizing: border-box;
+}
+
+.buttonGroup {
+  display: flex;
+  align-items: center;
+}
+
+.actionButton {
+  background-color: #e0e0e0;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 12px; /* Consistent padding with input */
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  white-space: nowrap; /* Prevent button text from wrapping */
+}
+
+.actionButton:hover {
+  background-color: #d5d5d5;
+}
+
+.actionButton > svg, /* If using SVG icons */
+.actionButton > span { /* If using text/emoji icons */
+  margin-right: 5px;
+}
+
+.actionButton:first-child {
+  margin-left: 0;
+}
+
+.submitButton {
+  background-color: #2196F3;
+  color: white;
+  font-weight: bold;
+}
+
+.submitButton:hover {
+  background-color: #1976D2;
+}
+
 .actionsContainer {
   height: 60px;
   display: flex;
