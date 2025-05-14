@@ -7,9 +7,15 @@ import ProblemBlock from '../../features/solver/ProblemBlock/ProblemBlock';
 import SolutionStep from '../../features/solver/SolutionStep/SolutionStep';
 import SolverActions from '../../features/solver/SolverActions/SolverActions';
 import CollapsiblePanel from '../../common/CollapsiblePanel/CollapsiblePanel';
+import DraggableSeparator from '../../common/DraggableSeparator/DraggableSeparator';
 import { type SolutionStepData, type DagNode, type DagEdge, type ProblemData, VerificationStatus } from '../../../types';
-import { MarkerType } from '@reactflow/core';
-import { ReactFlowProvider } from '@reactflow/core';
+import { MarkerType, ReactFlowProvider } from '@reactflow/core';
+
+interface PanelWidthsType {
+  dag: number;
+  solver: number;
+  ai: number;
+}
 
 // initialSolutionStepsData should use SolutionStepData type
 const initialSolutionStepsData: SolutionStepData[] = [
@@ -18,9 +24,10 @@ const initialSolutionStepsData: SolutionStepData[] = [
   { id: 'step-3', stepNumber: 3, latexContent: "$$\\lambda = -2 \\text{ (重根)}$$", verificationStatus: VerificationStatus.NotVerified },
 ];
 
+const MIN_PANEL_PERCENTAGE = 10; // Minimum width for any panel in percentage
+
 const MainLayout: React.FC = () => {
   const [isDagCollapsed, setIsDagCollapsed] = useState(false);
-  const [aiPanelWidth, setAiPanelWidth] = useState(300);
   const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
     return [];
   });
@@ -28,68 +35,72 @@ const MainLayout: React.FC = () => {
   const [dagEdges, setDagEdges] = useState<DagEdge[]>([]);
   const [problemData, setProblemData] = useState<ProblemData | null>(null);
 
-  const isDraggingRef = useRef(false);
-  const startXRef = useRef(0);
-  const initialWidthRef = useRef(0);
+  const mainLayoutRef = useRef<HTMLDivElement>(null);
+  
+  const initialPanelWidths = useRef<PanelWidthsType>({ dag: 27.5, solver: 45, ai: 22.5 });
+  
+  const [panelWidths, setPanelWidths] = useState<PanelWidthsType>(initialPanelWidths.current);
+  
+  const [userSetPanelWidths, setUserSetPanelWidths] = useState<PanelWidthsType | null>(null);
 
   useEffect(() => {
     const generateDagData = () => {
-      console.log("Attempting to generate DAG data. solutionSteps:", JSON.parse(JSON.stringify(solutionSteps)));
+      // console.log("Attempting to generate DAG data. solutionSteps:", JSON.parse(JSON.stringify(solutionSteps)));
+
+      // Filter out hard-deleted steps for DAG generation if any (though current logic is soft delete)
+      // const activeSteps = solutionSteps.filter(step => !step.isHardDeleted); // Example if using a different flag
 
       if (!solutionSteps || solutionSteps.length === 0) {
-        console.log("No solution steps, clearing DAG.");
+        // console.log("No solution steps, clearing DAG.");
         setDagNodes([]);
         setDagEdges([]);
         return;
       }
 
       const newNodes: DagNode[] = solutionSteps.map((step, index) => {
-        // let nodeStyle: React.CSSProperties = {}; // Style is better handled by CustomStepNode
-
         return {
           id: step.id,
-          type: 'customStepNode', // Plan to use custom node
+          type: 'customStepNode',
           data: {
-            label: `步骤 ${step.stepNumber}`, 
+            label: `步骤 ${step.stepNumber}`,
             fullLatexContent: step.latexContent,
             verificationStatus: step.verificationStatus,
             stepNumber: step.stepNumber,
+            isDeleted: step.isDeleted || false, // Pass the isDeleted status
           },
-          position: { x: 150, y: index * 120 + 50 }, // Increased vertical spacing slightly
-          // style: nodeStyle, // Styling will be primarily handled by the CustomStepNode itself
+          // Adjust position for deleted nodes? For now, keep them in sequence.
+          position: { x: 150, y: index * 120 + 50 }, 
         };
       });
 
       const newEdges: DagEdge[] = [];
       if (solutionSteps.length > 1) {
         for (let i = 1; i < solutionSteps.length; i++) {
-          newEdges.push({
-            id: `e-${solutionSteps[i - 1].id}-${solutionSteps[i].id}`,
-            source: solutionSteps[i - 1].id,
-            target: solutionSteps[i].id,
-            animated: true,
-            type: 'smoothstep', // Use smoothstep edge type
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              // color: '#666', // Optional: define arrow color
-              // width: 20,    // Optional: define arrow width
-              // height: 20,   // Optional: define arrow height
-            },
-            // style: { strokeWidth: 1.5, stroke: '#666' }, // Optional: define edge line style
-          });
+          // Only create edges between non-deleted steps
+          if (!solutionSteps[i - 1].isDeleted && !solutionSteps[i].isDeleted) {
+            newEdges.push({
+              id: `e-${solutionSteps[i - 1].id}-${solutionSteps[i].id}`,
+              source: solutionSteps[i - 1].id,
+              target: solutionSteps[i].id,
+              animated: true, // Consider making this conditional if source/target is deleted
+              type: 'smoothstep',
+              markerEnd: { type: MarkerType.ArrowClosed },
+              // style: (solutionSteps[i-1].isDeleted || solutionSteps[i].isDeleted) ? { stroke: '#ccc', strokeDasharray: '5 5'} : undefined
+            });
+          }
         }
       }
       
-      console.log("Generated New DAG Nodes:", JSON.parse(JSON.stringify(newNodes)));
-      console.log("Generated New DAG Edges:", JSON.parse(JSON.stringify(newEdges)));
+      // console.log("Generated New DAG Nodes:", JSON.parse(JSON.stringify(newNodes)));
+      // console.log("Generated New DAG Edges:", JSON.parse(JSON.stringify(newEdges)));
 
       setDagNodes(newNodes);
       setDagEdges(newEdges);
     };
 
-    generateDagData(); // Call directly
+    generateDagData();
 
-  }, [solutionSteps]); // Dependency array is correct
+  }, [solutionSteps]);
 
   useEffect(() => {
     setProblemData({
@@ -106,6 +117,22 @@ const MainLayout: React.FC = () => {
     setSolutionSteps(initialStepsExample);
   }, []);
 
+  // Effect to handle panel width restoration when DAG is un-collapsed
+  useEffect(() => {
+    if (!isDagCollapsed) {
+      // When DAG is expanded
+      if (userSetPanelWidths) {
+        setPanelWidths(userSetPanelWidths); // Restore user's last dragged widths
+      } else {
+        setPanelWidths(initialPanelWidths.current); // Restore initial default widths
+      }
+    }
+    // If isDagCollapsed is true, panelWidths.dag is effectively ignored by the inline style
+    // due to the conditional className, and the CSS rule for .dagRegionCollapsed takes over.
+    // The other panel widths (solver, ai) remain as they were, which is the desired behavior
+    // unless we explicitly want them to resize when DAG collapses.
+  }, [isDagCollapsed, userSetPanelWidths]); // Dependency: userSetPanelWidths to re-apply if it changes while uncollapsed (e.g. future load state)
+
   const handleToggleDagCollapse = () => setIsDagCollapsed(!isDagCollapsed);
 
   const handleAddSolutionStep = (latexInput: string) => {
@@ -119,46 +146,62 @@ const MainLayout: React.FC = () => {
     setSolutionSteps(prevSteps => [...prevSteps, newStep]);
   };
 
-  // Placeholder for actual drag logic for handleMouseDownOnSeparator, handleMouseMove, handleMouseUp, and useEffect cleanup
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingRef.current) return;
-    e.preventDefault();
-    const deltaX = e.clientX - startXRef.current;
-    let newWidth = initialWidthRef.current - deltaX;
-    const minPanelWidth = 250;
-    const maxPanelWidth = window.innerWidth * 0.7; // Example, adjust as needed
-    if (newWidth < minPanelWidth) newWidth = minPanelWidth;
-    if (newWidth > maxPanelWidth) newWidth = maxPanelWidth;
-    setAiPanelWidth(newWidth);
-  }, []); 
+  // Separator Drag Handlers
+  const handleSeparator1Drag = useCallback(({ dx }: { dx: number }) => {
+    setPanelWidths(prevWidths => {
+      if (!mainLayoutRef.current) return prevWidths;
+      const containerWidth = mainLayoutRef.current.offsetWidth;
+      if (containerWidth === 0) return prevWidths;
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDraggingRef.current) return;
-    isDraggingRef.current = false;
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.body.style.userSelect = 'auto';
-  }, [handleMouseMove]);
+      const dxPercent = (dx / containerWidth) * 100;
+      
+      const currentDagWidth = prevWidths.dag;
+      const currentSolverWidth = prevWidths.solver;
+      // The combined space of DAG and Solver is what we are redistributing
+      const combinedSpace = currentDagWidth + currentSolverWidth;
 
-  const handleMouseDownOnSeparator = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    isDraggingRef.current = true;
-    startXRef.current = e.clientX;
-    initialWidthRef.current = aiPanelWidth;
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.body.style.userSelect = 'none';
-  };
+      let newDagWidth = currentDagWidth + dxPercent;
+      
+      // Clamp newDagWidth:
+      // It cannot be less than MIN_PANEL_PERCENTAGE.
+      // It cannot be so large that solver becomes less than MIN_PANEL_PERCENTAGE.
+      newDagWidth = Math.max(MIN_PANEL_PERCENTAGE, newDagWidth);
+      newDagWidth = Math.min(newDagWidth, combinedSpace - MIN_PANEL_PERCENTAGE);
+      
+      const newSolverWidth = combinedSpace - newDagWidth;
 
-  useEffect(() => {
-    return () => {
-      if (isDraggingRef.current) { // Check if still dragging during unmount
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.userSelect = 'auto';
-      }
-    };
-  }, [handleMouseMove, handleMouseUp]);
+      const newCalculatedWidths: PanelWidthsType = { ...prevWidths, dag: newDagWidth, solver: newSolverWidth };
+      setUserSetPanelWidths(newCalculatedWidths); // Save this user-dragged state
+      return newCalculatedWidths;
+    });
+  }, []); // No dependencies needed if MIN_PANEL_PERCENTAGE is a const outside component
+
+  const handleSeparator2Drag = useCallback(({ dx }: { dx: number }) => {
+    setPanelWidths(prevWidths => {
+      if (!mainLayoutRef.current) return prevWidths;
+      const containerWidth = mainLayoutRef.current.offsetWidth;
+      if (containerWidth === 0) return prevWidths;
+
+      const dxPercent = (dx / containerWidth) * 100;
+
+      const currentSolverWidth = prevWidths.solver;
+      const currentAiWidth = prevWidths.ai;
+      // The combined space of Solver and AI is what we are redistributing
+      const combinedSpace = currentSolverWidth + currentAiWidth;
+
+      let newSolverWidth = currentSolverWidth + dxPercent;
+
+      // Clamp newSolverWidth:
+      newSolverWidth = Math.max(MIN_PANEL_PERCENTAGE, newSolverWidth);
+      newSolverWidth = Math.min(newSolverWidth, combinedSpace - MIN_PANEL_PERCENTAGE);
+
+      const newAiWidth = combinedSpace - newSolverWidth;
+      
+      const newCalculatedWidths: PanelWidthsType = { ...prevWidths, solver: newSolverWidth, ai: newAiWidth };
+      setUserSetPanelWidths(newCalculatedWidths); // Save this user-dragged state
+      return newCalculatedWidths;
+    });
+  }, []);
 
   const handleProblemChange = (newLatexContent: string) => {
     if (problemData) {
@@ -176,20 +219,23 @@ const MainLayout: React.FC = () => {
   const handleStepContentChange = (stepId: string, newLatexContent: string) => {
     setSolutionSteps(prevSteps =>
       prevSteps.map(step =>
-        step.id === stepId ? { ...step, latexContent: newLatexContent } : step
+        step.id === stepId 
+          ? { 
+              ...step, 
+              latexContent: newLatexContent, 
+              verificationStatus: VerificationStatus.NotVerified
+            } 
+          : step
       )
     );
   };
 
   const handleDeleteStep = (stepId: string) => {
-    setSolutionSteps(prevSteps => {
-      const updatedSteps = prevSteps.filter(step => step.id !== stepId);
-      // Re-calculate step numbers
-      return updatedSteps.map((step, index) => ({
-        ...step,
-        stepNumber: index + 1,
-      }));
-    });
+    setSolutionSteps(prevSteps =>
+      prevSteps.map(step =>
+        step.id === stepId ? { ...step, isDeleted: true } : step
+      )
+    );
   };
 
   const handleAnalyzeStep = (stepId: string) => {
@@ -210,10 +256,55 @@ const MainLayout: React.FC = () => {
     );
   };
 
+  // New function for A.3.3
+  const handleSplitStep = (originalStepId: string, part1Content: string, part2Content: string) => {
+    setSolutionSteps(prevSteps => {
+      const originalStepIndex = prevSteps.findIndex(step => step.id === originalStepId);
+      if (originalStepIndex === -1) {
+        console.error("Original step not found for splitting:", originalStepId);
+        return prevSteps; 
+      }
+
+      // Create a mutable copy for modifications
+      const newStepsArray = prevSteps.map(s => ({...s}));
+
+      // 1. Update the original step (which becomes part 1)
+      newStepsArray[originalStepIndex] = {
+        ...newStepsArray[originalStepIndex],
+        latexContent: part1Content,
+        verificationStatus: VerificationStatus.NotVerified,
+      };
+
+      // 2. Create the new step (part 2)
+      const newStepPart2: SolutionStepData = {
+        id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        latexContent: part2Content,
+        verificationStatus: VerificationStatus.NotVerified,
+        stepNumber: 0, // Temporary, will be correctly set in the re-numbering loop
+      };
+
+      // 3. Insert the new step into the copied array
+      newStepsArray.splice(originalStepIndex + 1, 0, newStepPart2);
+
+      // 4. Re-number all steps from the original step (now part 1) onwards
+      for (let i = originalStepIndex; i < newStepsArray.length; i++) {
+        if (i === 0) {
+          newStepsArray[i].stepNumber = 1;
+        } else {
+          newStepsArray[i].stepNumber = newStepsArray[i-1].stepNumber + 1;
+        }
+      }
+      return newStepsArray;
+    });
+  };
+
   return (
-    <main className={styles.mainLayoutContainer}>
+    <main className={styles.mainLayoutContainer} ref={mainLayoutRef}>
       <ReactFlowProvider>
-        <div className={`${styles.dagRegion} ${isDagCollapsed ? styles.dagRegionCollapsed : ''}`}>
+        <div 
+          className={`${styles.dagRegion} ${isDagCollapsed ? styles.dagRegionCollapsed : ''}`}
+          style={{ flexBasis: isDagCollapsed ? undefined : `${panelWidths.dag}%` }} // Let CSS handle collapsed width
+        >
           <ControlBar 
             isDagCollapsed={isDagCollapsed} 
             onToggleCollapse={handleToggleDagCollapse} 
@@ -226,29 +317,36 @@ const MainLayout: React.FC = () => {
           }
         </div>
       </ReactFlowProvider>
+
+      <DraggableSeparator orientation="vertical" onDrag={handleSeparator1Drag} />
+      
       <div 
-        className={styles.draggableSeparatorVertical} 
-        onMouseDown={handleMouseDownOnSeparator}
+        className={styles.solverRegion}
+        style={{ flexBasis: `${panelWidths.solver}%` }}
       >
-      </div>
-      <div className={styles.solverRegion}>
         <ProblemBlock data={problemData} onContentChange={handleProblemChange} />
         <div className={styles.solutionStepsContainer}>
-          {solutionSteps.map((step) => (
+          {solutionSteps
+            .filter(step => !step.isDeleted)
+            .map((step) => (
             <SolutionStep
-              key={step.id} 
+              key={step.id}
               step={step}
               onContentChange={handleStepContentChange}
               onDelete={handleDeleteStep}
               onAnalyze={handleAnalyzeStep}
+              onSplit={handleSplitStep}
             />
           ))}
         </div>
         <SolverActions onAddStep={handleAddSolutionStep} />
       </div>
+
+      <DraggableSeparator orientation="vertical" onDrag={handleSeparator2Drag} />
+
       <div 
         className={styles.aiPanelRegion}
-        style={{ flexBasis: `${aiPanelWidth}px` }}
+        style={{ flexBasis: `${panelWidths.ai}%` }}
       >
         <CollapsiblePanel title="LaTeX格式化" headerStyle={panelStyles.latexHeader} previewTextWhenCollapsed="点击展开LaTeX格式优化面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
         <div className={styles.draggableSeparatorHorizontal}></div>

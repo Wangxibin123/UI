@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SolutionStepData, VerificationStatus } from '../../../../types';
 import Latex from 'react-latex-next';
 import styles from './SolutionStep.module.css';
+import { 
+  Pencil, Save, Undo2, Trash2, SearchCode, Scissors, 
+  CheckCircle2, XCircle, RefreshCw, Check, X // Check for confirm split, X for cancel split
+} from 'lucide-react';
 
 // Placeholder icons
 const EditIcon = () => <span>✏️</span>;
@@ -15,50 +19,115 @@ interface SolutionStepProps {
   step: SolutionStepData;
   onContentChange: (stepId: string, newLatexContent: string) => void;
   onDelete: (stepId: string) => void;
-  onAnalyze: (stepId: string) => void; // Future: To trigger AI analysis
-  // onVerify: (stepId: string, currentStatus: VerificationStatus) => void; // Future: To manually change verification
+  onAnalyze: (stepId: string) => void;
+  onSplit: (originalStepId: string, part1Content: string, part2Content: string) => void; // New prop
 }
 
-const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDelete, onAnalyze }) => {
+const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDelete, onAnalyze, onSplit }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(step.latexContent);
+  const [currentEditText, setCurrentEditText] = useState(step.latexContent);
+
+  const [isSplitting, setIsSplitting] = useState(false);
+  const [splitPart1Text, setSplitPart1Text] = useState('');
+  const [splitPart2Text, setSplitPart2Text] = useState('');
 
   useEffect(() => {
-    // If external changes to step.latexContent occur (e.g., AI updates it),
-    // and we are NOT currently editing this step, update the local editText.
-    if (step.latexContent !== editText && !isEditing) {
-      setEditText(step.latexContent);
+    if (!isEditing && step.latexContent !== currentEditText) {
+      setCurrentEditText(step.latexContent);
     }
-  }, [step.latexContent, editText, isEditing]);
+    if (!isEditing && isSplitting) {
+        setIsSplitting(false); 
+    }
+  }, [step.latexContent, isEditing, currentEditText, isSplitting]);
 
-  const handleEditToggle = () => {
-    if (isEditing) {
-      // Only call onContentChange if the content actually changed
-      if (editText !== step.latexContent) {
-        onContentChange(step.id, editText);
-      }
+  const handleEnterEditMode = useCallback(() => {
+    setCurrentEditText(step.latexContent);
+    setIsEditing(true);
+    setIsSplitting(false); 
+  }, [step.latexContent]);
+
+  const handleSaveEdit = useCallback(() => {
+    const trimmedEditText = currentEditText.trim();
+    if (trimmedEditText !== step.latexContent.trim() && trimmedEditText !== '') {
+      onContentChange(step.id, trimmedEditText);
     }
-    setIsEditing(!isEditing);
+    setIsEditing(false);
+  }, [currentEditText, step.id, step.latexContent, onContentChange]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setCurrentEditText(step.latexContent);
+    setIsSplitting(false); 
+  }, [step.latexContent]);
+
+  const handleEditTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCurrentEditText(event.target.value);
   };
 
-  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditText(event.target.value);
+  const handleDelete = useCallback(() => {
+    onDelete(step.id);
+  }, [step.id, onDelete]);
+
+  const handleAnalyze = useCallback(() => {
+    onAnalyze(step.id);
+  }, [step.id, onAnalyze]);
+
+  const handleEnterSplitMode = useCallback(() => {
+    setIsSplitting(true);
+    setSplitPart1Text(currentEditText); 
+    setSplitPart2Text('');
+  }, [currentEditText]);
+
+  const handleCancelSplit = useCallback(() => {
+    setIsSplitting(false);
+  }, []);
+
+  const handleConfirmSplit = useCallback(() => {
+    const part1Trimmed = splitPart1Text.trim();
+    const part2Trimmed = splitPart2Text.trim();
+
+    if (part1Trimmed === '' || part2Trimmed === '') {
+      alert('拆分后的两个部分均不能为空内容！'); 
+      return;
+    }
+    onSplit(step.id, part1Trimmed, part2Trimmed);
+    setIsSplitting(false);
+    setIsEditing(false); 
+  }, [splitPart1Text, splitPart2Text, step.id, onSplit]);
+
+  const handleSplitPart1TextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setSplitPart1Text(event.target.value);
+  };
+    
+  const handleSplitPart2TextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setSplitPart2Text(event.target.value);
   };
 
   const getVerificationIcon = () => {
+    let iconElement: JSX.Element | null = null;
+    let titleText = '';
     switch (step.verificationStatus) {
       case VerificationStatus.VerifiedCorrect:
-        return <span className={`${styles.icon} ${styles.correct}`} title="Verified Correct">✅</span>;
+        iconElement = <CheckCircle2 className={`${styles.icon} ${styles.correct}`} size={18} />;
+        titleText = "已验证正确";
+        break;
       case VerificationStatus.VerifiedIncorrect:
-        return <span className={`${styles.icon} ${styles.incorrect}`} title="Verified Incorrect">❌</span>;
+        iconElement = <XCircle className={`${styles.icon} ${styles.incorrect}`} size={18} />;
+        titleText = "已验证错误";
+        break;
       case VerificationStatus.Verifying:
-        return <span className={`${styles.icon} ${styles.notVerified}`} title="Verifying...">🔄</span>; // Example
+        iconElement = <RefreshCw className={`${styles.icon} ${styles.verifying} ${styles.spin}`} size={18} />;
+        titleText = "验证中...";
+        break;
       case VerificationStatus.NotVerified:
       default:
-        // return <span className={`${styles.icon} ${styles.notVerified}`} title="Not Verified">❓</span>;
-        return null; // Or no icon if not verified
+        return null; 
     }
+    return <span title={titleText}>{iconElement}</span>;
   };
+  
+  const canSaveRegularEdit = currentEditText.trim() !== step.latexContent.trim() && currentEditText.trim() !== '';
+  const canConfirmSplit = splitPart1Text.trim() !== '' && splitPart2Text.trim() !== '';
 
   return (
     <div className={styles.solutionStep}>
@@ -71,27 +140,79 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
         </div>
         <div className={styles.contentArea}>
           {isEditing ? (
-            <textarea
-              value={editText}
-              onChange={handleTextChange}
-              className={styles.latexEditor}
-            />
+            isSplitting ? (
+              <div className={styles.splitEditorContainer}>
+                <textarea
+                  value={splitPart1Text}
+                  onChange={handleSplitPart1TextChange}
+                  className={`${styles.latexEditor} ${styles.splitTextarea}`}
+                  rows={2}
+                  aria-label="拆分内容第一部分"
+                  placeholder="第一部分内容"
+                />
+                <textarea
+                  value={splitPart2Text}
+                  onChange={handleSplitPart2TextChange}
+                  className={`${styles.latexEditor} ${styles.splitTextarea}`}
+                  rows={2}
+                  aria-label="拆分内容第二部分"
+                  placeholder="第二部分内容"
+                />
+              </div>
+            ) : (
+              <textarea
+                value={currentEditText}
+                onChange={handleEditTextChange}
+                className={styles.latexEditor}
+                rows={3}
+                aria-label="编辑步骤内容"
+              />
+            )
           ) : (
-            <Latex>{`$$${step.latexContent.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
+            <Latex>{`$$${step.latexContent.replace(/^(\$\$)+|(\$?\$)+$/g, '')}$$`}</Latex>
           )}
         </div>
       </div>
       <div className={styles.actions}>
-        <button onClick={handleEditToggle} className={styles.iconButton} title={isEditing ? "保存" : "编辑"}>
-          {isEditing ? '💾' : '✏️'}
-        </button>
-        <button onClick={() => onDelete(step.id)} className={styles.iconButton} title="删除">
-          🗑️
-        </button>
-        <button onClick={() => onAnalyze(step.id)} className={styles.iconButton} title="解析此步骤 (暂未实现)">
-          🔍
-        </button>
-        {/* Future buttons for manual verification change could go here */}
+        {isEditing ? (
+          isSplitting ? (
+            <>
+              <button onClick={handleConfirmSplit} className={styles.iconButton} title="确认拆分" disabled={!canConfirmSplit} aria-label="确认拆分">
+                <Check size={18} />
+              </button>
+              <button onClick={handleCancelSplit} className={styles.iconButton} title="取消拆分" aria-label="取消拆分">
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={handleSaveEdit} className={styles.iconButton} title="保存更改" disabled={!canSaveRegularEdit} aria-label="保存更改">
+                <Save size={18} />
+              </button>
+              <button onClick={handleCancelEdit} className={styles.iconButton} title="放弃更改" aria-label="放弃更改">
+                <Undo2 size={18} />
+              </button>
+              <button onClick={handleEnterSplitMode} className={styles.iconButton} title="拆分此步骤" aria-label="拆分此步骤">
+                <Scissors size={18} />
+              </button>
+            </>
+          )
+        ) : (
+          <button onClick={handleEnterEditMode} className={styles.iconButton} title="编辑此步骤" aria-label="编辑此步骤">
+            <Pencil size={18} />
+          </button>
+        )}
+        {/* Delete and Analyze buttons are available in all modes except deep split editing */}
+        {!(isEditing && isSplitting) && (
+             <>
+                <button onClick={handleDelete} className={styles.iconButton} title="删除此步骤" aria-label="删除此步骤">
+                    <Trash2 size={18} />
+                </button>
+                <button onClick={handleAnalyze} className={styles.iconButton} title="AI解析此步骤" aria-label="AI解析此步骤">
+                    <SearchCode size={18} />
+                </button>
+             </>
+        )}
       </div>
     </div>
   );

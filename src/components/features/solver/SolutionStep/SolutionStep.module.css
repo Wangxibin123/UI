@@ -63,6 +63,21 @@
   color: gray; /* Or a light blue, or remove if no icon for not verified */
 }
 
+/* VVV ADD THESE STYLES VVV */
+.verifying { /* Style for the verifying icon itself, e.g., color */
+  color: #2196F3; /* Blue, for example */
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* ^^^ END OF ADDED STYLES ^^^ */
+
 .contentArea {
   flex-grow: 1;
   display: flex;
@@ -79,6 +94,19 @@
   font-family: monospace;
   resize: vertical;
   box-sizing: border-box;
+  margin-bottom: 5px; /* Add some margin if two are stacked */
+}
+
+.splitEditorContainer {
+  display: flex;
+  flex-direction: column; /* Stack textareas vertically */
+  width: 100%;
+  gap: 8px; /* Space between the two textareas */
+}
+
+.splitTextarea {
+  /* Specific styles for split textareas if needed, e.g., smaller default height */
+  min-height: 40px; /* Slightly smaller min-height than main editor */
 }
 
 .actions {

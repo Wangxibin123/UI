@@ -28,15 +28,17 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
   };
 
   const { className: statusClassName, IconComponent, iconClass: statusIconSpecificClass } = getStatusStyleAndIcon(data.verificationStatus);
+  const { isDeleted } = data;
 
   const baseNodeClasses = selected ? `${styles.nodeBase} ${styles.selected}` : styles.nodeBase;
+  const finalNodeClasses = isDeleted ? `${baseNodeClasses} ${styles.deletedNode}` : `${baseNodeClasses} ${statusClassName}`;
 
   const displayLatex = data.fullLatexContent && data.fullLatexContent.length > 40
     ? `${data.fullLatexContent.substring(0, 37)}...`
     : data.fullLatexContent || '';
 
   return (
-    <div className={`${baseNodeClasses} ${statusClassName}`}>
+    <div className={finalNodeClasses}>
       <Handle type="target" position={Position.Top} className={styles.handle} id={`${id}-target`} />
       
       {IconComponent && (
@@ -56,4 +58,4 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
   );
 };
 
-export default React.memo(CustomStepNode); 
+export default React.memo(CustomStepNode);
