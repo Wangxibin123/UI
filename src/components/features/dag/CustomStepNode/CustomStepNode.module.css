@@ -1,0 +1,66 @@
+/* CustomStepNode.module.css */
+.customNode {
+  padding: 10px 15px;
+  border: 1px solid #9e9e9e; /* Default border color */
+  border-radius: 6px;
+  background: white;
+  min-width: 200px; /* Increased min-width slightly */
+  max-width: 250px; /* Added max-width to prevent overly wide nodes */
+  font-size: 13px;
+  text-align: left; /* Changed to left align for better readability of content */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.customNode.selected {
+  border-color: #2196F3; /* Material blue for selection */
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.customNode.correct {
+  border-color: #4CAF50; /* Green border for correct */
+  background-color: #E8F5E9; /* Lighter green background */
+}
+
+.customNode.incorrect {
+  border-color: #F44336; /* Red border for incorrect */
+  background-color: #FFEBEE; /* Lighter red background */
+}
+
+.nodeHeader {
+  font-weight: 600; /* Slightly bolder */
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #333;
+}
+
+.icon {
+  font-size: 16px; /* Slightly larger icon */
+  margin-left: 8px; /* Space between text and icon if on same line */
+}
+
+.nodeContent {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 8px;
+  max-height: 50px; /* Limit content height */
+  overflow-y: auto; /* Allow scrolling for overflow */
+  word-break: break-word; /* Break long words */
+  /* Styles for react-latex-next if needed, though it usually adapts well */
+}
+
+.nodeContent .katex-display {
+  margin: 0.2em 0 !important; /* Reduce KaTeX default margins if too large */
+  font-size: 0.95em !important; /* Adjust KaTeX font size within node */
+}
+
+.handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: #AEAEAE !important;
+  border: 1px solid #777 !important;
+  border-radius: 3px; /* Slightly rounded handles */
+}
+
+/* Removed empty .handle.target and .handle.source rules */ 

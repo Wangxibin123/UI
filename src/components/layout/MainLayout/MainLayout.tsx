@@ -8,6 +8,7 @@ import SolutionStep from '../../features/solver/SolutionStep/SolutionStep';
 import SolverActions from '../../features/solver/SolverActions/SolverActions';
 import CollapsiblePanel from '../../common/CollapsiblePanel/CollapsiblePanel';
 import { type SolutionStepData, type DagNode, type DagEdge, type ProblemData, VerificationStatus } from '../../../types';
+import { MarkerType } from '@reactflow/core';
 
 // initialSolutionStepsData should use SolutionStepData type
 const initialSolutionStepsData: SolutionStepData[] = [
@@ -32,32 +33,62 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     const generateDagData = () => {
-      const nodes: DagNode[] = [];
-      const edges: DagEdge[] = [];
-      let yPos = 50;
-      const xPos = 150;
-      solutionSteps.forEach((step, index) => {
-        nodes.push({
+      console.log("Attempting to generate DAG data. solutionSteps:", JSON.parse(JSON.stringify(solutionSteps)));
+
+      if (!solutionSteps || solutionSteps.length === 0) {
+        console.log("No solution steps, clearing DAG.");
+        setDagNodes([]);
+        setDagEdges([]);
+        return;
+      }
+
+      const newNodes: DagNode[] = solutionSteps.map((step, index) => {
+        // let nodeStyle: React.CSSProperties = {}; // Style is better handled by CustomStepNode
+
+        return {
           id: step.id,
-          data: { label: `步骤 ${step.stepNumber}` },
-          position: { x: xPos, y: yPos },
-        });
-        yPos += 100;
-        if (index > 0) {
-          const prevStep = solutionSteps[index - 1];
-          edges.push({
-            id: `e-${prevStep.id}-${step.id}`,
-            source: prevStep.id,
-            target: step.id,
+          type: 'customStepNode', // Plan to use custom node
+          data: {
+            label: `步骤 ${step.stepNumber}`, 
+            fullLatexContent: step.latexContent,
+            verificationStatus: step.verificationStatus,
+            stepNumber: step.stepNumber,
+          },
+          position: { x: 150, y: index * 120 + 50 }, // Increased vertical spacing slightly
+          // style: nodeStyle, // Styling will be primarily handled by the CustomStepNode itself
+        };
+      });
+
+      const newEdges: DagEdge[] = [];
+      if (solutionSteps.length > 1) {
+        for (let i = 1; i < solutionSteps.length; i++) {
+          newEdges.push({
+            id: `e-${solutionSteps[i - 1].id}-${solutionSteps[i].id}`,
+            source: solutionSteps[i - 1].id,
+            target: solutionSteps[i].id,
             animated: true,
+            type: 'smoothstep', // Use smoothstep edge type
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              // color: '#666', // Optional: define arrow color
+              // width: 20,    // Optional: define arrow width
+              // height: 20,   // Optional: define arrow height
+            },
+            // style: { strokeWidth: 1.5, stroke: '#666' }, // Optional: define edge line style
           });
         }
-      });
-      setDagNodes(nodes);
-      setDagEdges(edges);
+      }
+      
+      console.log("Generated New DAG Nodes:", JSON.parse(JSON.stringify(newNodes)));
+      console.log("Generated New DAG Edges:", JSON.parse(JSON.stringify(newEdges)));
+
+      setDagNodes(newNodes);
+      setDagEdges(newEdges);
     };
-    generateDagData();
-  }, [solutionSteps]);
+
+    generateDagData(); // Call directly
+
+  }, [solutionSteps]); // Dependency array is correct
 
   useEffect(() => {
     setProblemData({

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -11,6 +11,7 @@ import {
 } from '@reactflow/core';
 import type { DagNode, DagEdge, DagNodeRfData } from '../../../../types';
 import styles from './DagVisualizationArea.module.css';
+import CustomStepNode from '../CustomStepNode/CustomStepNode';
 
 interface DagVisualizationAreaProps {
   dagNodes: DagNode[];
@@ -23,6 +24,10 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<DagNodeRfData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const nodeTypes = useMemo(() => ({
+    customStepNode: CustomStepNode,
+  }), []);
 
   useEffect(() => {
     const reactFlowNodes: RFNode<DagNodeRfData>[] = initialNodesFromProps.map(appNode => ({
@@ -58,6 +63,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
       />
