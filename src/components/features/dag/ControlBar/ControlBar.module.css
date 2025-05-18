@@ -10,6 +10,16 @@
   box-sizing: border-box;
 }
 
+.compactMode {
+  justify-content: center; /* Center the group of buttons in compact mode */
+  padding: 0 4px; /* Reduce padding to save space */
+}
+
+.compactMode .iconButton {
+  padding: 4px; /* Reduce button padding */
+  margin: 0 1px; /* Minimal margin between buttons */
+}
+
 .iconButton {
   background: none;
   border: none;
@@ -32,12 +42,26 @@
   background-color: #d5d5d5;
 }
 
+.activeButton {
+  background-color: #d0d0d0; /* A slightly darker background than hover to show persistence */
+  /* color: #222; Optional: if active state should also change icon color globally */
+}
+
+.activeButton:hover {
+  background-color: #c5c5c5; /* Slightly darker hover for active button */
+}
+
 .title {
   font-size: 14px;
   font-weight: 500;
   color: #333;
   /* margin: 0 auto; This might not be needed if using space-between on container */
   /* If title should be strictly centered, use flex-grow on button containers */
+  white-space: nowrap; /* Prevent title from wrapping if space becomes an issue */
+  overflow: hidden;    /* Hide title if it still overflows */
+  text-overflow: ellipsis; /* Add ellipsis if title overflows */
+  margin-left: 8px; /* Give some space from the first button if not space-between */
+  margin-right: 8px; /* Give some space from other buttons */
 }
 
 .zoomControls {

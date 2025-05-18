@@ -1,0 +1,71 @@
+/* src/components/common/MenuItem/MenuItem.module.css */
+.menuItemListItem {
+  /* Basic list item reset if needed, though often handled by parent ul */
+  margin: 0;
+  padding: 0;
+  list-style-type: none; /* Ensure no bullets */
+}
+
+.menuItemButton {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-fg-default, #333); /* Use CSS variables if available, else fallback */
+  background-color: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.15s ease-in-out;
+  border-radius: 4px; /* Added for consistency with context menu corners */
+  position: relative; /* Needed if submenuArrow is absolutely positioned relative to this */
+}
+
+.menuItemButton:hover:not(.disabled) {
+  background-color: var(--color-neutral-muted, #f0f0f0); /* Fallback color */
+}
+
+.menuItemButton.disabled {
+  color: var(--color-fg-muted, #999); /* Fallback color */
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+.icon {
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  color: var(--color-fg-subtle, #666); /* Fallback color for icon */
+}
+
+.menuItemButton.disabled .icon {
+  color: var(--color-fg-muted, #999); /* Fallback for disabled icon */
+}
+
+.label {
+  flex-grow: 1;
+}
+
+.separator {
+  height: 1px;
+  background-color: var(--color-border-muted, #e0e0e0); /* Fallback color */
+  margin: 4px 0;
+  list-style-type: none; /* Ensure separator li doesn't get bullet */
+}
+
+/* Styles for items with submenus */
+.hasSubmenu .menuItemButton {
+  /* Optional: specific styles for parent items, e.g., ensure space for arrow */
+  /* padding-right: 28px; */ /* If arrow is absolutely positioned and takes space */
+}
+
+.submenuArrow {
+  margin-left: auto; /* Push arrow to the right */
+  padding-left: 8px; /* Space between label and arrow */
+  color: var(--color-fg-subtle, #777); /* Arrow color */
+}
+
+.menuItemButton:hover:not(.disabled) .submenuArrow {
+  color: var(--color-fg-default, #333); /* Darker arrow on hover */
+} 

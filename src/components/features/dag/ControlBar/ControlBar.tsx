@@ -1,28 +1,69 @@
 import React from 'react';
 import { useReactFlow, Panel } from '@reactflow/core';
 import styles from './ControlBar.module.css';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2, Bot, Sparkles } from 'lucide-react';
+import { LayoutMode } from '../../../../types';
 
 interface ControlBarProps {
   isDagCollapsed: boolean;
   onToggleCollapse: () => void;
-  // No need for zoom/fitview props anymore, as we'll use the hook
+  currentLayoutMode: LayoutMode;
+  onExpandDagFully: () => void;
+  onActivateAiPanel: () => void;
 }
 
-const ControlBar: React.FC<ControlBarProps> = ({ isDagCollapsed, onToggleCollapse }) => {
+const ControlBar: React.FC<ControlBarProps> = ({
+  isDagCollapsed,
+  onToggleCollapse,
+  currentLayoutMode,
+  onExpandDagFully,
+  onActivateAiPanel,
+}) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
   const handleZoomIn = () => zoomIn({ duration: 300 });
   const handleZoomOut = () => zoomOut({ duration: 300 });
   const handleFitView = () => fitView({ duration: 300, padding: 0.1 });
 
+  const showDetailedControls =
+    currentLayoutMode === LayoutMode.DEFAULT_THREE_COLUMN ||
+    currentLayoutMode === LayoutMode.DAG_EXPANDED_FULL;
+
+  const isDagFullyExpandedMode = currentLayoutMode === LayoutMode.DAG_EXPANDED_FULL;
+  const isAiPanelActiveMode = currentLayoutMode === LayoutMode.AI_PANEL_ACTIVE;
+  const isDagCollapsedSimpleMode = currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE;
+
+  const panelClassName = `${styles.controlBarContainer} ${!showDetailedControls ? styles.compactMode : ''}`.trim();
+
   return (
-    <Panel position="top-left" className={styles.controlBarContainer}>
-      <button onClick={onToggleCollapse} className={styles.iconButton} title={isDagCollapsed ? "展开DAG区域" : "收起DAG区域"}>
+    <Panel position="top-left" className={panelClassName}>
+      <button 
+        onClick={onToggleCollapse} 
+        className={styles.iconButton} 
+        title={isDagCollapsed ? "展开视图" : "收起侧栏"}
+      >
         {isDagCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
-      <div className={styles.title}>{!isDagCollapsed && "DAG 控制与概览"}</div>
-      {!isDagCollapsed && (
+
+      {showDetailedControls && <div className={styles.title}>DAG 控制与概览</div>}
+
+      <button
+        onClick={onExpandDagFully}
+        className={`${styles.iconButton} ${isDagFullyExpandedMode ? styles.activeButton : ''}`}
+        title={isDagFullyExpandedMode ? "恢复默认视图" : "全屏展示DAG"}
+      >
+        {isDagFullyExpandedMode ? <Minimize2 size={18}/> : <Expand size={18} /> }
+      </button>
+
+      <button
+        onClick={onActivateAiPanel}
+        className={`${styles.iconButton} ${isAiPanelActiveMode ? styles.activeButton : ''}`}
+        title={isAiPanelActiveMode ? "关闭AI助手" : "打开AI助手面板"}
+      >
+        {isAiPanelActiveMode ? <Sparkles size={18} color="var(--color-accent-fg)"/> : <Sparkles size={18} />}
+      </button>
+
+      {showDetailedControls && (
         <div className={styles.zoomControls}>
           <button onClick={handleZoomIn} className={styles.iconButton} title="放大">
             <ZoomIn size={18} />

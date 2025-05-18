@@ -134,4 +134,38 @@
   border-radius: 3px; /* Slightly rounded handles */
 }
 
-/* Removed empty .handle.target and .handle.source rules */ 
+/* Removed empty .handle.target and .handle.source rules */
+
+.nodeHeaderIcons {
+  display: flex;
+  align-items: center; /* Align items vertically */
+  gap: 4px; /* Space between icons */
+  position: absolute; /* Position it within the node, e.g., top right */
+  top: 5px;
+  right: 5px;
+  /* Adjust as needed if you have other elements in the header */
+}
+
+.statusIcon {
+  /* Existing styles are fine, ensure it fits with noteIndicatorIcon */
+  /* Example: color might be set by specific status classes like .iconCorrect */
+}
+
+.noteIndicatorIcon {
+  color: #555; /* A neutral color for the note icon */
+  /* margin-left: 4px; */ /* Use gap in parent container instead if possible */
+}
+
+.noteIndicatorIcon:hover {
+  color: #000;
+} 
+
+/* CustomStepNode.module.css */
+/* ... 你现有的其他样式 ... */
+
+.onNewPath {
+  border: 2px solid #ff0072; /* 一个醒目的粉红色边框 */
+  box-shadow: 0 0 10px #ff0072, 0 0 5px #ff0072 inset; /* 加上一些辉光效果 */
+  /* 你也可以调整这里的样式，比如背景色，但注意不要与 data.highlightColor 冲突 */
+  /* background-color: rgba(255, 0, 114, 0.1); */ /* 例如一个淡淡的粉色背景 */
+}

@@ -34,7 +34,7 @@
   flex-direction: column; /* Stack ProblemBlock, StepsContainer, SolverActions vertically */
   overflow: hidden; /* Let internal containers like solutionStepsContainer handle scroll */
   /* padding: 10px; */ /* Padding can be added to inner content wrappers if needed */
-  transition: margin-left 0.3s ease-in-out; /* For potential adjustments if needed */
+  transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
 }
 
 .solutionStepsContainer {
@@ -54,6 +54,7 @@
   flex-direction: column;
   overflow: hidden;
   border-left: 1px solid #cccccc; /* Add a border for visual separation initially */
+  transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
 }
 
 .draggableSeparatorHorizontal {

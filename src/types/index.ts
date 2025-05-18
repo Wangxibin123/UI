@@ -1,3 +1,5 @@
+import { MarkerType } from "@reactflow/core";
+
 /**
  * Represents the verification status of a DAG node or a step.
  */
@@ -6,6 +8,7 @@ export enum VerificationStatus {
   Verifying = 'Verifying',
   VerifiedCorrect = 'VerifiedCorrect',
   VerifiedIncorrect = 'VerifiedIncorrect',
+  Error = 'Error',
 }
 
 /**
@@ -18,6 +21,11 @@ export interface DagNodeRfData {
   fullLatexContent?: string; // Full LaTeX content, might be truncated for display
   stepNumber?: number; // Added if CustomStepNode uses it from here
   isDeleted?: boolean; // Added for soft delete visuals in DAG node
+  isDerived?: boolean;
+  hidden?: boolean;
+  highlightColor?: string;
+  notes?: string;
+  isOnNewPath?: boolean; // Added for highlighting nodes on a new path
   // Add any other custom data your nodes might need
   [key: string]: any; // Allows for other arbitrary data
 }
@@ -46,7 +54,16 @@ export interface DagEdge {
   type?: string; // e.g., 'default', 'step', 'smoothstep'
   animated?: boolean;
   style?: React.CSSProperties;
-  markerEnd?: object; // Added for edge markers (e.g., arrowheads)
+  markerEnd?: {
+    type: MarkerType;
+    width?: number;
+    height?: number;
+    color?: string;
+  };
+  data?: { // Added data field for custom properties like isOnNewPath
+    isOnNewPath?: boolean;
+    [key: string]: any; // Allows for other arbitrary data
+  };
   // Potentially add a deleted flag for edges too if they need special styling
   // isDeleted?: boolean;
 }
@@ -60,6 +77,8 @@ export interface SolutionStepData {
   latexContent: string;
   verificationStatus: VerificationStatus;
   isDeleted?: boolean; // Added for soft delete tracking
+  isHardDeleted?: boolean;
+  notes?: string;
 }
 
 /**
@@ -69,4 +88,11 @@ export interface ProblemData {
   id: string;
   title: string;
   latexContent: string;
+}
+
+export enum LayoutMode {
+  DEFAULT_THREE_COLUMN = 'defaultThreeColumn',
+  DAG_COLLAPSED_SIMPLE = 'dagCollapsedSimple',
+  DAG_EXPANDED_FULL = 'dagExpandedFull',
+  AI_PANEL_ACTIVE = 'aiPanelActive',
 } 

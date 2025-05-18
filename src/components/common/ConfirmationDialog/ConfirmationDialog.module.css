@@ -1,0 +1,91 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* Ensure it's on top */
+  padding: 20px;
+}
+
+.dialog {
+  background-color: var(--color-background-light, #ffffff);
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  min-width: 320px;
+  max-width: 500px;
+  width: auto;
+  text-align: left;
+  border-top: 5px solid var(--color-primary, #007bff);
+}
+
+.title {
+  font-size: 1.25rem; /* 20px */
+  font-weight: 600;
+  color: var(--color-text-primary, #333);
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.message {
+  font-size: 1rem; /* 16px */
+  color: var(--color-text-secondary, #555);
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.actions button {
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  font-size: 0.9rem; /* 14.4px */
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cancelButton {
+  background-color: var(--color-background-muted, #f0f0f0);
+  color: var(--color-text-primary, #333);
+  border: 1px solid var(--color-border-neutral, #ccc);
+}
+
+.cancelButton:hover {
+  background-color: var(--color-background-hover, #e0e0e0);
+}
+
+.confirmButton {
+  background-color: var(--color-primary, #007bff);
+  color: var(--color-white, #ffffff);
+}
+
+.confirmButton:hover {
+  background-color: var(--color-primary-dark, #0056b3);
+}
+
+.confirmButton.destructive {
+  background-color: var(--color-error, #dc3545);
+}
+
+.confirmButton.destructive:hover {
+  background-color: var(--color-error-dark, #c82333);
+}
+
+.confirmButton.constructive {
+  background-color: var(--color-success, #28a745);
+}
+
+.confirmButton.constructive:hover {
+  background-color: var(--color-success-dark, #1e7e34);
+} 
