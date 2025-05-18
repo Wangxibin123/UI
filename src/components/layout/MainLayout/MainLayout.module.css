@@ -79,3 +79,14 @@
   color: #555;
   text-align: center;
 } 
+
+
+.aiCopilotPanel {
+  /* ... existing styles ... */
+  width: 100%;
+  height: 100%;
+  display: flex; /* Already there, good */
+  flex-direction: column; /* Already there, good */
+  /* Add box-sizing if you encounter padding/border issues affecting overall size */
+  box-sizing: border-box; 
+}

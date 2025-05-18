@@ -11,9 +11,11 @@
     "@types/react-dom": "^18.0.0",
     "focus-trap-react": "^11.0.3",
     "katex": "^0.16.22",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.510.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2",
     "react-latex-next": "^3.0.0",
     "react-toastify": "^11.0.5",
     "sonner": "^2.0.3"
@@ -43,6 +45,7 @@
     ]
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.16",
     "@types/node": "^18.19.100",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.2.2",

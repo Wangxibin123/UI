@@ -7,7 +7,8 @@ import {
   type Connection,
   type Edge as RFEdge,
   type Node as RFNode,
-  type Position
+  type Position,
+  NodeTypes
 } from '@reactflow/core';
 import { Controls } from '@reactflow/controls';
 import { Background, BackgroundVariant } from '@reactflow/background';
@@ -34,11 +35,17 @@ interface DagVisualizationAreaProps {
   onHighlightNode: (stepId: string, color: string | null) => void;
   onAddOrUpdateNote: (stepId: string) => void;
   onNewPathFromNode: (stepId: string) => void;
-  onStartNewPathFromNode?: (nodeId: string) => void;
   isCreatingNewPath?: boolean;
+  startNewPathNodeId?: string | null;
   onSelectNewPathTargetNode?: (nodeId: string) => void;
+  previewPathElements?: { nodes: string[]; edges: string[] } | null;
+  onNodeMouseEnterForPathPreview?: (nodeId: string) => void;
+  onNodeMouseLeaveForPathPreview?: () => void;
   onCopyNodeInfo: (stepId: string) => void;
   onCopyPathInfo: (targetNodeId: string) => void;
+  onStartNewPathFromNode?: (nodeId: string) => void;
+  onPaneClickFromLayout?: () => void;
+  onNodeSelectedForCopilot?: (nodeId: string, nodeData: DagNodeRfData) => void;
 }
 
 const isTerminalNode = (nodeId: string, nodes: DagNode[], edges: RFEdge[]): boolean => {
@@ -261,22 +268,42 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   onHighlightNode,
   onAddOrUpdateNote,
   onNewPathFromNode,
-  onStartNewPathFromNode,
   isCreatingNewPath,
+  startNewPathNodeId,
   onSelectNewPathTargetNode,
+  previewPathElements,
+  onNodeMouseEnterForPathPreview,
+  onNodeMouseLeaveForPathPreview,
   onCopyNodeInfo,
   onCopyPathInfo,
+  onPaneClickFromLayout,
+  onNodeSelectedForCopilot,
 }) => {
-  const [nodes, setNodes, onNodesChange] = useNodesState<DagNodeRfData>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<DagNodeRfData>([]);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
   const contextMenuRef = useRef<ContextMenuHandle>(null);
   const dagAreaRef = useRef<HTMLDivElement>(null);
 
-  const nodeTypes = useMemo(() => ({
+  useEffect(() => {
+    const dagElement = dagAreaRef.current;
+    if (dagElement) {
+      if (isCreatingNewPath) {
+        dagElement.style.cursor = 'crosshair';
+      } else {
+        dagElement.style.cursor = 'default';
+      }
+    }
+    return () => {
+      if (dagElement) {
+        dagElement.style.cursor = 'default';
+      }
+    };
+  }, [isCreatingNewPath, dagAreaRef]);
+
+  const rfNodeTypes: NodeTypes = useMemo(() => ({
     customStepNode: CustomStepNode,
   }), []);
 
-  // Memoize the actions object to stabilize it for generateContextMenuItems
   const contextMenuActions = useMemo(() => ({
     onHighlightNode,
     onAddOrUpdateNote,
@@ -299,7 +326,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   useEffect(() => {
     const reactFlowNodes: RFNode<DagNodeRfData>[] = initialNodesFromProps.map(appNode => ({
       id: appNode.id,
-      type: appNode.type,
+      type: appNode.type || 'customStepNode',
       position: appNode.position,
       data: {
         ...appNode.data,
@@ -315,8 +342,8 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       sourcePosition: appNode.sourcePosition as Position | undefined,
       targetPosition: appNode.targetPosition as Position | undefined,
     }));
-    setNodes(reactFlowNodes);
-  }, [initialNodesFromProps, setNodes]);
+    setRfNodes(reactFlowNodes);
+  }, [initialNodesFromProps, setRfNodes]);
 
   useEffect(() => {
     const reactFlowEdges: RFEdge[] = initialEdgesFromProps.map(e => ({
@@ -325,63 +352,120 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       target: e.target,
       label: e.label,
       type: e.type,
-      animated: e.animated,
-      style: e.style,
+      animated: e.data?.isOnNewPath || e.animated,
+      style: e.data?.isOnNewPath ? { ...e.style, stroke: '#2ecc71' } : e.style,
       markerEnd: e.markerEnd,
+      data: e.data,
     }));
-    setEdges(reactFlowEdges);
-  }, [initialEdgesFromProps, setEdges]);
+    setRfEdges(reactFlowEdges);
+  }, [initialEdgesFromProps, setRfEdges]);
 
   const onConnect = useCallback(
     (params: Connection | RFEdge) =>
-      setEdges((eds) => addEdge(params, eds)),
-    [setEdges],
+      setRfEdges((eds) => addEdge(params, eds)),
+    [setRfEdges],
   );
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
-    if (isCreatingNewPath && onSelectNewPathTargetNode) {
+    if (isCreatingNewPath && onSelectNewPathTargetNode && node.id !== startNewPathNodeId) {
       onSelectNewPathTargetNode(node.id);
       return;
     }
     if (onNodeSelect) {
       onNodeSelect(node.id);
     }
-    console.log('Node clicked:', node);
-  }, [isCreatingNewPath, onSelectNewPathTargetNode, onNodeSelect]);
+    if (onNodeSelectedForCopilot && node.data) {
+      onNodeSelectedForCopilot(node.id, node.data);
+    }
+  }, [isCreatingNewPath, onSelectNewPathTargetNode, onNodeSelect, startNewPathNodeId, onNodeSelectedForCopilot]);
 
   const handlePaneClick = useCallback(() => {
-    onNodeSelect?.(null);
+    if (onNodeSelect) onNodeSelect(null);
     contextMenuRef.current?.close();
-  }, [onNodeSelect]);
+
+    if (onPaneClickFromLayout) {
+      onPaneClickFromLayout();
+    }
+  }, [onNodeSelect, contextMenuRef, onPaneClickFromLayout]);
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
       event.preventDefault();
       if (contextMenuRef.current) {
-        const items = generateContextMenuItems(node, contextMenuActions, initialNodesFromProps, edges);
+        const items = generateContextMenuItems(node, contextMenuActions, initialNodesFromProps, rfEdges);
         contextMenuRef.current.open(event.clientX, event.clientY, items, node.id);
       }
     },
-    [contextMenuActions, initialNodesFromProps, edges]
+    [contextMenuActions, initialNodesFromProps, rfEdges]
   );
+
+  const handleNodeMouseEnterInternal = useCallback((event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
+    if (isCreatingNewPath && onNodeMouseEnterForPathPreview) {
+      onNodeMouseEnterForPathPreview(node.id);
+    }
+  }, [isCreatingNewPath, onNodeMouseEnterForPathPreview]);
+
+  const handleNodeMouseLeaveInternal = useCallback((event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
+    if (isCreatingNewPath && onNodeMouseLeaveForPathPreview) {
+      onNodeMouseLeaveForPathPreview();
+    }
+  }, [isCreatingNewPath, onNodeMouseLeaveForPathPreview]);
+  
+  const nodesWithPreview = useMemo(() => {
+    return rfNodes.map(node => {
+      const isPreviewNode = previewPathElements?.nodes.includes(node.id) || false;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          isPreviewingPath: isPreviewNode,
+        },
+      };
+    });
+  }, [rfNodes, previewPathElements]);
+
+  const edgesWithPreview = useMemo(() => {
+    return rfEdges.map(edge => {
+      const edgeSpecificData = edge.data as DagEdge['data'];
+
+      const isPreviewEdge = previewPathElements?.edges.includes(edge.id) || false;
+      const isOnNewPath = edgeSpecificData?.isOnNewPath;
+
+      let style = { ...(edge.style || {}) };
+      let animated = edge.animated || false;
+
+      if (isPreviewEdge) {
+        style = { ...style, stroke: '#e74c3c', strokeDasharray: '5,5' };
+        animated = true;
+      } else if (isOnNewPath) {
+        style = { ...style, stroke: '#2ecc71' };
+        animated = true;
+      } else {
+        style = { ...style, stroke: edgeSpecificData?.isDeleted ? '#ccc' : undefined };
+        animated = !(edgeSpecificData?.isDeleted);
+      }
+      
+      return { 
+        ...edge, 
+        style, 
+        animated,
+        data: edge.data
+      };
+    });
+  }, [rfEdges, previewPathElements]);
 
   const miniMapNodeColor = (node: RFNode<DagNodeRfData>): string => {
     if (node.data?.isDeleted) return '#aaaaaa';
+    if (node.data?.isPreviewingPath) return '#e74c3c';
     if (node.data?.highlightColor) return node.data.highlightColor;
     if (node.data?.verificationStatus) {
       switch (node.data.verificationStatus) {
-        case VerificationStatus.VerifiedCorrect:
-          return '#4CAF50';
-        case VerificationStatus.VerifiedIncorrect:
-          return '#F44336';
-        case VerificationStatus.Verifying:
-            return '#2196F3';
-        case VerificationStatus.NotVerified:
-          return '#FFC107';
-        case VerificationStatus.Error:
-            return '#757575';
-        default:
-          return '#9e9e9e';
+        case VerificationStatus.VerifiedCorrect: return '#4CAF50';
+        case VerificationStatus.VerifiedIncorrect: return '#F44336';
+        case VerificationStatus.Verifying: return '#2196F3';
+        case VerificationStatus.NotVerified: return '#FFC107';
+        case VerificationStatus.Error: return '#757575';
+        default: return '#9e9e9e';
       }
     }
     return '#9e9e9e';
@@ -393,21 +477,32 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       className={styles.dagVisualizationAreaContainer}
       style={{ height: '100%', width: '100%' }}
     >
-      {nodes.length === 0 && initialNodesFromProps.length === 0 && (
+      {/* --- NEW: Path Creation Hint --- */}
+      {isCreatingNewPath && (
+        <div className={styles.pathCreationHint}>
+          <Lightbulb size={16} style={{ marginRight: '8px' }} /> {/* Optional icon */}
+          正在创建新路径。请选择目标节点，或点击空白处取消。
+        </div>
+      )}
+      {/* --- END NEW --- */}
+
+      {rfNodes.length === 0 && initialNodesFromProps.length === 0 && (
         <div className={styles.emptyDagMessage}>
           <p>添加解题步骤后，相关的流程图将在此处展示。</p>
         </div>
       )}
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={nodesWithPreview}
+        edges={edgesWithPreview}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        nodeTypes={nodeTypes}
+        nodeTypes={rfNodeTypes}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onNodeContextMenu={handleNodeContextMenu}
+        onNodeMouseEnter={handleNodeMouseEnterInternal}
+        onNodeMouseLeave={handleNodeMouseLeaveInternal}
         fitView
         attributionPosition="bottom-left"
       >

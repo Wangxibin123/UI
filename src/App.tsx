@@ -1,10 +1,17 @@
-import React from 'react';
-import './App.css'; // We can create this later if specific App-level styles are needed
+import React, { useEffect } from 'react'; // <--- 重新导入 useEffect
+import './App.css';
 import MainLayout from './components/layout/MainLayout/MainLayout';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify'; // <--- 重新导入 toast
 import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
+  useEffect(() => { // <--- 重新添加 useEffect Hook
+    // Test toast on app load
+    toast.info("App loaded! Toast is working if you see this.", {
+      toastId: 'app-load-toast-test' // Added toastId to prevent duplicates on HMR
+    });
+  }, []);
+
   return (
     <div className="App">
       <MainLayout />
@@ -18,10 +25,10 @@ function App() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="colored" // Using 'colored' theme for better visibility with success/error/info
+        theme="colored"
       />
     </div>
   );
 }
 
-export default App; 
+export default App;

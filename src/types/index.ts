@@ -26,6 +26,7 @@ export interface DagNodeRfData {
   highlightColor?: string;
   notes?: string;
   isOnNewPath?: boolean; // Added for highlighting nodes on a new path
+  interpretationIdea?: string; // <--- 新增的行
   // Add any other custom data your nodes might need
   [key: string]: any; // Allows for other arbitrary data
 }
@@ -62,6 +63,7 @@ export interface DagEdge {
   };
   data?: { // Added data field for custom properties like isOnNewPath
     isOnNewPath?: boolean;
+    isDeleted?: boolean;
     [key: string]: any; // Allows for other arbitrary data
   };
   // Potentially add a deleted flag for edges too if they need special styling

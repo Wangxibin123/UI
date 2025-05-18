@@ -44,11 +44,17 @@
 
 .activeButton {
   background-color: #d0d0d0; /* A slightly darker background than hover to show persistence */
+  color: var(--vscode-toolbar-hoverForeground); /* Or your theme's active icon color */
   /* color: #222; Optional: if active state should also change icon color globally */
 }
 
 .activeButton:hover {
   background-color: #c5c5c5; /* Slightly darker hover for active button */
+}
+
+.activeIcon {
+  /* If you want active icons to have a specific color not covered by button's color prop */
+  /* color: var(--color-accent-fg); */ /* Example, already used on Sparkles directly */
 }
 
 .title {

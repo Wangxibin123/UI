@@ -1,7 +1,7 @@
 import React from 'react';
 import { useReactFlow, Panel } from '@reactflow/core';
 import styles from './ControlBar.module.css';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2, Bot, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2, Bot, Sparkles, MessageSquare } from 'lucide-react';
 import { LayoutMode } from '../../../../types';
 
 interface ControlBarProps {
@@ -10,6 +10,8 @@ interface ControlBarProps {
   currentLayoutMode: LayoutMode;
   onExpandDagFully: () => void;
   onActivateAiPanel: () => void;
+  isAiCopilotPanelOpen?: boolean;
+  onToggleAiCopilotPanel?: () => void;
 }
 
 const ControlBar: React.FC<ControlBarProps> = ({
@@ -18,6 +20,8 @@ const ControlBar: React.FC<ControlBarProps> = ({
   currentLayoutMode,
   onExpandDagFully,
   onActivateAiPanel,
+  isAiCopilotPanelOpen,
+  onToggleAiCopilotPanel,
 }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
@@ -58,10 +62,20 @@ const ControlBar: React.FC<ControlBarProps> = ({
       <button
         onClick={onActivateAiPanel}
         className={`${styles.iconButton} ${isAiPanelActiveMode ? styles.activeButton : ''}`}
-        title={isAiPanelActiveMode ? "关闭AI助手" : "打开AI助手面板"}
+        title={isAiPanelActiveMode ? "退出AI助手视图" : "进入AI助手视图"}
       >
-        {isAiPanelActiveMode ? <Sparkles size={18} color="var(--color-accent-fg)"/> : <Sparkles size={18} />}
+        <Sparkles size={18} className={isAiPanelActiveMode ? styles.activeIcon : ''}/>
       </button>
+
+      {onToggleAiCopilotPanel && (
+        <button
+          onClick={onToggleAiCopilotPanel}
+          className={`${styles.iconButton} ${isAiCopilotPanelOpen ? styles.activeButton : ''}`}
+          title={isAiCopilotPanelOpen ? "关闭 AI Copilot" : "打开 AI Copilot"}
+        >
+          <Bot size={18} className={isAiCopilotPanelOpen ? styles.activeIcon : ''}/>
+        </button>
+      )}
 
       {showDetailedControls && (
         <div className={styles.zoomControls}>

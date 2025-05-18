@@ -19,10 +19,13 @@ import {
 } from '../../../types';
 import { MarkerType, ReactFlowProvider } from '@reactflow/core';
 import ConfirmationDialog from '../../common/ConfirmationDialog/ConfirmationDialog';
-import { toast } from 'sonner';
+
+import { toast } from 'react-toastify';
 import NodeNoteModal from '../../common/NodeNoteModal/NodeNoteModal';
 import SplitStepModal from '../../common/SplitStepModal/SplitStepModal';
 import InterpretationModal from '../../common/InterpretationModal/InterpretationModal';
+import AICopilotPanel, { type AICopilotPanelProps, type Message as AICopilotMessage } from '../../features/ai/AICopilotPanel/AICopilotPanel';
+import { Bot } from 'lucide-react';
 
 interface PanelWidthsType {
   dag: number;
@@ -109,6 +112,14 @@ const initialSolutionStepsData: SolutionStepData[] = [
 
 const MIN_PANEL_PERCENTAGE = 10; // Minimum width for any panel in percentage
 
+// --- Define a type for the context node info to be passed to AICopilotPanel ---
+interface CopilotContextNodeInfo {
+  id: string;
+  label?: string;
+  content?: string; // This would typically be node.data.fullLatexContent
+  // Add any other relevant fields from DagNodeRfData you want to pass
+}
+
 const MainLayout: React.FC = () => {
   const [currentLayoutMode, setCurrentLayoutMode] = useState<LayoutMode>(() => {
     return LayoutMode.DEFAULT_THREE_COLUMN;
@@ -165,6 +176,36 @@ const MainLayout: React.FC = () => {
     content?: string;
     initialIdea?: string;
   } | null>(null);
+
+  // State for 'Start New Path' preview highlighting
+  const [previewPathElements, setPreviewPathElements] = useState<{ nodes: string[]; edges: string[] } | null>(null);
+
+  // --- 2. STATE FOR AI COPILOT PANEL ---
+  const [isAiCopilotPanelOpen, setIsAiCopilotPanelOpen] = useState<boolean>(false);
+  // --- END AI COPILOT PANEL STATE ---
+
+  // --- 1. Add state for Copilot context node info ---
+  const [copilotContextNodeInfo, setCopilotContextNodeInfo] = useState<CopilotContextNodeInfo | null>(null);
+
+  // --- Path Preview Callbacks (MOVED EARLIER) ---
+  const clearPreviewPath = useCallback(() => {
+    setPreviewPathElements(null);
+  }, [setPreviewPathElements]);
+
+  const handleNodeMouseEnterForPathPreview = useCallback((hoveredNodeId: string) => {
+    if (isCreatingNewPath && startNewPathNodeId && hoveredNodeId !== startNewPathNodeId) {
+      const pathResult = findPathBetweenNodes(startNewPathNodeId, hoveredNodeId, dagNodes, dagEdges);
+      if (pathResult) {
+        setPreviewPathElements({ nodes: pathResult.pathNodes, edges: pathResult.pathEdges });
+      } else {
+        setPreviewPathElements(null); // No path found or invalid target
+      }
+    }
+  }, [isCreatingNewPath, startNewPathNodeId, dagNodes, dagEdges, /* findPathBetweenNodes is stable */ setPreviewPathElements]);
+
+  const handleNodeMouseLeaveForPathPreview = useCallback(() => {
+    clearPreviewPath();
+  }, [clearPreviewPath]);
 
   // Helper function to open confirmation dialog
   const openConfirmationDialog = useCallback((
@@ -789,27 +830,30 @@ const MainLayout: React.FC = () => {
     setInterpretingNodeInfo(null);
   }, []);
 
-  const handleSubmitInterpretation = useCallback((nodeId: string, userIdea: string) => {
-    console.log(`Interpretation submitted for node ${nodeId}:`, userIdea);
-    toast.success(`节点 ${interpretingNodeInfo?.label || nodeId} 的解读想法已提交处理 (详情见控制台)。`);
-    
-    // TODO (α.2.4): Save userIdea to the node data
-    // Example of how you might update the data - this would trigger re-renders
-    /*
-    setSolutionSteps(prevSteps => 
-      prevSteps.map(step => 
-        step.id === nodeId ? { ...step, interpretationIdea: userIdea } : step
-      )
-    );
-    setDagNodes(prevNodes => 
-      prevNodes.map(n => 
-        n.id === nodeId ? { ...n, data: { ...n.data, interpretationIdea: userIdea } } : n
-      )
-    );
-    */
+  // ...other callbacks...
 
+  const handleSubmitInterpretation = useCallback((nodeId: string, idea: string) => {
+    console.log(`Interpretation submitted for node ${nodeId}: ${idea}`);
+    
+    // 更新 dagNodes 状态以保存解读想法
+    setDagNodes(prevNodes =>
+      prevNodes.map(node => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              interpretationIdea: idea, // 保存新的解读想法
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    toast.success(`节点 ${nodeId} 的解读想法已提交处理。`);
     handleCloseInterpretationModal();
-  }, [handleCloseInterpretationModal, interpretingNodeInfo]); // Added interpretingNodeInfo
+  }, [handleCloseInterpretationModal, setDagNodes]); // 添加 setDagNodes 到依赖数组
 
   // Modify handleInterpretIdea to use handleOpenInterpretationModal
   const handleInterpretIdea = useCallback((stepId: string, idea?: string) => { 
@@ -855,93 +899,79 @@ const MainLayout: React.FC = () => {
 
   // <<< RESTORE THE ACTUAL DEFINITION of handleNewPathFromNode >>>
   const handleNewPathFromNode = useCallback((nodeId: string) => {
+    clearPreviewPath(); // Clear any previous preview
+    // Clear previous path highlights before starting a new one
+    setDagNodes(prevNodes => prevNodes.map(n => ({ ...n, data: { ...n.data, isOnNewPath: false } })));
+    setDagEdges(prevEdges => prevEdges.map(e => ({ ...e, data: { ...e.data, isOnNewPath: false }, animated: false, style: { ...e.style, stroke: undefined } })));
+    
     setStartNewPathNodeId(nodeId);
     setIsCreatingNewPath(true);
-    setDagNodes(prevNodes =>
-      prevNodes.map(n => {
-        if (n.data.isOnNewPath) {
-          const { isOnNewPath, ...restData } = n.data;
-          return { ...n, data: restData };
-        }
-        return n;
-      })
-    );
-    setDagEdges(prevEdges =>
-      prevEdges.map(e => {
-        if (e.data?.isOnNewPath) {
-          const { isOnNewPath, ...restData } = e.data;
-          return { ...e, data: restData, style: { stroke: e.data?.isDeleted ? '#ccc' : undefined, strokeDasharray: e.data?.isDeleted ? '5 5' : undefined }, animated: !(e.data?.isDeleted) };
-        }
-        return e;
-      })
-    );
-    toast.info("请选择新路径的目标节点");
-  }, [setDagNodes, setDagEdges]);
+    toast.info(`从节点 ${nodeId} 开始创建新路径。请点击目标节点。`);
+  }, [setDagNodes, setDagEdges, setIsCreatingNewPath, setStartNewPathNodeId, clearPreviewPath]);
 
   const handleSelectNewPathTargetNode = useCallback((targetNodeId: string) => {
-    if (startNewPathNodeId && targetNodeId !== startNewPathNodeId) {
-      const pathResult = findPathBetweenNodes(startNewPathNodeId, targetNodeId, dagNodes, dagEdges);
-      if (pathResult) {
-        toast.success(`新路径已找到: 从 ${startNewPathNodeId} 到 ${targetNodeId}.`);
-        setDagNodes(prevNodes =>
-          prevNodes.map(n =>
-            ({ ...n, data: { ...n.data, isOnNewPath: pathResult.pathNodes.includes(n.id) } })
-          )
-        );
-        setDagEdges(prevEdges =>
-          prevEdges.map(e => {
-            const isOnPath = pathResult.pathEdges.includes(e.id);
-            return {
-              ...e,
-              data: { ...e.data, isOnNewPath: isOnPath },
-              style: {
-                ...e.style,
-                stroke: isOnPath ? '#ff0072' : (e.data?.isDeleted ? '#ccc' : undefined),
-                strokeWidth: isOnPath ? 2.5 : e.style?.strokeWidth,
-              },
-              animated: isOnPath ? true : !(e.data?.isDeleted)
-            };
-          })
-        );
-      } else {
-        toast.error(`无法找到从节点 ${startNewPathNodeId} 到节点 ${targetNodeId} 的有效路径。`);
-        setDagNodes(prevNodes => prevNodes.map(n => ({ ...n, data: { ...n.data, isOnNewPath: false } })));
-        setDagEdges(prevEdges => prevEdges.map(e => ({ ...e, data: { ...e.data, isOnNewPath: false }, style: { ...e.style, stroke: e.data?.isDeleted ? '#ccc' : undefined, strokeWidth: e.style?.strokeWidth }, animated: !(e.data?.isDeleted) })));
-      }
-    } else if (targetNodeId === startNewPathNodeId) {
-      toast.warning("目标节点不能与起始节点相同。");
+    clearPreviewPath(); // Clear preview when a target is selected
+    if (!startNewPathNodeId) {
+      toast.error("错误：没有选择起始节点。");
+      setIsCreatingNewPath(false);
+      return;
+    }
+    if (targetNodeId === startNewPathNodeId) {
+      toast.warn("目标节点不能与起始节点相同。");
+      return;
+    }
+
+    const pathResult = findPathBetweenNodes(startNewPathNodeId, targetNodeId, dagNodes, dagEdges);
+
+    if (pathResult && pathResult.pathNodes.length > 0) {
+      setDagNodes(prevNodes =>
+        prevNodes.map(node =>
+          pathResult.pathNodes.includes(node.id)
+            ? { ...node, data: { ...node.data, isOnNewPath: true } }
+            : { ...node, data: { ...node.data, isOnNewPath: node.data.isOnNewPath || false } } // Preserve existing paths
+        )
+      );
+      setDagEdges(prevEdges =>
+        prevEdges.map(edge =>
+          pathResult.pathEdges.includes(edge.id)
+            ? { ...edge, data: { ...edge.data, isOnNewPath: true }, animated: true, style: { ...edge.style, stroke: '#2ecc71' } } // Green for new path
+            : edge
+        )
+      );
+      toast.success(`已创建从节点 ${startNewPathNodeId} 到 ${targetNodeId} 的新路径。`);
+    } else {
+      toast.error(`无法找到从节点 ${startNewPathNodeId} 到 ${targetNodeId} 的有效路径。`);
     }
     setIsCreatingNewPath(false);
-  }, [startNewPathNodeId, dagNodes, dagEdges, setDagNodes, setDagEdges]);
+    setStartNewPathNodeId(null);
+  }, [
+    startNewPathNodeId, 
+    dagNodes, 
+    dagEdges, 
+    setDagNodes, 
+    setDagEdges, 
+    setIsCreatingNewPath, 
+    setStartNewPathNodeId, 
+    clearPreviewPath 
+  ]);
 
   const handleCancelNewPathCreation = useCallback(() => {
-    setStartNewPathNodeId(null);
+    clearPreviewPath(); // Clear preview on cancellation
     setIsCreatingNewPath(false);
-    setDagNodes(prevNodes =>
-      prevNodes.map(n => {
-        if (n.data.isOnNewPath) {
-          const { isOnNewPath, ...restData } = n.data;
-          return { ...n, data: restData };
-        }
-        return n;
-      })
-    );
-    setDagEdges(prevEdges =>
-      prevEdges.map(e => {
-        if (e.data?.isOnNewPath) {
-          const { isOnNewPath, ...restData } = e.data;
-          return {
-            ...e,
-            data: restData,
-            style: { ...e.style, stroke: e.data?.isDeleted ? '#ccc' : undefined, strokeWidth: e.style?.strokeWidth },
-            animated: !(e.data?.isDeleted)
-          };
-        }
-        return e;
-      })
-    );
-    toast.info("已取消创建新路径");
-  }, [setDagNodes, setDagEdges]);
+    setStartNewPathNodeId(null);
+    toast.info("已取消创建新路径。");
+  }, [setIsCreatingNewPath, setStartNewPathNodeId, clearPreviewPath]);
+
+  // --- NEW: Callback for pane click, primarily to cancel new path creation ---
+  const handlePaneClickedInMainLayout = useCallback(() => {
+    if (isCreatingNewPath) {
+      handleCancelNewPathCreation();
+    }
+    setCopilotContextNodeInfo(null); // <--- 代码修改：清除 Copilot 上下文
+    // Note: Node deselection (setSelectedNodeId(null)) is not handled here directly,
+    // as its state management (selectedNodeId) isn't passed to DagVisualizationArea via onNodeSelect.
+    // DagVisualizationArea can handle its own deselection if its onNodeSelect prop is utilized internally by it.
+  }, [isCreatingNewPath, handleCancelNewPathCreation, setCopilotContextNodeInfo]); // <--- 代码修改：更新依赖数组
 
   // --- NEW IMPLEMENTATION FOR CopyNodeInfo ---
   const handleCopyNodeInfo = useCallback(async (stepId: string) => {
@@ -1185,8 +1215,45 @@ ${fullLatex}
     );
   }, [setSolutionSteps]); // Added missing dependencies
 
+  // --- 3. CALLBACK TO TOGGLE AI COPILOT PANEL (ENHANCED) ---
+  const toggleAiCopilotPanel = useCallback(() => {
+    const newOpenState = !isAiCopilotPanelOpen;
+    setIsAiCopilotPanelOpen(newOpenState);
+
+    if (newOpenState) { // When opening the panel
+      if (panelWidths.ai < MIN_PANEL_PERCENTAGE) {
+        if (currentLayoutMode !== LayoutMode.AI_PANEL_ACTIVE) {
+            setCurrentLayoutMode(LayoutMode.AI_PANEL_ACTIVE);
+        } else {
+            const userPrefsForAiMode = loadUserPreferenceForMode(LayoutMode.AI_PANEL_ACTIVE);
+            const targetAiModeWidths = userPrefsForAiMode || { dag: 2, solver: 49, ai: 49 }; 
+            setPanelWidths(ensurePanelWidthsSumTo100AndPrecision(targetAiModeWidths));
+        }
+      } 
+    } 
+  }, [isAiCopilotPanelOpen, panelWidths.ai, currentLayoutMode, setCurrentLayoutMode, setPanelWidths, ensurePanelWidthsSumTo100AndPrecision]);
+  // --- END AI COPILOT PANEL TOGGLE CALLBACK ---
+
+  // --- 2. Implement the callback to receive node info from DagVisualizationArea ---
+  const handleNodeSelectedForCopilot = useCallback((nodeId: string, nodeData: DagNodeRfData) => {
+    // Extract relevant information. nodeData directly comes from React Flow node.data
+    // which we mapped from our appNode.data in DagVisualizationArea.
+    console.log(`[MainLayout] Node selected for Copilot: ID=${nodeId}, Label=${nodeData.label}`);
+    setCopilotContextNodeInfo({
+      id: nodeId,
+      label: nodeData.label,
+      content: nodeData.fullLatexContent, // Assuming fullLatexContent is what we want for 'content'
+    });
+    // Optionally, if the AI Copilot panel isn't open, open it.
+    if (!isAiCopilotPanelOpen) {
+      toggleAiCopilotPanel(); // This will also handle layout adjustments if needed
+    }
+  }, [isAiCopilotPanelOpen, toggleAiCopilotPanel]);
+
   return (
     <main className={styles.mainLayoutContainer} ref={mainLayoutRef}>
+      {/* TEMPORARY BUTTON IS REMOVED */}
+
       <ReactFlowProvider>
         <div
           className={`${styles.dagRegion} ${ 
@@ -1204,6 +1271,8 @@ ${fullLatex}
             onToggleCollapse={handleToggleDagCollapse}
             onExpandDagFully={handleExpandDagFully}
             onActivateAiPanel={handleActivateAiPanel}
+            isAiCopilotPanelOpen={isAiCopilotPanelOpen} 
+            onToggleAiCopilotPanel={toggleAiCopilotPanel}
           />
           { (currentLayoutMode !== LayoutMode.DAG_COLLAPSED_SIMPLE && 
              currentLayoutMode !== LayoutMode.AI_PANEL_ACTIVE && 
@@ -1225,6 +1294,11 @@ ${fullLatex}
               onAddOrUpdateNote={handleOpenNoteModal}
               isCreatingNewPath={isCreatingNewPath}
               onSelectNewPathTargetNode={handleSelectNewPathTargetNode}
+              previewPathElements={previewPathElements}
+              onNodeMouseEnterForPathPreview={handleNodeMouseEnterForPathPreview}
+              onNodeMouseLeaveForPathPreview={handleNodeMouseLeaveForPathPreview}
+              onPaneClickFromLayout={handlePaneClickedInMainLayout}
+              onNodeSelectedForCopilot={handleNodeSelectedForCopilot}
             />
           }
         </div>
@@ -1270,13 +1344,28 @@ ${fullLatex}
         style={{
           flexBasis: `${panelWidths.ai}%`,
           display: panelWidths.ai === 0 ? 'none' : 'flex',
+          flexDirection: 'column', 
         }}
       >
-        <CollapsiblePanel title="LaTeX格式化" headerStyle={panelStyles.latexHeader} previewTextWhenCollapsed="点击展开LaTeX格式优化面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
-        <div className={styles.draggableSeparatorHorizontal}></div>
-        <CollapsiblePanel title="解释分析" headerStyle={panelStyles.explainHeader} previewTextWhenCollapsed="点击展开解题步骤分析面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
-        <div className={styles.draggableSeparatorHorizontal}></div>
-        <CollapsiblePanel title="总结归纳" headerStyle={panelStyles.summaryHeader} previewTextWhenCollapsed="点击展开解题过程总结面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
+        {isAiCopilotPanelOpen ? (
+          <AICopilotPanel 
+            isOpen={true} 
+            onToggle={toggleAiCopilotPanel} 
+            title="AI Copilot"
+            // --- 4. Pass the context node info to AICopilotPanel ---
+            contextNodeInfo={copilotContextNodeInfo} 
+            // Prop name in AICopilotPanelProps needs to be defined as contextNodeInfo (or similar)
+          />
+        ) : (
+          <>
+            {/* Original content of aiPanelRegion */}
+            <CollapsiblePanel title="LaTeX格式化" headerStyle={panelStyles.latexHeader} previewTextWhenCollapsed="点击展开LaTeX格式优化面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
+            <div className={styles.draggableSeparatorHorizontal}></div>
+            <CollapsiblePanel title="解释分析" headerStyle={panelStyles.explainHeader} previewTextWhenCollapsed="点击展开解题步骤分析面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
+            <div className={styles.draggableSeparatorHorizontal}></div>
+            <CollapsiblePanel title="总结归纳" headerStyle={panelStyles.summaryHeader} previewTextWhenCollapsed="点击展开解题过程总结面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
+          </>
+        )}
       </div>
 
       {/* Render ConfirmationDialog globally */}
@@ -1322,6 +1411,8 @@ ${fullLatex}
           initialIdea={interpretingNodeInfo.initialIdea}
         />
       )}
+
+      {/* AICopilotPanel OVERLAY IS REMOVED */}
     </main>
   );
 };

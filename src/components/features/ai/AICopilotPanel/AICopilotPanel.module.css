@@ -1,0 +1,202 @@
+/* AICopilotPanel.module.css */
+
+.aiCopilotPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Fill parent's height */
+  max-height: 100vh; /* Fallback or specific use case, ensure it doesn't exceed viewport if not constrained by parent */
+  background-color: #f0f2f5; /* Light grey background for the whole panel */
+  border-left: 1px solid #e0e0e0; /* Separator line from the main content */
+  box-sizing: border-box;
+  padding: 10px; /* Add some padding around the panel content */
+  overflow: hidden; /* CRITICAL: Prevents children from expanding panel, forces internal scroll */
+}
+
+/* Ensure panel is visible when open */
+.aiCopilotPanel.open {
+  /* display: flex; /* Already set above */
+  /* Potentially add transition for open/close animation if needed */
+}
+
+.aiCopilotPanel.closed {
+  display: none; /* Or transition to width: 0, opacity: 0 etc. */
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px; /* Space below header */
+  padding-bottom: 8px; /* Padding for the bottom border effect */
+  border-bottom: 1px solid #e0e0e0; /* Separator line */
+  flex-shrink: 0; /* CRITICAL: Prevent header from shrinking */
+}
+
+.panelHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between action buttons */
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.iconButton:hover {
+  background-color: #e9e9e9;
+  color: #222;
+}
+
+.clearButton {
+  /* Specific styles for clear button if needed, e.g., color */
+}
+/* .clearButton:hover {} */ /* Removed empty rule set */
+
+.contextDisplay {
+  padding: 8px 10px;
+  background-color: #e6f7ff; /* Light blue background for context */
+  border: 1px solid #91d5ff; /* Blue border */
+  border-radius: 4px;
+  margin-bottom: 10px; /* Space below context display */
+  font-size: 0.85em;
+  color: #333;
+  flex-shrink: 0; /* CRITICAL: Prevent context display from shrinking */
+}
+
+.messagesArea {
+  flex-grow: 1; /* CRITICAL: Takes up remaining vertical space */
+  overflow-y: auto; /* CRITICAL: Enables vertical scrolling for messages */
+  min-height: 0; /* CRITICAL: Helps flex-grow calculate height correctly for scrolling */
+  padding: 10px; /* Padding inside the messages area */
+  background-color: #ffffff; /* White background for messages area */
+  border-radius: 4px;
+  /* margin-bottom: 10px; /* Removed margin from here, inputArea will be directly below */
+}
+
+.noMessagesText {
+  text-align: center;
+  color: #888;
+  padding-top: 20px;
+  font-style: italic;
+}
+
+.message {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 12px; /* More rounded bubbles */
+  max-width: 85%; /* Messages don't take full width */
+  word-wrap: break-word; /* Break long words */
+  display: flex; /* Use flex to position timestamp */
+  flex-direction: column; /* Stack text and timestamp */
+}
+
+.message.user {
+  background-color: #007bff; /* Blue for user messages */
+  color: white;
+  margin-left: auto; /* Align user messages to the right */
+  border-bottom-right-radius: 2px; /* Flatter corner for "speech bubble" tail effect */
+}
+
+.message.ai {
+  background-color: #e9ecef; /* Light grey for AI messages */
+  color: #333;
+  margin-right: auto; /* Align AI messages to the left */
+  border-bottom-left-radius: 2px; /* Flatter corner for "speech bubble" tail effect */
+}
+
+.messageText {
+  margin: 0 0 4px 0; /* Space between text and timestamp */
+  white-space: pre-wrap; /* Preserve line breaks from input/AI */
+}
+
+.timestamp {
+  font-size: 0.75em;
+  color: inherit; /* Inherit color from message bubble (darker for AI, lighter for user) */
+  opacity: 0.7;
+  text-align: right; /* Align timestamp to the right of its little space */
+}
+
+.message.ai .timestamp {
+  /* color: #6c757d; /* Slightly darker timestamp for AI messages */
+  align-self: flex-start; /* Align timestamp to left for AI */
+}
+
+.message.user .timestamp {
+  /* color: #f0f0f0; /* Lighter timestamp for user messages */
+  align-self: flex-end; /* Align timestamp to right for user */
+}
+
+.inputArea {
+  display: flex;
+  align-items: flex-start; /* Align items to the top, helps if textarea grows */
+  padding-top: 10px; /* Space above the input area */
+  border-top: 1px solid #e0e0e0; /* Separator line above input */
+  background-color: #f0f2f5; /* Match panel background */
+  flex-shrink: 0; /* CRITICAL: Prevent input area from shrinking */
+}
+
+.inputTextArea {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  resize: none; /* Prevent manual resize by user, let rows attribute handle it or dynamic resizing */
+  font-size: 1em;
+  line-height: 1.4;
+  margin-right: 8px;
+  min-height: calc(1.4em * 2 + 20px); /* Approx 2 rows initial height + padding */
+  max-height: 150px; /* Max height before textarea itself scrolls */
+  overflow-y: auto; /* Allow textarea to scroll if content exceeds max-height */
+}
+
+.inputTextArea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+.sendButton {
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end; /* Align button to the bottom of the inputArea if textarea grows a bit */
+  height: calc(1.4em * 2 + 20px); /* Match initial textarea height */
+  min-height: 44px; /* Ensure button has a decent minimum height */
+}
+
+.sendButton:hover {
+  background-color: #0056b3;
+}
+
+.sendButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Ensure good contrast and focus states for accessibility if not already covered */
+
+/* Placeholder for drag handle style if you were to implement one within the panel header for modes */
+.dragHandle {
+  /* Styles for a drag handle icon or area */
+} 
