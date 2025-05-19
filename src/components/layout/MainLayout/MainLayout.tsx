@@ -24,7 +24,8 @@ import { toast } from 'react-toastify';
 import NodeNoteModal from '../../common/NodeNoteModal/NodeNoteModal';
 import SplitStepModal from '../../common/SplitStepModal/SplitStepModal';
 import InterpretationModal from '../../common/InterpretationModal/InterpretationModal';
-import AICopilotPanel, { type AICopilotPanelProps, type Message as AICopilotMessage } from '../../features/ai/AICopilotPanel/AICopilotPanel';
+import AICopilotPanel, { type AICopilotPanelProps, type Message as AICopilotMessage, type DagNodeInfo as CopilotDagNodeInfo, type CopilotMode } from '../../features/ai/AICopilotPanel/AICopilotPanel';
+import RightSidePanel from '../../features/rightPanel/RightSidePanel';
 import { Bot } from 'lucide-react';
 
 interface PanelWidthsType {
@@ -181,11 +182,25 @@ const MainLayout: React.FC = () => {
   const [previewPathElements, setPreviewPathElements] = useState<{ nodes: string[]; edges: string[] } | null>(null);
 
   // --- 2. STATE FOR AI COPILOT PANEL ---
-  const [isAiCopilotPanelOpen, setIsAiCopilotPanelOpen] = useState<boolean>(false);
+  const [isAiCopilotPanelOpen, setIsAiCopilotPanelOpen] = useState<boolean>(true);
   // --- END AI COPILOT PANEL STATE ---
 
   // --- 1. Add state for Copilot context node info ---
   const [copilotContextNodeInfo, setCopilotContextNodeInfo] = useState<CopilotContextNodeInfo | null>(null);
+
+  // --- ADDED copilotCurrentMode state ---
+  const [copilotCurrentMode, setCopilotCurrentMode] = useState<CopilotMode>('analysis');
+
+  // --- Prepare dagNodes for AICopilotPanel --- 
+  const copilotDagNodes: CopilotDagNodeInfo[] = useMemo(() => {
+    if (!dagNodes) return [];
+    return dagNodes
+      .filter(node => !node.data.isDeleted) // Only include non-deleted nodes for mentions
+      .map(node => ({
+        id: node.id,
+        label: node.data.label, // data.label directly matches what we need
+      }));
+  }, [dagNodes]);
 
   // --- Path Preview Callbacks (MOVED EARLIER) ---
   const clearPreviewPath = useCallback(() => {
@@ -1250,6 +1265,17 @@ ${fullLatex}
     }
   }, [isAiCopilotPanelOpen, toggleAiCopilotPanel]);
 
+  // --- ADDED handleCopilotSendMessage callback ---
+  const handleCopilotSendMessage = useCallback((message: string, mode: CopilotMode, model: string, contextNode?: CopilotDagNodeInfo | null) => {
+    console.log('MainLayout: Copilot Message Sent', {
+      message,
+      mode,
+      model,
+      contextNodeId: contextNode?.id,
+    });
+    // Placeholder for actual message sending logic
+  }, []);
+
   return (
     <main className={styles.mainLayoutContainer} ref={mainLayoutRef}>
       {/* TEMPORARY BUTTON IS REMOVED */}
@@ -1339,33 +1365,33 @@ ${fullLatex}
         <DraggableSeparator orientation="vertical" onDrag={handleSeparator2Drag} />
       )}
 
+      {/* MODIFIED aiPanelRegion */}
       <div
-        className={styles.aiPanelRegion}
+        className={`${styles.aiPanelRegion} ${styles.aiPanelRegionCustom}`}
         style={{
           flexBasis: `${panelWidths.ai}%`,
           display: panelWidths.ai === 0 ? 'none' : 'flex',
-          flexDirection: 'column', 
+          // flexDirection: 'column' is expected to be set in CSS for aiPanelRegionCustom or aiPanelRegion
         }}
       >
-        {isAiCopilotPanelOpen ? (
-          <AICopilotPanel 
-            isOpen={true} 
-            onToggle={toggleAiCopilotPanel} 
-            title="AI Copilot"
-            // --- 4. Pass the context node info to AICopilotPanel ---
-            contextNodeInfo={copilotContextNodeInfo} 
-            // Prop name in AICopilotPanelProps needs to be defined as contextNodeInfo (or similar)
-          />
-        ) : (
-          <>
-            {/* Original content of aiPanelRegion */}
-            <CollapsiblePanel title="LaTeX格式化" headerStyle={panelStyles.latexHeader} previewTextWhenCollapsed="点击展开LaTeX格式优化面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
-            <div className={styles.draggableSeparatorHorizontal}></div>
-            <CollapsiblePanel title="解释分析" headerStyle={panelStyles.explainHeader} previewTextWhenCollapsed="点击展开解题步骤分析面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
-            <div className={styles.draggableSeparatorHorizontal}></div>
-            <CollapsiblePanel title="总结归纳" headerStyle={panelStyles.summaryHeader} previewTextWhenCollapsed="点击展开解题过程总结面板" statusTextWhenCollapsed="未激活状态" initialCollapsed={true} />
-          </>
-        )}
+        {/* AICopilotPanel and RightSidePanel will be direct children if panelWidths.ai > 0 */}
+        {/* The isAiCopilotPanelOpen prop now controls the internal state of AICopilotPanel (e.g., its header/body visibility) */}
+        <AICopilotPanel 
+          className={styles.aiCopilotChildComponent} // New class for layout control
+          isOpen={isAiCopilotPanelOpen} // Passed to AICopilotPanel for its internal state
+          onToggle={toggleAiCopilotPanel} // Allows AICopilotPanel to request toggle
+          title="AI Copilot"
+          contextNodeInfo={copilotContextNodeInfo}
+          dagNodes={copilotDagNodes}
+          onSendMessage={handleCopilotSendMessage}
+          currentMode={copilotCurrentMode}
+          onModeChange={setCopilotCurrentMode}
+        />
+        <RightSidePanel
+          className={styles.rightSidePanelChildComponent} // New class for layout control
+          currentMode={copilotCurrentMode}
+          onModeChange={setCopilotCurrentMode}
+        />
       </div>
 
       {/* Render ConfirmationDialog globally */}

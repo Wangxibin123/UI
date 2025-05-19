@@ -8,53 +8,44 @@
 .dagRegion {
   /* flex-basis is now controlled by inline style */
   /* min-width is now controlled by JS logic */
-  background-color: #f0f0f0;
+  background-color: #f7f9fc; /* 轻微的背景色以区分 */
   flex-shrink: 0;
   height: 100%; /* Fill parent height */
   overflow-y: hidden; /* Let child (DagVisualizationArea) handle its own scroll */
   display: flex; /* Add flex display */
   flex-direction: column; /* Stack ControlBar and VizArea vertically */
   transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out; /* Smooth transition */
+  border-right: 1px solid #e0e0e0;
 }
 
 .dagRegionCollapsed {
   flex-basis: 50px !important; /* Collapsed width, ensure this overrides inline style */
   min-width: 50px;
   overflow: hidden; /* Hide content that doesn't fit */
+  border-right: 1px solid #e0e0e0;
 }
 
 .solverRegion {
   /* flex-basis is now controlled by inline style */
   /* flex-grow will not be used, flex-basis determines size */
   flex-shrink: 0;
-  background-color: #e0e0e0;
+  background-color: #ffffff;
   height: 100%;
   /* border-left and border-right will be implicitly handled by separators */
   display: flex; /* Add flex display */
   flex-direction: column; /* Stack ProblemBlock, StepsContainer, SolverActions vertically */
   overflow: hidden; /* Let internal containers like solutionStepsContainer handle scroll */
+  border-right: 1px solid #e0e0e0; /* If AI panel is also present */
   /* padding: 10px; */ /* Padding can be added to inner content wrappers if needed */
   transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
 }
 
 .solutionStepsContainer {
-  flex-grow: 1; /* This container will take up available space and scroll */
-  overflow-y: auto;
-  /* background-color: #f9f9f9; /* Optional: slight differentiation */
-  padding: 10px; /* Keep padding here for content */
-}
-
-.aiPanelRegion {
-  /* flex-basis is now controlled by inline style */
-  /* min-width and max-width are now controlled by JS logic */
-  flex-shrink: 0;
-  background-color: #f8f8f8;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-left: 1px solid #cccccc; /* Add a border for visual separation initially */
-  transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
+  flex-grow: 1;
+  overflow-y: auto; /* Ensure this can scroll */
+  padding: 15px;
+  background-color: #fff; /* White background for clarity */
+  border-bottom: 1px solid #eee; /* Separator from SolverActions */
 }
 
 .draggableSeparatorHorizontal {
@@ -89,4 +80,39 @@
   flex-direction: column; /* Already there, good */
   /* Add box-sizing if you encounter padding/border issues affecting overall size */
   box-sizing: border-box; 
+}
+
+/* Styles for the main AI Panel Region (the third column) - THIS IS THE CURRENT/CORRECT ONE */
+.aiPanelRegion {
+  background-color: #fcfdff; /* Slightly different background */
+  /* This is the main third column for AI related components */
+  display: flex; /* Ensures it behaves as a flex item in the main layout */
+  flex-direction: column; /* Stack AICopilotPanel and RightSidePanel vertically */
+  overflow: hidden; /* Prevent its children from breaking the main layout */
+  /* height: 100%; Is implicitly handled by flex container (mainLayoutContainer) */
+  /* Removed border-left: 1px solid #cccccc; as separators handle borders now */
+}
+
+/* Optional: if you used .aiPanelRegionCustom for specific overrides */
+.aiPanelRegionCustom {
+  /* Styles specific to this custom class if needed, otherwise aiPanelRegion styles apply */
+  /* For now, primary styles are in .aiPanelRegion */
+}
+
+/* Styles for AICopilotPanel when it's a child in the AI column */
+.aiCopilotChildComponent {
+  flex: 6 1 0%; /* Grow significantly, can shrink, basis 0% to rely on grow */
+  min-height: 0; /* Crucial for allowing shrinking below content size in flex column */
+  display: flex; /* Ensure AICopilotPanel itself is a flex container to fill space */
+  flex-direction: column; /* AICopilotPanel is internally a column flex */
+}
+
+/* Styles for RightSidePanel when it's a child in the AI column */
+.rightSidePanelChildComponent {
+  flex: 4 1 0%; /* Grow less than copilot, can shrink, basis 0% */
+  min-height: 0; /* Crucial for allowing shrinking */
+  border-top: 1px solid #e0e0e0; /* Visual separator from AICopilotPanel above */
+  display: flex; /* Ensure RightSidePanel itself is a flex container */
+  flex-direction: column; /* RightSidePanel is internally a column flex */
+  overflow-y: auto; /* Allow vertical scrolling for RightSidePanel content */
 }

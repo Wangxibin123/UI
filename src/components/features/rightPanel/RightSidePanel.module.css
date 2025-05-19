@@ -1,0 +1,112 @@
+.rightSidePanelContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f4f6f8; /* Light background for the panel */
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.quickModeSwitcher {
+  display: flex;
+  justify-content: center; /* Center the icons, or use space-around */
+  align-items: center;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e0e4e8; /* Separator */
+  flex-shrink: 0; /* Prevent switcher from shrinking */
+}
+
+.quickModeButton {
+  background: transparent;
+  border: none;
+  padding: 8px; /* Good clickable area */
+  margin: 0 6px; /* Spacing between buttons */
+  cursor: pointer;
+  border-radius: 6px;
+  color: #586069; /* Icon color */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.quickModeButton:hover {
+  background-color: #e9ecef;
+  color: #343a40;
+}
+
+.quickModeButton.activeQuickModeButton {
+  background-color: #007bff; /* Example active background */
+  color: #ffffff; /* Active icon color */
+}
+
+.quickModeButton.activeQuickModeButton:hover {
+  background-color: #0069d9; /* Darker hover for active button */
+}
+
+.modeFunctionPanelsContainer {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column; /* Stack panels vertically */
+  gap: 10px; /* Space between panels */
+  overflow-y: auto; /* In case content overflows, though unlikely with flex-grow */
+  padding-top: 5px; /* Small space from switcher */
+}
+
+.modeFunctionPanelItem {
+  flex-grow: 1; /* Each panel tries to take equal space */
+  min-height: 100px; /* Minimum height for each panel */
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column; /* Stack header and description */
+  cursor: pointer;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.modeFunctionPanelItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: #adb5bd;
+}
+
+.modeFunctionPanelItem.activeModeFunctionPanel {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25), 0 4px 12px rgba(0,0,0,0.1);
+  /* background-color: #e6f7ff; /* Optional: light background for active */
+}
+
+.modePanelHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.modePanelIcon {
+  color: #495057;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.modeFunctionPanelItem.activeModeFunctionPanel .modePanelIcon {
+  color: #007bff;
+}
+
+.modePanelTitle {
+  font-size: 1.1em; /* Larger title for panels */
+  font-weight: 600;
+  color: #343a40;
+  margin: 0; /* Reset margin */
+}
+
+.modeFunctionPanelItem.activeModeFunctionPanel .modePanelTitle {
+  color: #007bff;
+}
+
+.modePanelDescription {
+  font-size: 0.875em;
+  color: #6c757d;
+  line-height: 1.5;
+  flex-grow: 1; /* Allows description to take remaining space */
+} 

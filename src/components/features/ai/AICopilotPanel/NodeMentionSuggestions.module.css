@@ -1,0 +1,64 @@
+.suggestionsContainer {
+  position: absolute;
+  bottom: 100%; /* Position above the input area */
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-bottom: none; /* As it sits on top of the input */
+  border-radius: 4px 4px 0 0; /* Rounded top corners */
+  z-index: 1000; /* Ensure it's above other elements */
+  max-height: 200px; /* Limit height and make it scrollable if many items */
+  overflow-y: auto;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.suggestionsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.suggestionItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee; /* Separator for items */
+  display: flex; /* Using flex for alignment, though primarily for one child now */
+  align-items: center; /* Vertically center content if item height is more than line height */
+  /* justify-content: space-between; */ /* Not needed if only one main child span */
+  white-space: nowrap; /* Ensure the suggestion item text stays on one line */
+  overflow: hidden;    /* Hide overflow if text is too long */
+  text-overflow: ellipsis; /* Show ellipsis for very long text */
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.suggestionItem:hover {
+  background-color: #f0f0f0;
+}
+
+.suggestionItem.activeSuggestion {
+  background-color: #e0e0e0; /* Highlight for active suggestion (keyboard nav) */
+  font-weight: bold;
+}
+
+.nodeLabel {
+  font-size: 0.9em; /* Slightly smaller than main input, adjust as needed */
+  color: #333;
+  /* No specific width or white-space needed here if parent handles it */
+  /* Ensure label doesn't push other elements if any were present */
+  flex-grow: 1; /* Allow label to take available space if item is flex container */
+  overflow: hidden; /* Redundant if parent .suggestionItem has it, but safe */
+  text-overflow: ellipsis; /* Redundant if parent .suggestionItem has it, but safe */
+}
+
+/* .nodeIdAside class is no longer used as ID is hidden */
+/*
+.nodeIdAside {
+  font-size: 0.8em;
+  color: #777;
+  margin-left: 8px;
+}
+*/ 

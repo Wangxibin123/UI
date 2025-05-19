@@ -141,37 +141,170 @@
   align-self: flex-end; /* Align timestamp to right for user */
 }
 
-.inputArea {
+/* Replace .inputArea with .inputSection if .inputArea was the form, or style .inputSection as the new main input container */
+.inputSection {
   display: flex;
-  align-items: flex-start; /* Align items to the top, helps if textarea grows */
-  padding-top: 10px; /* Space above the input area */
-  border-top: 1px solid #e0e0e0; /* Separator line above input */
-  background-color: #f0f2f5; /* Match panel background */
-  flex-shrink: 0; /* CRITICAL: Prevent input area from shrinking */
+  flex-direction: column;
+  /* border-top: 1px solid #e0e0e0; /* Separator from messagesArea if needed */
+  /* background-color: #f0f2f5; /* Or keep it consistent with panel background */
+  flex-shrink: 0;
+  /* padding: 0; /* Remove padding if children handle it */
+}
+
+.contextBar {
+  display: flex;
+  align-items: center;
+  height: 30px; 
+  padding: 0 10px;
+  background-color: #f8f9fa; /* Very light grey, or transparent to blend with inputSection bg */
+  border-bottom: 1px solid #e9ecef;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.contextBarIcon {
+  margin-right: 6px;
+  color: #6c757d; /* Icon color */
+  display: flex; /* For better icon alignment */
+  align-items: center;
+}
+
+.contextBarText {
+  font-size: 0.875em; /* 14px if base is 16px */
+  color: #495057;
+  line-height: 1;
+}
+
+/* This wrapper is crucial for positioning suggestionsPanel relative to the textarea */
+.textAreaWrapper {
+  position: relative; 
+  display: flex; /* Take up available space */
+  flex-direction: column; /* Stack textarea and suggestions(abs pos) */
+  flex-grow: 1; /* Allow this area to grow and push bottomActionBar down */
+  /* border: 1px dashed blue; /* For debugging layout */
 }
 
 .inputTextArea {
-  flex-grow: 1;
+  flex-grow: 1; /* Allow textarea to grow within textAreaWrapper if its height is not fixed */
   padding: 10px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  resize: none; /* Prevent manual resize by user, let rows attribute handle it or dynamic resizing */
+  border: none; /* Remove default border, rely on textAreaWrapper or inputSection for borders if any */
+  /* border-top: 1px solid #e9ecef; /* Optional: line between contextBar and textarea if contextBar has no border-bottom */
+  border-radius: 0; /* Remove border-radius if it's part of a larger input group look */
+  resize: none; 
   font-size: 1em;
-  line-height: 1.4;
-  margin-right: 8px;
-  min-height: calc(1.4em * 2 + 20px); /* Approx 2 rows initial height + padding */
-  max-height: 150px; /* Max height before textarea itself scrolls */
-  overflow-y: auto; /* Allow textarea to scroll if content exceeds max-height */
+  line-height: 1.5;
+  /* margin-right: 0; /* Remove if not needed due to parent flex structure */
+  min-height: calc(1.5em * 2 + 20px); /* Approx 2 rows initial height + padding */
+  max-height: 200px; /* Max height before textarea itself scrolls */
+  overflow-y: auto; 
+  width: 100%; /* Ensure it takes full width of textAreaWrapper */
+  box-sizing: border-box;
+  background-color: #fff; /* Or transparent to inherit from parent */
 }
 
 .inputTextArea:focus {
-  border-color: #007bff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  /* border-color: #007bff; */ /* Remove focus border or make it subtle */
+  /* box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); */ /* Remove default shadow */
   outline: none;
+  /* background-color: #fff; /* Ensure bg color on focus */
 }
 
+/* Suggestions Panel needs to be relative to textAreaWrapper */
+.suggestionsPanel {
+  position: absolute;
+  bottom: 100%; /* Position above the textarea (its direct non-static parent is textAreaWrapper) */
+  left: 0; 
+  right: 0; 
+  background-color: #ffffff; 
+  border: 1px solid #dee2e6; 
+  border-bottom: none; 
+  border-radius: 6px 6px 0 0; 
+  z-index: 1000; 
+  max-height: 220px; 
+  overflow-y: auto;
+  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.07); 
+  /* ... scrollbar styles from previous step ... */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent; 
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #ced4da; 
+    border-radius: 3px;
+    border: 1px solid #ffffff; 
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #adb5bd; 
+  }
+}
+
+/* Styles for the new Bottom Action Bar (replaces .bottomActionBarPlaceholder) */
+.bottomActionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Pushes left and right groups to ends */
+  height: 38px; /* Slightly taller to accommodate elements comfortably */
+  padding: 0 6px; /* Slightly reduced padding for a tighter bar like Cursor */
+  border-top: 1px solid #e0e4e8; /* Subtle top border */
+  background-color: #f8f9fa; /* Slightly different from main panel for definition */
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0; /* Prevent shrinking */
+  gap: 6px; /* Gap between left and right sections if they are close */
+}
+
+.actionBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Reduced gap between model selector and any future left items */
+}
+
+.actionBarRight {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Gap between paperclip and send button */
+}
+
+.actionButton {
+  background: transparent;
+  border: none;
+  padding: 5px; /* Slightly more padding for better click area */
+  cursor: pointer;
+  color: #586069; /* Icon color */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  line-height: 1; /* Ensure icon is vertically centered if text was next to it */
+}
+
+.actionButton:hover {
+  background-color: #f1f3f5; /* Subtle hover effect */
+  color: #2f363d;
+}
+
+.actionButton:disabled {
+  color: #adb5bd;
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+/* Specific adjustments for the send button if needed when in the action bar */
+.actionBarSendButton {
+  /* Retain most of .sendButton styles, but can override padding or margins if needed */
+  padding: 5px 10px; /* Adjust padding to match other action buttons a bit more */
+  /* height: 28px; /* Example of fixed height if desired */ 
+  font-size: 0.875em; /* Slightly smaller font if desired */
+}
+
+/* Ensure general .sendButton styles are still appropriate or make .actionBarSendButton more distinct */
 .sendButton {
-  padding: 10px 15px;
+  /* ... existing .sendButton styles ... */
+  /* Example: if .sendButton had large padding, .actionBarSendButton would override it */
   background-color: #007bff;
   color: white;
   border: none;
@@ -180,9 +313,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-end; /* Align button to the bottom of the inputArea if textarea grows a bit */
-  height: calc(1.4em * 2 + 20px); /* Match initial textarea height */
-  min-height: 44px; /* Ensure button has a decent minimum height */
+  /* padding: 6px 12px; /* Original padding, overridden by .actionBarSendButton if more specific */
+  /* font-size: 0.9em; /* Original font size */
 }
 
 .sendButton:hover {
@@ -194,9 +326,292 @@
   cursor: not-allowed;
 }
 
+/* Remove or comment out .bottomActionBarPlaceholder as it's replaced by .bottomActionBar */
+/*
+.bottomActionBarPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; 
+  height: 40px;
+  padding: 0 8px; 
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa; 
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0; 
+}
+*/
+
 /* Ensure good contrast and focus states for accessibility if not already covered */
 
 /* Placeholder for drag handle style if you were to implement one within the panel header for modes */
 .dragHandle {
   /* Styles for a drag handle icon or area */
+}
+
+/* Styles for the suggestions panel itself, positioned above the inputArea */
+.suggestionsPanel {
+  position: absolute;
+  bottom: calc(100% + 2px); /* Position above the input area with a small gap */
+  left: 0; /* Align with the left edge of inputArea */
+  right: 0; /* Align with the right edge of inputArea - makes it full width of inputArea */
+  /* Consider a max-width if inputArea can become very wide, e.g., max-width: 400px; */
+  /* If max-width is set, and you want it centered relative to inputArea if inputArea is wider: */
+  /* margin-left: auto; */
+  /* margin-right: auto; */ 
+  /* However, simpler is to let it be full width of inputArea or match textarea width. */
+
+  background-color: #ffffff; /* Clean white background */
+  border: 1px solid #dee2e6; /* Lighter, more subtle border */
+  border-bottom: none; 
+  border-radius: 6px 6px 0 0; /* Slightly larger, softer top corners */
+  z-index: 1000; 
+  max-height: 220px; /* Slightly increased max-height */
+  overflow-y: auto;
+  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.07); /* Softer, more diffused shadow */
+
+  /* Custom scrollbar for webkit browsers (optional, for aesthetics) */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent; /* Or a very light grey like #f8f9fa */
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #ced4da; /* Scrollbar thumb color */
+    border-radius: 3px;
+    border: 1px solid #ffffff; /* Creates a little space around thumb */
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #adb5bd; /* Darker on hover */
+  }
+}
+
+/* Styles for Main Mode Selector in Panel Header */
+.panelHeader {
+  /* ... existing styles ... */
+  display: flex; /* Ensure flex for alignment of title, mode selector, and toggle button */
+  align-items: center;
+  justify-content: space-between; /* Push toggle button to the right */
+}
+
+.panelTitle {
+  font-size: 1em; /* Adjust as needed */
+  font-weight: 600;
+  color: #333;
+  margin-right: 10px; /* Space between title and mode selector */
+}
+
+.mainModeSelectorWrapper {
+  position: relative; /* For absolute positioning of the dropdown */
+  display: flex;
+  align-items: center;
+  /* Removed flex-grow, let panelTitle and toggleButton define space, selector takes what it needs */
+}
+
+.mainModeButton {
+  display: flex;
+  align-items: center;
+  background-color: #f0f2f5; /* Subtle background */
+  border: 1px solid #d9dce0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.875em;
+  color: #333;
+  transition: background-color 0.2s ease;
+}
+
+.mainModeButton:hover {
+  background-color: #e4e7eb;
+}
+
+.currentModeIcon {
+  margin-right: 6px;
+  color: #586069;
+}
+
+.currentModeText {
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.modeSelectorChevron {
+  margin-left: auto; /* Pushes chevron to the right if button has extra space */
+  color: #586069;
+  transition: transform 0.2s ease;
+}
+
+.modeSelectorChevron.chevronUp {
+  transform: rotate(180deg);
+}
+
+.mainModeDropdownList {
+  position: absolute;
+  top: calc(100% + 4px); /* Position below the button with a small gap */
+  left: 0;
+  min-width: 200px; /* Ensure enough width for mode names */
+  background-color: #fff;
+  border: 1px solid #d9dce0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+  z-index: 1100; /* Ensure it's above other elements like suggestionsPanel */
+  max-height: 300px; /* In case of many modes in future */
+  overflow-y: auto;
+}
+
+.mainModeDropdownList li {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.875em;
+  color: #333;
+  white-space: nowrap;
+}
+
+.mainModeDropdownList li:hover {
+  background-color: #f0f2f5;
+}
+
+.mainModeDropdownList li.activeModeOption {
+  background-color: #e6f7ff; /* Light blue for active selection */
+  font-weight: 500;
+  color: #007bff;
+}
+
+.dropdownModeIcon {
+  margin-right: 8px;
+  color: #586069;
+}
+
+.mainModeDropdownList li.activeModeOption .dropdownModeIcon {
+  color: #007bff;
+}
+
+.selectedModeCheckmark {
+  margin-left: auto; /* Push checkmark to the right */
+  color: #007bff;
+}
+
+/* Adjust toggleButton if needed to coexist with mode selector */
+.toggleButton {
+  /* ... existing styles or add new ones ... */
+  margin-left: 10px; /* Space it from the mode selector */
+  padding: 4px; /* Consistent padding */
+}
+
+/* --- Styles for Model Selector --- */
+.modelSelectorWrapper {
+  position: relative; /* For dropdown positioning */
+  display: flex;
+  align-items: center;
+}
+
+.modelSelectorButton {
+  /* Inherits from .actionButton, but can have specific overrides */
+  /* display: flex; align-items: center; (from .actionButton) */
+  padding: 5px 8px; /* Specific padding for model button */
+  background-color: transparent; /* Usually transparent in action bars */
+  /* border: 1px solid transparent; Optional: border for definition */
+  /* border-radius: 5px; (from .actionButton) */
+  min-width: 150px; /* Give it some base width */
+  justify-content: flex-start; /* Align content to the left */
+}
+
+.modelSelectorButton:hover {
+  background-color: #e9ecef; /* Subtle hover, same as other action buttons */
+}
+
+.selectedModelPrefixIcon {
+  margin-right: 6px;
+  color: #495057; /* Icon color, can be themed */
+}
+
+.selectedModelName {
+  font-size: 0.875em; /* 14px */
+  color: #343a40;
+  font-weight: 500; /* Slightly bolder */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1; /* Allow name to take space */
+  text-align: left;
+  margin-right: 4px;
+}
+
+.modelSelectorChevronIcon {
+  /* Similar to .modeSelectorChevron */
+  margin-left: auto; /* Pushes to the end */
+  color: #586069;
+  transition: transform 0.2s ease;
+}
+
+.modelSelectorChevronIcon.chevronUp { /* Re-use if styles are identical */
+  transform: rotate(180deg);
+}
+
+.modelSelectorDropdownList {
+  position: absolute;
+  bottom: calc(100% + 4px); /* Position ABOVE the button */
+  left: 0;
+  right: auto; /* Let width be determined by content or min-width */
+  min-width: 280px; /* Wider dropdown for model names */
+  max-width: 350px;
+  background-color: #fff; /* Cursor uses a dark theme for dropdown, adapt if needed */
+  border: 1px solid #d9dce0; /* Match panel header dropdowns */
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding: 6px 0; /* Padding for top/bottom of list */
+  margin: 0;
+  z-index: 1200; /* Higher than mode selector and suggestions panel */
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.modelSelectorDropdownList li { /* Can use a more specific class like .modelSelectorDropdownItem */
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Push checkmark to the right */
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.875em;
+  color: #333;
+  white-space: nowrap;
+  /* border-bottom: 1px solid #f0f2f5; /* Subtle separator if desired */
+}
+/* Remove last-child border if using above border */
+/* .modelSelectorDropdownList li:last-child {
+  border-bottom: none;
+} */
+
+.modelSelectorDropdownList li:hover {
+  background-color: #f0f2f5;
+}
+
+/* Use .activeModelOption if it shares styles with mode selector, or define new if different */
+.modelSelectorDropdownList li.activeModelOption { 
+  background-color: #e6f7ff; 
+  color: #007bff;
+  font-weight: 500;
+}
+
+.selectedModelCheckmarkIcon {
+  /* margin-left: auto; /* Already handled by justify-content: space-between on li */
+  color: #007bff; 
+  flex-shrink: 0; /* Prevent checkmark from shrinking */
+}
+
+/* Adjust existing .actionButton and .sendButton if global changes are needed for spacing */
+.actionButton {
+  /* padding: 5px; /* Review if this general padding is fine or if specific buttons override */
+}
+
+.actionBarSendButton {
+  /* padding: 5px 10px; /* Ensure this is still good */
 } 

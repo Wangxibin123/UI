@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styles from './AICopilotPanel.module.css';
-import { Send, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'; // Added Trash2 icon
+import { Send, ChevronDown, ChevronUp, Trash2, PlusCircle, Settings, Wand2, Paperclip, Sigma, Brain, AlignLeft, Check } from 'lucide-react'; // Added Sigma, Brain, AlignLeft, Check
+import NodeMentionSuggestions from './NodeMentionSuggestions'; // Import the new component
 
 // Define the structure for a chat message
 export interface Message {
@@ -10,33 +11,74 @@ export interface Message {
   timestamp?: Date;
 }
 
-// Define the props for the AICopilotPanel
-export interface AICopilotPanelProps {
-  isOpen?: boolean;
-  onToggle?: () => void;
-  title?: string;
-  initialMessages?: Message[]; // Allow passing initial messages
-  contextNodeInfo?: CopilotContextNodeInfo | null;
-}
-
-// --- 1. Define CopilotContextNodeInfo interface (can also be imported if shared) ---
-export interface CopilotContextNodeInfo {
+// --- Define DagNodeInfo interface ---
+export interface DagNodeInfo {
   id: string;
   label?: string;
-  content?: string; 
+  content?: string; // Added optional content property
+  // Potentially other simple data useful for suggestions, like type
 }
 
+// Define the props for the AICopilotPanel
+export interface AICopilotPanelProps {
+  isOpen: boolean;
+  onToggle?: () => void;
+  dagNodes?: DagNodeInfo[];
+  contextNodeInfo?: DagNodeInfo | null;
+  onSendMessage: (message: string, mode: CopilotMode, model: string, contextNode?: DagNodeInfo | null) => void;
+  currentMode: CopilotMode;
+  onModeChange: (mode: CopilotMode) => void;
+  title?: string;
+  className?: string;
+}
+
+// Define mode type and display names
+export type CopilotMode = 'latex' | 'analysis' | 'summary';
+
+const modeDisplayNames: Record<CopilotMode, string> = {
+  latex: 'LaTeX 格式化',
+  analysis: '解析分析',
+  summary: '总结归纳',
+};
+
+const modeIcons: Record<CopilotMode, React.ElementType> = {
+  latex: Sigma,     // Sigma for LaTeX/Math
+  analysis: Brain,  // Brain for Analysis
+  summary: AlignLeft, // AlignLeft for Summarization (like document icon)
+};
+
+// --- Model Definitions ---
+const availableModels: string[] = [
+  'openai/o3',
+  'openai/gpt-4.5-preview',
+  'google/gemini-2.5-flash-preview:thinking',
+  'deepseek/deepseek-prover-v2 (671 B)', // Default
+  'deepseek/deepseek-chat-v3-0324',
+  'deepseek/deepseek-r1',
+  'qwen/qwen3-30b-a3b',
+  'qwen/qwen3-235b-a22b',
+  'anthropic/claude-3.7-sonnet',
+  'anthropic/claude-3.7-sonnet:thinking',
+];
+
 const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
-  isOpen = true, // Default to open if not controlled externally
+  isOpen,
   onToggle,
-  title = 'AI Copilot',
-  initialMessages = [],
+  dagNodes,
   contextNodeInfo,
+  onSendMessage,
+  currentMode,
+  onModeChange,
+  title = "AI Copilot",
+  className,
 }) => {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  console.log('Received dagNodes:', dagNodes); // <--- 添加这行来调试
+  const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState<string>('');
   const [isInputUserModified, setIsInputUserModified] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showModeDropdown, setShowModeDropdown] = useState<boolean>(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
 
   // --- 1. Create a ref for the messages container ---
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -44,9 +86,152 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null); // <<< 确保 messagesEndRef 的定义存在
 
+  // --- States for Node Mention Suggestions ---
+  const [showNodeSuggestions, setShowNodeSuggestions] = useState<boolean>(false);
+  const [nodeSuggestionQuery, setNodeSuggestionQuery] = useState<string>('');
+  const [filteredDagNodes, setFilteredDagNodes] = useState<DagNodeInfo[]>([]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(0);
+  const suggestionsRef = useRef<HTMLDivElement>(null); // Ref for the suggestions panel itself
+
+  // --- States for Model Selector ---
+  const [selectedModel, setSelectedModel] = useState<string>(availableModels[3]); // Default to deepseek/deepseek-prover-v2 (671 B)
+  const [showModelSelectorDropdown, setShowModelSelectorDropdown] = useState<boolean>(false);
+  const modelSelectorDropdownRef = useRef<HTMLDivElement>(null);
+
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setCurrentInput(event.target.value);
+    const newValue = event.target.value;
+    setCurrentInput(newValue);
     setIsInputUserModified(true);
+
+    const cursorPos = event.target.selectionStart;
+    let showSuggestions = false;
+    let currentMentionQuery = '';
+
+    // Check for an active mention trigger: an '@' symbol not preceded by a non-whitespace character
+    // and not followed immediately by a space (if it's the last char, that's ok for now)
+    for (let i = cursorPos - 1; i >= 0; i--) {
+      if (newValue[i] === '@') {
+        if (i === 0 || /\s/.test(newValue[i - 1])) {
+          const query = newValue.substring(i + 1, cursorPos);
+          // A mention query part itself should not contain spaces.
+          // If it does, the part before the space might be the query.
+          // For simplicity now, we assume the query is up to the cursor or next space.
+          const spaceAfterQueryIndex = query.indexOf(' ');
+          if (spaceAfterQueryIndex === -1) { // No space within the query part itself
+            currentMentionQuery = query;
+            showSuggestions = true;
+          } else {
+            // If there is a space after the @query, then suggestions should not be shown for this segment
+            // currentMentionQuery = query.substring(0, spaceAfterQueryIndex);
+            // showSuggestions = true; // Uncomment and adjust if you want to allow query then space
+            showSuggestions = false; // For now, space in query hides suggestions
+          }
+        }
+        break; // Found the nearest '@' to the left, process and exit loop
+      }
+      // If we hit a space walking backwards and haven't found an '@', it's not an active mention from this point
+      if (newValue[i] === ' ') {
+        break;
+      }
+    }
+
+    if (showSuggestions && dagNodes && dagNodes.length > 0) {
+      console.log('Trying to filter. Query:', currentMentionQuery, 'Nodes:', dagNodes); // <---
+      const normalizedQuery = currentMentionQuery.toLowerCase();
+      const filtered = dagNodes.filter(
+        (node) =>
+          node.id.toLowerCase().includes(normalizedQuery) ||
+          (node.label && node.label.toLowerCase().includes(normalizedQuery))
+      );
+
+      if (filtered.length > 0) {
+        setFilteredDagNodes(filtered);
+        setNodeSuggestionQuery(currentMentionQuery); // Store the actual query used
+        setShowNodeSuggestions(true);
+        setActiveSuggestionIndex(0); // Reset active index
+      } else {
+        setShowNodeSuggestions(false);
+        setFilteredDagNodes([]);
+      }
+    } else {
+      setShowNodeSuggestions(false);
+      setNodeSuggestionQuery('');
+      setFilteredDagNodes([]);
+    }
+  };
+
+  // --- Handle selecting a node from suggestions ---
+  const handleNodeSelect = (node: DagNodeInfo) => {
+    const mentionText = `@[${node.label || node.id}]`; // Simple format, can be customized
+    
+    const currentVal = currentInput;
+    const cursorPos = inputRef.current?.selectionStart ?? currentVal.length;
+
+    let beforeCursor = currentVal.substring(0, cursorPos);
+    const afterCursor = currentVal.substring(cursorPos);
+
+    // Find the start of the @mention query
+    const atSymbolIndex = beforeCursor.lastIndexOf('@');
+    
+    if (atSymbolIndex !== -1) {
+      // Ensure this @ is the one that triggered the suggestions
+      // (e.g. not part of some other text unrelated to current mention query)
+      // This check can be more robust if needed, but for now, lastIndexOf is a good start.
+      const partBeforeAt = beforeCursor.substring(0, atSymbolIndex);
+      const newText = partBeforeAt + mentionText + afterCursor;
+      
+      setCurrentInput(newText);
+      setShowNodeSuggestions(false);
+      setFilteredDagNodes([]);
+      setNodeSuggestionQuery('');
+      setIsInputUserModified(true); // User has made a selection
+
+      // Focus and set cursor position after the inserted mention
+      setTimeout(() => {
+        inputRef.current?.focus();
+        const newCursorPos = partBeforeAt.length + mentionText.length;
+        inputRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    }
+  };
+
+  // --- Handle keyboard navigation for suggestions ---
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showNodeSuggestions && filteredDagNodes.length > 0) {
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          setActiveSuggestionIndex((prevIndex) =>
+            prevIndex === filteredDagNodes.length - 1 ? 0 : prevIndex + 1
+          );
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setActiveSuggestionIndex((prevIndex) =>
+            prevIndex === 0 ? filteredDagNodes.length - 1 : prevIndex - 1
+          );
+          break;
+        case 'Enter':
+          event.preventDefault(); // Prevent form submission & newline
+          if (activeSuggestionIndex >= 0 && activeSuggestionIndex < filteredDagNodes.length) {
+            handleNodeSelect(filteredDagNodes[activeSuggestionIndex]);
+          }
+          break;
+        case 'Escape':
+          event.preventDefault();
+          setShowNodeSuggestions(false);
+          // Optionally clear filteredDagNodes and nodeSuggestionQuery here as well
+          // setFilteredDagNodes([]);
+          // setNodeSuggestionQuery('');
+          break;
+        default:
+          break;
+      }
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      // 当没有显示建议时，按 Enter 直接提交消息
+      event.preventDefault();
+      handleSubmit();
+    }
   };
 
   const handleSubmit = useCallback(async (event?: React.FormEvent<HTMLFormElement>) => {
@@ -86,7 +271,9 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
       inputRef.current?.focus();
     }, 0);
 
-  }, [currentInput, isInputUserModified, contextNodeInfo, messages, setIsLoading]);
+    // Pass currentMode and selectedModel to onSendMessage
+    onSendMessage(userInput, currentMode, selectedModel, contextNodeInfo);
+  }, [currentInput, isInputUserModified, contextNodeInfo, messages, setIsLoading, onSendMessage, currentMode, selectedModel]);
 
   // --- Callback to clear messages ---
   const handleClearMessages = useCallback(() => {
@@ -149,37 +336,116 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     // A new object from MainLayout will trigger this effect.
   }, [contextNodeInfo, currentInput, isInputUserModified]);
 
-  if (!isOpen && !onToggle) { // If controlled externally and told to be closed, render nothing or a placeholder
-      // If onToggle is not provided, it implies the panel's open state is fully controlled externally.
-      // If isOpen is false in that case, we shouldn't render the main panel.
-      // Optionally, render a small "tab" or button if onToggle IS provided, allowing it to be opened.
-      return null; // Or a collapsed view if designed
+  useEffect(() => {
+    // 点击外部区域时关闭节点建议面板
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowNodeSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [suggestionsRef, inputRef]);
+
+  // --- Helper function to format model name for display on button ---
+  const formatDisplayModelName = (modelId: string): string => {
+    if (!modelId) return 'Select Model';
+    // Example: "deepseek/deepseek-prover-v2 (671 B)" -> "DeepSeek Prover v2"
+    // Example: "google/gemini-2.5-flash-preview:thinking" -> "Gemini Flash Preview"
+    let name = modelId.substring(modelId.indexOf('/') + 1);
+    name = name.replace(/:thinking/g, '').replace(/ \(.*\)/g, ''); // Remove :thinking and (XXX B)
+    name = name.replace(/-/g, ' ').replace(/preview/g, 'Preview');
+    // Capitalize words
+    return name.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').trim();
+  };
+  
+  // --- Helper function to format model name for list items ---
+  const formatModelListItem = (modelId: string): React.ReactNode => {
+    // Show the full ID, perhaps with parts styled differently if needed later
+    // For now, just the ID. Can be enhanced to return JSX with styled suffixes.
+    return modelId;
+  };
+
+  // Update textarea placeholder based on props.currentMode
+  const getPlaceholderText = () => {
+    switch (currentMode) {
+      case 'latex':
+        return '输入内容以格式化为 LaTeX...';
+      case 'analysis':
+        return '输入问题或代码进行解析分析...';
+      case 'summary':
+        return '粘贴文本或描述内容以获取摘要...';
+      default:
+        return '开始输入...';
+    }
+  };
+
+  // Effect to handle clicks outside the mode dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+        setShowModeDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [modeDropdownRef]);
+
+  // --- useEffect for Model Selector Dropdown outside click ---
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modelSelectorDropdownRef.current && !modelSelectorDropdownRef.current.contains(event.target as Node)) {
+        setShowModelSelectorDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [modelSelectorDropdownRef]);
+
+  if (!isOpen && !onToggle && !className) {
+    return null;
   }
 
-
   return (
-    <div className={`${styles.aiCopilotPanel} ${isOpen || !onToggle ? styles.open : styles.closed}`}>
+    <div className={`${styles.aiCopilotPanel} ${className || ''} ${isOpen || !onToggle ? styles.open : styles.closed}`}>
       <div className={styles.panelHeader}>
-        <h3>{title}</h3>
-        <div className={styles.headerActions}> {/* Wrapper for header buttons */}
-          {messages.length > 0 && ( // Conditionally render clear button
-            <button 
-              onClick={handleClearMessages}
-              className={`${styles.iconButton} ${styles.clearButton}`}
-              title="清空对话记录"
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
-          {onToggle && (
-            <button onClick={onToggle} className={styles.iconButton} title={isOpen ? "收起面板" : "展开面板"}>
-              {isOpen ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-            </button>
+        <span className={styles.panelTitle}>{title}</span>
+        <div className={styles.mainModeSelectorWrapper} ref={modeDropdownRef}>
+          <button onClick={() => setShowModeDropdown(!showModeDropdown)} className={styles.mainModeButton}>
+            {React.createElement(modeIcons[currentMode], { size: 16, className: styles.currentModeIcon })}
+            <span className={styles.currentModeText}>{modeDisplayNames[currentMode]}</span>
+            <ChevronDown size={16} className={`${styles.modeSelectorChevron} ${showModeDropdown ? styles.chevronUp : ''}`} />
+          </button>
+          {showModeDropdown && (
+            <ul className={styles.mainModeDropdownList}>
+              {(Object.keys(modeDisplayNames) as CopilotMode[]).map((modeId) => (
+                <li 
+                  key={modeId} 
+                  onClick={() => { onModeChange(modeId); setShowModeDropdown(false); }}
+                  className={currentMode === modeId ? styles.activeModeOption : ''}
+                >
+                  {React.createElement(modeIcons[modeId], { size: 16, className: styles.dropdownModeIcon })}
+                  {modeDisplayNames[modeId]}
+                  {currentMode === modeId && <Check size={14} className={styles.selectedModeCheckmark} />}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
-        <div className={styles.headerButtons}>
-          {/* ... header buttons ... */}
-        </div>
+        <button onClick={onToggle} className={styles.toggleButton}>
+          {isOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+        </button>
       </div>
       {/* --- Move context display text here --- */}
       {contextNodeInfo && (contextNodeInfo.label || contextNodeInfo.id) && (
@@ -202,25 +468,87 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
             </div>
           ))
         )}
-        <div ref={messagesEndRef} /> {/* Use messagesEndRef here */}
+        <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className={styles.inputArea}>
-        <textarea
-          ref={inputRef}
-          value={currentInput}
-          onChange={handleInputChange}
-          placeholder="输入你的问题或指令..."
-          rows={3}
-          className={styles.inputTextArea}
-        />
-        <button 
-          type="submit"
-          disabled={!currentInput.trim() || isLoading}
-          className={styles.sendButton}
-        >
-          {isLoading ? '发送中...' : <Send size={18} />}
-        </button>
+
+      {/* Modified input area to be a form directly */}
+      <form className={styles.inputSection} onSubmit={handleSubmit}>
+        <div className={styles.contextBar}>
+          <PlusCircle size={16} className={styles.contextBarIcon} />
+          <span className={styles.contextBarText}>Add context</span>
+        </div>
+
+        <div className={styles.textAreaWrapper}>
+          {showNodeSuggestions && filteredDagNodes.length > 0 && (
+            <div ref={suggestionsRef} className={styles.suggestionsPanel}>
+              <NodeMentionSuggestions
+                suggestions={filteredDagNodes}
+                activeSuggestionIndex={activeSuggestionIndex}
+                onSelectNode={handleNodeSelect}
+                containerRef={suggestionsRef}
+              />
+            </div>
+          )}
+          <textarea
+            ref={inputRef}
+            value={currentInput}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={getPlaceholderText()}
+            rows={3}
+            className={styles.inputTextArea}
+          />
+        </div>
+
+        {/* Fully implemented Bottom Action Bar - MODIFIED */}
+        <div className={styles.bottomActionBar}> 
+          <div className={styles.actionBarLeft}>
+            {/* Model Selector Dropdown */}
+            <div className={styles.modelSelectorWrapper} ref={modelSelectorDropdownRef}>
+              <button 
+                type="button" 
+                className={`${styles.actionButton} ${styles.modelSelectorButton}`}
+                onClick={() => setShowModelSelectorDropdown(!showModelSelectorDropdown)}
+                title={`Current model: ${selectedModel}. Click to switch.`}
+              >
+                <Brain size={16} className={styles.selectedModelPrefixIcon} /> {/* Cursor-like brain icon */}
+                <span className={styles.selectedModelName}>{formatDisplayModelName(selectedModel)}</span>
+                <ChevronDown size={14} className={`${styles.modelSelectorChevronIcon} ${showModelSelectorDropdown ? styles.chevronUp : ''}`}/>
+              </button>
+              {showModelSelectorDropdown && (
+                <ul className={styles.modelSelectorDropdownList}>
+                  {availableModels.map(modelId => (
+                    <li 
+                      key={modelId}
+                      className={selectedModel === modelId ? styles.activeModelOption : ''}
+                      onClick={() => { setSelectedModel(modelId); setShowModelSelectorDropdown(false); }}
+                      title={modelId} // Show full ID on hover for clarity
+                    >
+                      {formatModelListItem(modelId)} {/* Shows full ID for now */}
+                      {selectedModel === modelId && <Check size={16} className={styles.selectedModelCheckmarkIcon} />}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {/* Other future left action buttons can go here */}
+            {/* Removed Wand2 placeholder, Settings was replaced by model selector */}
+          </div>
+          <div className={styles.actionBarRight}>
+            <button type="button" className={styles.actionButton} title="Attach file (Coming Soon)">
+              <Paperclip size={16} />
+            </button>
+            <button 
+              type="submit"
+              className={`${styles.sendButton} ${styles.actionBarSendButton}`} 
+              disabled={!currentInput.trim() || isLoading}
+            >
+              {isLoading ? 'Sending...' : <Send size={16} />}
+            </button>
+          </div>
+        </div>
       </form>
+
     </div>
   );
 };
