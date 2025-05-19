@@ -37,16 +37,15 @@ interface PanelWidthsType {
 // MainLayout.tsx
 // ... (所有 import 语句) ...
 
-// Helper function to find a path between two nodes using BFS
+// Helper function to find a path between two nodes using BFS (ENSURE THIS IS RETAINED)
 const findPathBetweenNodes = (
   sourceId: string,
   targetId: string,
-  nodes: DagNode[], // 注意：这里用 DagNode[]，因为我们操作的是应用状态里的节点
-  edges: DagEdge[]  // 注意：这里用 DagEdge[]
+  nodes: DagNode[],
+  edges: DagEdge[]
 ): { pathNodes: string[]; pathEdges: string[] } | null => {
   const adj: Map<string, { neighbor: string; edgeId: string }[]> = new Map();
   edges.forEach(edge => {
-    // Ensure nodes for edge exist and are not deleted before adding to adjacency list
     const sourceNode = nodes.find(n => n.id === edge.source);
     const targetNode = nodes.find(n => n.id === edge.target);
     if (sourceNode && !sourceNode.data.isDeleted && targetNode && !targetNode.data.isDeleted) {
@@ -60,16 +59,14 @@ const findPathBetweenNodes = (
 
   while (queue.length > 0) {
     const { nodeId, path, currentEdges } = queue.shift()!;
-
     if (nodeId === targetId) {
       return { pathNodes: path, pathEdges: currentEdges };
     }
-
     const neighbors = adj.get(nodeId) || [];
     for (const { neighbor, edgeId } of neighbors) {
       if (!visited.has(neighbor)) {
         const neighborNode = nodes.find(n => n.id === neighbor);
-        if (neighborNode && !neighborNode.data.isDeleted) { // Check if neighbor is not deleted
+        if (neighborNode && !neighborNode.data.isDeleted) {
             visited.add(neighbor);
             queue.push({
               nodeId: neighbor,
@@ -80,9 +77,80 @@ const findPathBetweenNodes = (
       }
     }
   }
-  return null; // Path not found
+  return null;
 };
 
+// --- ADD COMPARISON FUNCTIONS HERE ---
+const compareNodeData = (dataA: DagNodeRfData, dataB: DagNodeRfData): boolean => {
+  // Compare critical fields that affect rendering or logic
+  return (
+    dataA.label === dataB.label &&
+    dataA.fullLatexContent === dataB.fullLatexContent &&
+    dataA.verificationStatus === dataB.verificationStatus &&
+    dataA.stepNumber === dataB.stepNumber &&
+    (dataA.isDeleted || false) === (dataB.isDeleted || false) && // Normalize undefined to false
+    dataA.notes === dataB.notes &&
+    dataA.highlightColor === dataB.highlightColor &&
+    (dataA.isOnNewPath || false) === (dataB.isOnNewPath || false) &&
+    dataA.interpretationIdea === dataB.interpretationIdea
+    // Add other data fields if they are important for equality
+  );
+};
+
+const areNodesEqual = (nodesA: DagNode[], nodesB: DagNode[]): boolean => {
+  if (nodesA.length !== nodesB.length) return false;
+  for (let i = 0; i < nodesA.length; i++) {
+    const nodeA = nodesA[i];
+    const nodeB = nodesB.find(n => n.id === nodeA.id); // Find by ID for robustness against order changes
+    if (!nodeB) return false; // Node with same ID not found
+    if (
+      nodeA.id !== nodeB.id ||
+      nodeA.type !== nodeB.type ||
+      nodeA.position.x !== nodeB.position.x ||
+      nodeA.position.y !== nodeB.position.y ||
+      !compareNodeData(nodeA.data, nodeB.data)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const compareEdgeData = (dataA: any, dataB: any): boolean => {
+  if (!dataA && !dataB) return true; // Both undefined or null
+  if (!dataA || !dataB) return false; // One is undefined/null, other is not
+  return (
+    (dataA.isOnNewPath || false) === (dataB.isOnNewPath || false) &&
+    (dataA.isDeleted || false) === (dataB.isDeleted || false)
+    // Add other data fields if important
+  );
+};
+
+const areEdgesEqual = (edgesA: DagEdge[], edgesB: DagEdge[]): boolean => {
+  if (edgesA.length !== edgesB.length) return false;
+  for (let i = 0; i < edgesA.length; i++) {
+    const edgeA = edgesA[i];
+    const edgeB = edgesB.find(e => e.id === edgeA.id); // Find by ID
+    if (!edgeB) return false;
+    if (
+      edgeA.id !== edgeB.id ||
+      edgeA.source !== edgeB.source ||
+      edgeA.target !== edgeB.target ||
+      edgeA.type !== edgeB.type ||
+      // Deep compare markerEnd if it can change meaningfully
+      // For now, assuming MarkerType.ArrowClosed is constant or structure is simple
+      (edgeA.markerEnd?.type !== edgeB.markerEnd?.type) || 
+      // Deep compare style if necessary, for now assuming simple structure or reference stability if unchanged
+      (JSON.stringify(edgeA.style) !== JSON.stringify(edgeB.style)) || 
+      (edgeA.animated || false) === (edgeB.animated || false) || 
+      !compareEdgeData(edgeA.data, edgeB.data)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+// --- END COMPARISON FUNCTIONS ---
 
 const LOCAL_STORAGE_PREFIX = 'aiMath_layoutPrefs_';
 
@@ -250,19 +318,42 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     const generateDagData = () => {
-      // console.log("Attempting to generate DAG data. solutionSteps:", JSON.parse(JSON.stringify(solutionSteps)));
-
-      // Filter out hard-deleted steps for DAG generation if any (though current logic is soft delete)
-      // const activeSteps = solutionSteps.filter(step => !step.isHardDeleted); // Example if using a different flag
+      console.log('[MainLayout] generateDagData called. solutionSteps:', JSON.parse(JSON.stringify(solutionSteps))); // DEBUG LINE
+      console.log('[MainLayout] Current dagNodes:', JSON.parse(JSON.stringify(dagNodes))); // DEBUG LINE
+      console.log('[MainLayout] Current dagEdges:', JSON.parse(JSON.stringify(dagEdges))); // DEBUG LINE
 
       if (!solutionSteps || solutionSteps.length === 0) {
-        // console.log("No solution steps, clearing DAG.");
+        console.log('[MainLayout] No solution steps, clearing DAG.'); // DEBUG LINE
         setDagNodes([]);
         setDagEdges([]);
         return;
       }
 
+      let visibleNodeIndex = 0;
+      const parkedNodeXPosition = 30; // X-coordinate for 'parked' (deleted) nodes
+      const activeNodeXPosition = 200; // X-coordinate for active (non-deleted) nodes
+      const verticalSpacing = 120;   // Vertical spacing between nodes
+      const baseOffsetY = 50;        // Base Y-offset for the first node
+
       const newNodes: DagNode[] = solutionSteps.map((step, index) => {
+        let xPos, yPos;
+
+        if (step.isDeleted) {
+          xPos = parkedNodeXPosition;
+          // Deleted nodes can maintain a Y position relative to their original sequence order,
+          // but are shifted to the 'parked' X position.
+          // Or, you could assign them a yPos based on a separate counter for deleted items if preferred.
+          // For simplicity here, using original index for Y helps maintain some vertical order sense.
+          yPos = index * verticalSpacing + baseOffsetY; 
+        } else {
+          xPos = activeNodeXPosition;
+          yPos = visibleNodeIndex * verticalSpacing + baseOffsetY;
+          visibleNodeIndex++; // Increment index only for visible (non-deleted) nodes
+        }
+
+        // Try to find existing node data to preserve highlightColor and isOnNewPath if they exist
+        const existingNode = dagNodes.find(n => n.id === step.id);
+
         return {
           id: step.id,
           type: 'customStepNode',
@@ -271,53 +362,73 @@ const MainLayout: React.FC = () => {
             fullLatexContent: step.latexContent,
             verificationStatus: step.verificationStatus,
             stepNumber: step.stepNumber,
-            isDeleted: step.isDeleted || false, // Pass the isDeleted status
+            isDeleted: step.isDeleted || false,
             notes: step.notes,
-            highlightColor: dagNodes.find(n => n.id === step.id)?.data.highlightColor,
-            isOnNewPath: dagNodes.find(n => n.id === step.id)?.data.isOnNewPath || false,
+            highlightColor: existingNode?.data.highlightColor, // Preserve from existing if available
+            isOnNewPath: existingNode?.data.isOnNewPath || false, // Preserve from existing if available
+            // interpretationIdea: existingNode?.data.interpretationIdea, // Preserve if exists
           },
-          // Adjust position for deleted nodes? For now, keep them in sequence.
-          position: { x: 150, y: index * 120 + 50 }, 
+          position: { x: xPos, y: yPos },
         };
       });
 
+      // --- REPLACE THE ENTIRE OLD EDGE GENERATION LOGIC FROM HERE ---
+      const visibleSteps = solutionSteps.filter(s => !s.isDeleted);
       const newEdges: DagEdge[] = [];
-      if (solutionSteps.length > 1) {
-        for (let i = 1; i < solutionSteps.length; i++) {
-          // Only create edges between non-deleted steps
-          // In generateDagData, inside the loop for newEdges
-          if (!solutionSteps[i - 1].isDeleted && !solutionSteps[i].isDeleted) {
-            const edgeId = `e-${solutionSteps[i - 1].id}-${solutionSteps[i].id}`;
-            const existingEdge = dagEdges.find(e => e.id === edgeId);
+
+      if (visibleSteps.length > 1) {
+        for (let i = 1; i < visibleSteps.length; i++) {
+          const sourceStep = visibleSteps[i - 1];
+          const targetStep = visibleSteps[i];
+          
+          if (sourceStep && targetStep) { // Ensure steps are valid
+            const edgeId = `e-${sourceStep.id}-${targetStep.id}`;
+            
+            // Find existing edge by source and target to preserve its properties if it still connects the same nodes.
+            // The useEffect dependency on dagEdges ensures we have the latest dagEdges here.
+            const existingEdge = dagEdges.find(e => e.source === sourceStep.id && e.target === targetStep.id);
+
             newEdges.push({
-              id: edgeId,
-              source: solutionSteps[i - 1].id,
-              target: solutionSteps[i].id,
-              type: 'smoothstep',
+              id: edgeId, 
+              source: sourceStep.id,
+              target: targetStep.id,
+              type: 'smoothstep', 
               markerEnd: { type: MarkerType.ArrowClosed },
               data: {
                 isOnNewPath: existingEdge?.data?.isOnNewPath || false,
-                isDeleted: false, // Assuming new edges are not created for deleted steps paths
+                isDeleted: false, 
               },
-              // Preserve existing style if any, otherwise default. Animation determined by isOnNewPath or other logic.
-              style: existingEdge?.style || { stroke: undefined }, // Default stroke or preserved
-              animated: existingEdge?.data?.isOnNewPath ? true : !(existingEdge?.data?.isDeleted), // Animate if on new path or default active
+              style: existingEdge?.style || { stroke: undefined }, 
+              animated: existingEdge?.data?.isOnNewPath || false, 
             });
           }
-// ...
         }
       }
+      // --- UNTIL HERE --- (The lines for setDagNodes and setDagEdges remain after this block)
       
-      // console.log("Generated New DAG Nodes:", JSON.parse(JSON.stringify(newNodes)));
-      // console.log("Generated New DAG Edges:", JSON.parse(JSON.stringify(newEdges)));
+      console.log('[MainLayout] Generated newNodes:', JSON.parse(JSON.stringify(newNodes))); // DEBUG LINE
+      console.log('[MainLayout] Generated newEdges:', JSON.parse(JSON.stringify(newEdges))); // DEBUG LINE
 
-      setDagNodes(newNodes);
-      setDagEdges(newEdges);
+      // --- MODIFICATION START: Conditional state updates ---
+      if (!areNodesEqual(dagNodes, newNodes)) {
+        console.log('[MainLayout] Updating dagNodes because they are different.'); // DEBUG LINE
+        setDagNodes(newNodes);
+      } else {
+        console.log('[MainLayout] Skipping dagNodes update, no change.'); // DEBUG LINE
+      }
+
+      if (!areEdgesEqual(dagEdges, newEdges)) {
+        console.log('[MainLayout] Updating dagEdges because they are different.'); // DEBUG LINE
+        setDagEdges(newEdges);
+      } else {
+        console.log('[MainLayout] Skipping dagEdges update, no change.'); // DEBUG LINE
+      }
+      // --- MODIFICATION END: Conditional state updates ---
     };
 
     generateDagData();
 
-  }, [solutionSteps]);
+  }, [solutionSteps, dagNodes, dagEdges]);
 
   useEffect(() => {
     setProblemData({
@@ -1275,6 +1386,10 @@ ${fullLatex}
     });
     // Placeholder for actual message sending logic
   }, []);
+
+  // DEBUG: Log state right before rendering DagVisualizationArea
+  console.log('[MainLayout Render] dagNodes to pass:', JSON.parse(JSON.stringify(dagNodes)));
+  console.log('[MainLayout Render] dagEdges to pass:', JSON.parse(JSON.stringify(dagEdges)));
 
   return (
     <main className={styles.mainLayoutContainer} ref={mainLayoutRef}>

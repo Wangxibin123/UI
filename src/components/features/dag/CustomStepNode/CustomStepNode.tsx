@@ -67,9 +67,7 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
   //   nodeStyle.backgroundColor = '#f0f0f0'; // A default background
   // }
 
-  const isActuallyDeleted = data.isDeleted && 
-                          !(data.verificationStatus === VerificationStatus.VerifiedCorrect || 
-                            data.verificationStatus === VerificationStatus.VerifiedIncorrect);
+  const isActuallyDeleted = !!data.isDeleted;
 
   const hasNotes = data.notes && data.notes.trim() !== '';
 
@@ -79,7 +77,7 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
         styles.customNode,
         statusClassName,
         { 
-          [styles.deletedNode]: !!isActuallyDeleted,
+          [styles.deletedNode]: isActuallyDeleted,
           [styles.selected]: !!selected,            
           [styles.inferenceNode]: !!data.isDerived,
           [styles.onNewPath]: !!data.isOnNewPath,
