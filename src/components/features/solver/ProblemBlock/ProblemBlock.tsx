@@ -71,8 +71,17 @@ const ProblemBlock: React.FC<ProblemBlockProps> = ({ data, onContentChange }) =>
           />
         ) : (
           <div className={styles.latexDisplay}>
-            {/* Add $$ if not present for react-latex-next default delimiters */}
-            <Latex>{`$$${data.latexContent.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
+            <Latex
+              delimiters={[
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+              ]}
+              strict={false}
+            >
+              {data.latexContent}
+            </Latex>
           </div>
         )}
       </div>

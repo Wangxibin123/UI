@@ -7,6 +7,7 @@ interface RightSidePanelProps {
   currentMode: CopilotMode;
   onModeChange: (mode: CopilotMode) => void;
   className?: string;
+  isChatActive?: boolean;
 }
 
 const modeDetails: Record<CopilotMode, { Icon: React.ElementType, title: string, description: string }> = {
@@ -19,6 +20,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({
   currentMode,
   onModeChange,
   className,
+  isChatActive,
 }) => {
   return (
     <div className={`${styles.rightSidePanelContainer} ${className || ''}`}>
@@ -38,28 +40,32 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({
         })}
       </div>
       
-      <div className={styles.modeFunctionPanelsContainer}>
-        {(Object.keys(modeDetails) as CopilotMode[]).map((modeKey) => {
-          const { Icon, title, description } = modeDetails[modeKey];
-          return (
-            <div 
-              key={`${modeKey}-panel`}
-              className={`${styles.modeFunctionPanelItem} ${currentMode === modeKey ? styles.activeModeFunctionPanel : ''}`}
-              onClick={() => onModeChange(modeKey)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onModeChange(modeKey); }}
-            >
-              <div className={styles.modePanelHeader}>
-                <Icon size={22} className={styles.modePanelIcon} />
-                <h4 className={styles.modePanelTitle}>{title}</h4>
+      {/* --- MODIFICATION START: Conditional Rendering --- */}
+      {!isChatActive && (
+        <div className={styles.modeFunctionPanelsContainer}>
+          {(Object.keys(modeDetails) as CopilotMode[]).map((modeKey) => {
+            const { Icon, title, description } = modeDetails[modeKey];
+            return (
+              <div 
+                key={`${modeKey}-panel`}
+                className={`${styles.modeFunctionPanelItem} ${currentMode === modeKey ? styles.activeModeFunctionPanel : ''}`}
+                onClick={() => onModeChange(modeKey)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onModeChange(modeKey); }}
+              >
+                <div className={styles.modePanelHeader}>
+                  <Icon size={22} className={styles.modePanelIcon} />
+                  <h4 className={styles.modePanelTitle}>{title}</h4>
+                </div>
+                <p className={styles.modePanelDescription}>{description}</p>
+                {/* Future: Add mode-specific content or controls here */}
               </div>
-              <p className={styles.modePanelDescription}>{description}</p>
-              {/* Future: Add mode-specific content or controls here */}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
+      {/* --- MODIFICATION END: Conditional Rendering --- */}
     </div>
   );
 };

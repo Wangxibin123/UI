@@ -30,6 +30,7 @@ export interface AICopilotPanelProps {
   onModeChange: (mode: CopilotMode) => void;
   title?: string;
   className?: string;
+  onChatStateChange?: (isActive: boolean) => void;
 }
 
 // Define mode type and display names
@@ -71,6 +72,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   onModeChange,
   title = "AI Copilot",
   className,
+  onChatStateChange,
 }) => {
   console.log('Received dagNodes:', dagNodes); // <--- 添加这行来调试
   const [messages, setMessages] = useState<Message[]>([]);
@@ -291,10 +293,11 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     if (messagesContainerRef.current) {
       const { scrollHeight, clientHeight } = messagesContainerRef.current;
       messagesContainerRef.current.scrollTop = scrollHeight - clientHeight;
-      // For a more instant scroll, you can also use:
-      // messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
-  }, [messages]); // Dependency is messages array
+    if (onChatStateChange) {
+      onChatStateChange(messages.length > 0);
+    }
+  }, [messages, onChatStateChange]); // ADDED: onChatStateChange to dependency array
 
   // --- 4. useEffect to update input when contextNodeInfo changes ---
   useEffect(() => {
@@ -421,6 +424,8 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     <div className={`${styles.aiCopilotPanel} ${className || ''} ${isOpen || !onToggle ? styles.open : styles.closed}`}>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>{title}</span>
+        
+        {/* Mode Selector - remains as is */}
         <div className={styles.mainModeSelectorWrapper} ref={modeDropdownRef}>
           <button onClick={() => setShowModeDropdown(!showModeDropdown)} className={styles.mainModeButton}>
             {React.createElement(modeIcons[currentMode], { size: 16, className: styles.currentModeIcon })}
@@ -443,9 +448,25 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
             </ul>
           )}
         </div>
-        <button onClick={onToggle} className={styles.toggleButton}>
-          {isOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-        </button>
+
+        {/* NEW: Container for header action buttons (clear and toggle) */}
+        <div className={styles.headerActionButtons}> 
+          <button
+            type="button"
+            onClick={handleClearMessages} // Use existing handler
+            className={`${styles.iconButton} ${styles.clearChatButton}`} // Apply general and specific styles
+            title="清空聊天记录"
+          >
+            <Trash2 size={18} /> {/* Adjust size as needed */}
+          </button>
+          
+          {/* Existing Toggle Button - moved inside the new container */}
+          {onToggle && ( // Conditionally render toggle button only if onToggle is provided
+            <button onClick={onToggle} className={`${styles.iconButton} ${styles.toggleButton}`} title={isOpen ? "折叠面板" : "展开面板"}>
+              {isOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+            </button>
+          )}
+        </div>
       </div>
       {/* --- Move context display text here --- */}
       {contextNodeInfo && (contextNodeInfo.label || contextNodeInfo.id) && (

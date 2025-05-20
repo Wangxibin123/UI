@@ -81,8 +81,12 @@
 .contentArea {
   flex-grow: 1;
   display: flex;
-  align-items: center; /* Vertically center LaTeX content */
+  align-items: center; /* Vertically center LaTeX content, consider flex-start if vertical overflow becomes an issue */
   word-break: break-all; /* Prevent long LaTeX strings from breaking layout */
+  overflow-x: auto; /* Allow horizontal scrolling for wide content */
+  max-width: 100%; /* Ensure it doesn't push parent boundaries */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  padding: 5px; /* Add some padding around the content */
 }
 
 .latexEditor {

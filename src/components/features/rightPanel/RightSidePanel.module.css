@@ -1,7 +1,6 @@
 .rightSidePanelContainer {
   display: flex;
   flex-direction: column;
-  height: 100%;
   background-color: #f4f6f8; /* Light background for the panel */
   padding: 10px;
   box-sizing: border-box;

@@ -3,6 +3,7 @@
   display: flex;
   height: 100vh;
   overflow: hidden; /* Prevent scrollbars on the main container */
+  transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
 }
 
 .dagRegion {
@@ -26,26 +27,38 @@
 }
 
 .solverRegion {
+  overflow-y: auto; /* ENSURE this is present for unified scrolling */
   /* flex-basis is now controlled by inline style */
-  /* flex-grow will not be used, flex-basis determines size */
   flex-shrink: 0;
   background-color: #ffffff;
   height: 100%;
   /* border-left and border-right will be implicitly handled by separators */
   display: flex; /* Add flex display */
   flex-direction: column; /* Stack ProblemBlock, StepsContainer, SolverActions vertically */
-  overflow: hidden; /* Let internal containers like solutionStepsContainer handle scroll */
   border-right: 1px solid #e0e0e0; /* If AI panel is also present */
   /* padding: 10px; */ /* Padding can be added to inner content wrappers if needed */
   transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
 }
 
 .solutionStepsContainer {
-  flex-grow: 1;
-  overflow-y: auto; /* Ensure this can scroll */
-  padding: 15px;
-  background-color: #fff; /* White background for clarity */
-  border-bottom: 1px solid #eee; /* Separator from SolverActions */
+  box-sizing: border-box; /* Ensure padding and border are included in height calculation */
+  flex: 1 1 auto; 
+  width: 100%; 
+  padding: 15px; /* RESTORED padding */
+  background-color: #fff; /* RESTORED original background or a suitable one */
+  border-bottom: 1px solid #eee; /* RESTORED original border or a suitable one */
+  flex-shrink: 0; /* ADDED: Prevent over-shrinking */
+}
+
+/* Styles for the new wrapper around ProblemBlock */
+.problemBlockWrapper {
+  flex: 0 0 auto; 
+}
+
+/* Styles for the new wrapper around SolverActions */
+.solverActionsWrapper {
+  flex: 0 0 auto; 
+  /* Add padding or margin if needed for spacing */
 }
 
 .draggableSeparatorHorizontal {
@@ -115,4 +128,33 @@
   display: flex; /* Ensure RightSidePanel itself is a flex container */
   flex-direction: column; /* RightSidePanel is internally a column flex */
   overflow-y: auto; /* Allow vertical scrolling for RightSidePanel content */
+}
+
+/* New styles for the Zusatz (additional) content area */
+.solverZusatzContentContainer {
+  padding: 10px 15px; 
+  border-top: 1px solid #e0e0e0; 
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px; 
+  /* flex-shrink: 0; Optional: if it should not shrink */
+}
+
+.similarProblemsSection,
+.aiHintsSection,
+.summarySection {
+  background-color: #f9f9f9; 
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.similarProblemsSection h4,
+.aiHintsSection h4,
+.summarySection h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1em;
+  font-weight: 600;
 }

@@ -7,7 +7,6 @@
   border-top: 1px solid #e0e0e0;
   /* height: 60px; Fixed height, or remove for dynamic height based on content */
   box-sizing: border-box;
-  margin-top: auto; /* Pushes to the bottom if solverRegion is flex column */
 }
 
 .inputArea {

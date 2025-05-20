@@ -39,33 +39,51 @@
   color: #333;
 }
 
-.headerActions {
+/* NEW STYLES FOR HEADER ACTION BUTTONS CONTAINER */
+.headerActionButtons {
   display: flex;
   align-items: center;
-  gap: 8px; /* Space between action buttons */
+  gap: 8px; /* Spacing between buttons, adjust as needed */
+  margin-left: auto; /* Pushes the button group to the right within .panelHeader */
 }
+
+/* Ensure .headerActions is either removed or updated if it was the old name for .headerActionButtons */
+/* For now, assuming .headerActions might be deprecated or for a different purpose. */
+/* If .headerActions was indeed the old wrapper, this new .headerActionButtons should replace its usage in JSX. */
 
 .iconButton {
   background: none;
   border: none;
-  padding: 4px;
+  padding: 6px; /* Adjusted padding for better click area */
   cursor: pointer;
-  color: #555;
+  color: #555; /* Base color for icons */
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease; /* Smooth transition for hover */
 }
 
 .iconButton:hover {
-  background-color: #e9e9e9;
-  color: #222;
+  background-color: #e0e0e0; /* Slightly darker/more visible hover background */
+  color: #111; /* Darker icon color on hover */
 }
 
 .clearButton {
   /* Specific styles for clear button if needed, e.g., color */
+  /* This class is kept for potential future specific styling not covered by :hover svg */
 }
-/* .clearButton:hover {} */ /* Removed empty rule set */
+
+.clearChatButton:hover svg { /* Targeting the SVG inside .clearChatButton for color change */
+  color: red !important; /* Important to ensure override if icon color is set elsewhere */
+}
+
+/* Optional: subtle background for the clear button itself on hover */
+/*
+.clearChatButton:hover {
+  background-color: rgba(255, 0, 0, 0.05);
+}
+*/
 
 .contextDisplay {
   padding: 8px 10px;

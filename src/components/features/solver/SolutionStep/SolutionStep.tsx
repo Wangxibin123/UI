@@ -169,7 +169,17 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
               />
             )
           ) : (
-            <Latex>{`$$${step.latexContent.replace(/^(\$\$)+|(\$?\$)+$/g, '')}$$`}</Latex>
+            <Latex
+              delimiters={[
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+              ]}
+              strict={false}
+            >
+              {step.latexContent}
+            </Latex>
           )}
         </div>
       </div>
