@@ -16,6 +16,8 @@ import {
   VerificationStatus,
   LayoutMode,
   DagNodeRfData,
+  ForwardDerivationStatus,
+  FocusAnalysisType,
 } from '../../../types';
 import { MarkerType, ReactFlowProvider } from '@reactflow/core';
 import ConfirmationDialog from '../../common/ConfirmationDialog/ConfirmationDialog';
@@ -77,6 +79,82 @@ const findPathBetweenNodes = (
   }
   return null;
 };
+
+// --- C3: Pathfinding utilities for Focus Analysis ---
+const findForwardPath = (
+  startNodeId: string,
+  nodes: DagNode[],
+  edges: DagEdge[]
+): { pathNodes: string[]; pathEdges: string[] } => {
+  const pathNodesSet: Set<string> = new Set();
+  const pathEdgesSet: Set<string> = new Set();
+  const queue: string[] = [];
+  const visitedNodes: Set<string> = new Set();
+
+  const startNode = nodes.find(n => n.id === startNodeId);
+  if (startNode && !startNode.data.isDeleted) {
+    queue.push(startNodeId);
+    visitedNodes.add(startNodeId);
+    pathNodesSet.add(startNodeId);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const currentId = queue[head++];
+    edges.forEach(edge => {
+      if (edge.source === currentId) {
+        const targetNode = nodes.find(n => n.id === edge.target);
+        if (targetNode && !targetNode.data.isDeleted) {
+          pathEdgesSet.add(edge.id);
+          if (!visitedNodes.has(edge.target)) {
+            visitedNodes.add(edge.target);
+            pathNodesSet.add(edge.target);
+            queue.push(edge.target);
+          }
+        }
+      }
+    });
+  }
+  return { pathNodes: Array.from(pathNodesSet), pathEdges: Array.from(pathEdgesSet) };
+};
+
+const findBackwardPath = (
+  endNodeId: string,
+  nodes: DagNode[],
+  edges: DagEdge[]
+): { pathNodes: string[]; pathEdges: string[] } => {
+  const pathNodesSet: Set<string> = new Set();
+  const pathEdgesSet: Set<string> = new Set();
+  const queue: string[] = [];
+  const visitedNodes: Set<string> = new Set();
+
+  const endNode = nodes.find(n => n.id === endNodeId);
+  if (endNode && !endNode.data.isDeleted) {
+    queue.push(endNodeId);
+    visitedNodes.add(endNodeId);
+    pathNodesSet.add(endNodeId);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const currentId = queue[head++];
+    edges.forEach(edge => {
+      if (edge.target === currentId) {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        if (sourceNode && !sourceNode.data.isDeleted) {
+          pathEdgesSet.add(edge.id);
+          if (!visitedNodes.has(edge.source)) {
+            visitedNodes.add(edge.source);
+            pathNodesSet.add(edge.source);
+            queue.push(edge.source);
+          }
+        }
+      }
+    });
+  }
+  return { pathNodes: Array.from(pathNodesSet), pathEdges: Array.from(pathEdgesSet) };
+};
+// --- End C3 ---
 
 // --- ADD COMPARISON FUNCTIONS HERE ---
 const compareNodeData = (dataA: DagNodeRfData, dataB: DagNodeRfData): boolean => {
@@ -171,9 +249,9 @@ function loadUserPreferenceForMode(mode: LayoutMode): PanelWidthsType | null {
 }
 
 const initialSolutionStepsData: SolutionStepData[] = [
-  { id: 'step-1', stepNumber: 1, latexContent: "$$\\lambda^2 + 4\\lambda + 4 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect },
-  { id: 'step-2', stepNumber: 2, latexContent: "$$(\\lambda + 2)^2 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect },
-  { id: 'step-3', stepNumber: 3, latexContent: "$$\\lambda = -2 \\text{ (重根)}$$", verificationStatus: VerificationStatus.NotVerified },
+  { id: 'step-1', stepNumber: 1, latexContent: "$$\\lambda^2 + 4\\lambda + 4 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+  { id: 'step-2', stepNumber: 2, latexContent: "$$(\\lambda + 2)^2 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+  { id: 'step-3', stepNumber: 3, latexContent: "$$\\lambda = -2 \\text{ (重根)}$$", verificationStatus: VerificationStatus.NotVerified, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
 ];
 
 const MIN_PANEL_PERCENTAGE = 10; // Minimum width for any panel in percentage
@@ -202,7 +280,12 @@ const MainLayout: React.FC = () => {
   // ... ENSURE ALL OTHER HOOKS (useState, useEffect, useCallback, useMemo, useRef) ARE WITHIN THIS MainLayout SCOPE ...
 
   const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
-    return initialSolutionStepsData.map(step => ({ ...step, isDeleted: step.isDeleted || false }));
+    return initialSolutionStepsData.map(step => ({ 
+      ...step, 
+      isDeleted: step.isDeleted || false,
+      forwardDerivationStatus: step.forwardDerivationStatus || ForwardDerivationStatus.Undetermined, // Ensure it has a default
+      backwardDerivationStatus: step.backwardDerivationStatus || ForwardDerivationStatus.Undetermined // Ensure it has a default for backward
+    }));
   });
   const [dagNodes, setDagNodes] = useState<DagNode[]>([]);
   const [dagEdges, setDagEdges] = useState<DagEdge[]>([]);
@@ -261,6 +344,111 @@ const MainLayout: React.FC = () => {
   const [copilotContextNodeInfo, setCopilotContextNodeInfo] = useState<CopilotContextNodeInfo | null>(null);
   const [copilotCurrentMode, setCopilotCurrentMode] = useState<CopilotMode>('analysis');
 
+  const [currentFocusAnalysisNodeId, setCurrentFocusAnalysisNodeId] = useState<string | null>(null);
+  const [currentFocusAnalysisType, setCurrentFocusAnalysisType] = useState<FocusAnalysisType>(null);
+  // --- End C2 ---
+
+  // --- C4: Core handlers for Focus Analysis ---
+  const handleInitiateFocusAnalysis = useCallback((nodeId: string, type: FocusAnalysisType) => {
+    if (!type) return; // Should not happen if called correctly
+
+    // Clear previous focus highlights first
+    const clearedNodes = dagNodes.map(n => ({
+      ...n,
+      data: { ...n.data, isFocusPath: false, isFocusSource: false },
+    }));
+    const clearedEdges = dagEdges.map(e => ({
+      ...e,
+      data: { ...e.data, isFocusPath: false },
+      animated: e.data?.isOnNewPath || false, // Keep new path animation, remove focus animation
+      style: { ...e.style, stroke: e.data?.isOnNewPath ? '#2ecc71' : undefined }, // Reset stroke unless on new path
+    }));
+
+    let focusNodesIds: string[] = [];
+    let focusEdgesIds: string[] = [];
+
+    if (type === 'forward') {
+      const { pathNodes, pathEdges } = findForwardPath(nodeId, clearedNodes, clearedEdges);
+      focusNodesIds = pathNodes;
+      focusEdgesIds = pathEdges;
+    } else if (type === 'backward') {
+      const { pathNodes, pathEdges } = findBackwardPath(nodeId, clearedNodes, clearedEdges);
+      focusNodesIds = pathNodes;
+      focusEdgesIds = pathEdges;
+    } else if (type === 'full') {
+      const forward = findForwardPath(nodeId, clearedNodes, clearedEdges);
+      const backward = findBackwardPath(nodeId, clearedNodes, clearedEdges);
+      focusNodesIds = Array.from(new Set([...forward.pathNodes, ...backward.pathNodes]));
+      focusEdgesIds = Array.from(new Set([...forward.pathEdges, ...backward.pathEdges]));
+    }
+
+    if (focusNodesIds.length === 0 && type !== null) {
+        toast.info(`节点 ${nodeId} 未找到 ${type === 'forward' ? '向前' : type === 'backward' ? '向后' : '相关'} 路径。`);
+        setCurrentFocusAnalysisNodeId(nodeId); // Still set source for context
+        setCurrentFocusAnalysisType(type);
+        setDagNodes(clearedNodes.map(n => n.id === nodeId ? {...n, data: {...n.data, isFocusSource: true}} : n));
+        setDagEdges(clearedEdges);
+        return;
+    }
+
+    setDagNodes(
+      clearedNodes.map(n => {
+        const isSource = n.id === nodeId;
+        const isOnPath = focusNodesIds.includes(n.id);
+        if (isSource || isOnPath) {
+          return {
+            ...n,
+            data: { ...n.data, isFocusPath: isOnPath, isFocusSource: isSource },
+          };
+        }
+        return n;
+      })
+    );
+
+    setDagEdges(
+      clearedEdges.map(e => {
+        if (focusEdgesIds.includes(e.id)) {
+          return {
+            ...e,
+            data: { ...e.data, isFocusPath: true },
+            animated: true, // Animate focused edges
+            style: { ...e.style, stroke: '#ff0072' }, // Example focus color
+          };
+        }
+        return e;
+      })
+    );
+
+    setCurrentFocusAnalysisNodeId(nodeId);
+    setCurrentFocusAnalysisType(type);
+    toast.success(`已聚焦分析节点 ${nodeId} 的 ${type} 路径。`);
+
+  }, [dagNodes, dagEdges]);
+
+  const handleCancelFocusAnalysis = useCallback(() => {
+    if (!currentFocusAnalysisNodeId) return; // No focus to cancel
+
+    setDagNodes(prevNodes =>
+      prevNodes.map(n => ({
+        ...n,
+        data: { ...n.data, isFocusPath: false, isFocusSource: false },
+      }))
+    );
+    setDagEdges(prevEdges =>
+      prevEdges.map(e => ({
+        ...e,
+        data: { ...e.data, isFocusPath: false },
+        animated: e.data?.isOnNewPath || false, // Keep new path animation
+        style: { ...e.style, stroke: e.data?.isOnNewPath ? '#2ecc71' : undefined }, // Reset stroke unless on new path
+      }))
+    );
+
+    toast.info(`已取消对节点 ${currentFocusAnalysisNodeId} 的聚焦分析。`);
+    setCurrentFocusAnalysisNodeId(null);
+    setCurrentFocusAnalysisType(null);
+  }, [currentFocusAnalysisNodeId]);
+  // --- End C4 ---
+
   const copilotDagNodes: CopilotDagNodeInfo[] = useMemo(() => {
     if (!dagNodes) return [];
     return dagNodes
@@ -316,12 +504,12 @@ const MainLayout: React.FC = () => {
   
   useEffect(() => {
     const generateDagData = () => {
-      console.log('[MainLayout] generateDagData called. solutionSteps:', JSON.parse(JSON.stringify(solutionSteps)));
-      console.log('[MainLayout] Current dagNodes:', JSON.parse(JSON.stringify(dagNodes)));
-      console.log('[MainLayout] Current dagEdges:', JSON.parse(JSON.stringify(dagEdges)));
+      // console.log('[MainLayout] generateDagData called. solutionSteps:', JSON.parse(JSON.stringify(solutionSteps)));
+      // console.log('[MainLayout] Current dagNodes:', JSON.parse(JSON.stringify(dagNodes)));
+      // console.log('[MainLayout] Current dagEdges:', JSON.parse(JSON.stringify(dagEdges)));
 
       if (!solutionSteps || solutionSteps.length === 0) {
-        console.log('[MainLayout] No solution steps, clearing DAG.');
+        // console.log('[MainLayout] No solution steps, clearing DAG.');
         setDagNodes([]);
         setDagEdges([]);
         return;
@@ -362,9 +550,11 @@ const MainLayout: React.FC = () => {
             stepNumber: step.stepNumber,
             isDeleted: step.isDeleted || false,
             notes: step.notes,
-            highlightColor: existingNode?.data.highlightColor, // Preserve from existing if available
-            isOnNewPath: existingNode?.data.isOnNewPath || false, // Preserve from existing if available
-            // interpretationIdea: existingNode?.data.interpretationIdea, // Preserve if exists
+            highlightColor: existingNode?.data.highlightColor,
+            isOnNewPath: existingNode?.data.isOnNewPath || false,
+            interpretationIdea: existingNode?.data.interpretationIdea,
+            forwardDerivationDisplayStatus: step.forwardDerivationStatus,
+            backwardDerivationDisplayStatus: step.backwardDerivationStatus,
           },
           position: { x: xPos, y: yPos },
         };
@@ -404,22 +594,22 @@ const MainLayout: React.FC = () => {
       }
       // --- UNTIL HERE --- (The lines for setDagNodes and setDagEdges remain after this block)
       
-      console.log('[MainLayout] Generated newNodes:', JSON.parse(JSON.stringify(newNodes))); // DEBUG LINE
-      console.log('[MainLayout] Generated newEdges:', JSON.parse(JSON.stringify(newEdges))); // DEBUG LINE
+      // console.log('[MainLayout] Generated newNodes:', JSON.parse(JSON.stringify(newNodes))); // DEBUG LINE
+      // console.log('[MainLayout] Generated newEdges:', JSON.parse(JSON.stringify(newEdges))); // DEBUG LINE
 
       // --- MODIFICATION START: Conditional state updates ---
       if (!areNodesEqual(dagNodes, newNodes)) {
-        console.log('[MainLayout] Updating dagNodes because they are different.'); // DEBUG LINE
+        // console.log('[MainLayout] Updating dagNodes because they are different.'); // DEBUG LINE
         setDagNodes(newNodes);
       } else {
-        console.log('[MainLayout] Skipping dagNodes update, no change.'); // DEBUG LINE
+        // console.log('[MainLayout] Skipping dagNodes update, no change.'); // DEBUG LINE
       }
 
       if (!areEdgesEqual(dagEdges, newEdges)) {
-        console.log('[MainLayout] Updating dagEdges because they are different.'); // DEBUG LINE
+        // console.log('[MainLayout] Updating dagEdges because they are different.'); // DEBUG LINE
         setDagEdges(newEdges);
       } else {
-        console.log('[MainLayout] Skipping dagEdges update, no change.'); // DEBUG LINE
+        // console.log('[MainLayout] Skipping dagEdges update, no change.'); // DEBUG LINE
       }
       // --- MODIFICATION END: Conditional state updates ---
     };
@@ -436,11 +626,15 @@ const MainLayout: React.FC = () => {
     });
 
     const initialStepsExample: SolutionStepData[] = [
-      { id: 'step-init-1', stepNumber: 1, latexContent: '$$\\lambda^2 + 5\\lambda + 6 = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false },
-      { id: 'step-init-2', stepNumber: 2, latexContent: '$$(\\lambda+2)(\\lambda+3) = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false },
-      { id: 'step-init-3', stepNumber: 3, latexContent: '$$\\lambda_1 = -2, \\lambda_2 = -3$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false },
+      { id: 'step-init-1', stepNumber: 1, latexContent: '$$\\lambda^2 + 5\\lambda + 6 = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+      { id: 'step-init-2', stepNumber: 2, latexContent: '$$(\\lambda+2)(\\lambda+3) = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+      { id: 'step-init-3', stepNumber: 3, latexContent: '$$\\lambda_1 = -2, \\lambda_2 = -3$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
     ];
-    setSolutionSteps(initialStepsExample);
+    setSolutionSteps(initialStepsExample.map(step => ({ // Ensure mapping includes new status on init
+      ...step,
+      forwardDerivationStatus: step.forwardDerivationStatus || ForwardDerivationStatus.Undetermined,
+      backwardDerivationStatus: step.backwardDerivationStatus || ForwardDerivationStatus.Undetermined
+    })));
   }, []);
 
   const handleAddSolutionStep = (latexInput: string) => {
@@ -451,16 +645,147 @@ const MainLayout: React.FC = () => {
       latexContent: latexInput,
       verificationStatus: VerificationStatus.NotVerified,
       isDeleted: false,
+      forwardDerivationStatus: ForwardDerivationStatus.Undetermined, // Add default status
+      backwardDerivationStatus: ForwardDerivationStatus.Undetermined, // Add default backward status
     };
     setSolutionSteps(prevSteps => [...prevSteps, newStep]);
   };
 
+  const timeoutRefs = useRef<{ [key: string]: NodeJS.Timeout }>({}); // Ref to store timeout IDs
+  const prevSolutionStepsForToastRef = useRef<SolutionStepData[]>(); // Dedicated ref for toast comparison
+
+  // useEffect for triggering toast notifications based on status changes
+  useEffect(() => {
+    const currentSteps = solutionSteps; // Capture current solutionSteps from the closure
+    const prevSteps = prevSolutionStepsForToastRef.current; // Get what was stored last time THIS effect ran
+
+    if (prevSteps) { // Only proceed if we have a previous state to compare against
+      // console.log('[ToastEffect] Checking for status changes. Prev count:', prevSteps.length, 'Curr count:', currentSteps.length);
+      
+      currentSteps.forEach((currentStep) => {
+        const prevStep = prevSteps.find(ps => ps.id === currentStep.id);
+        
+        if (!prevStep) {
+          // console.log(`[ToastEffect] No prevStep found for currentStep ID: ${currentStep.id} (likely new step)`); 
+          return;
+        }
+
+        // Check Forward Derivation: Pending -> Incorrect
+        if (prevStep.forwardDerivationStatus === ForwardDerivationStatus.Pending &&
+            currentStep.forwardDerivationStatus === ForwardDerivationStatus.Incorrect) {
+          // console.log(`[ToastEffect] Forward derivation INCORRECT for step ${currentStep.stepNumber} (ID: ${currentStep.id}). Prev: Pending, Curr: Incorrect. TRIGGERING TOAST.`); 
+          toast.error(`步骤 ${currentStep.stepNumber} 正向推导验证失败！`);
+        }
+
+        // Check Backward Derivation: Pending -> Incorrect
+        if (prevStep.backwardDerivationStatus === ForwardDerivationStatus.Pending &&
+            currentStep.backwardDerivationStatus === ForwardDerivationStatus.Incorrect) {
+          // console.log(`[ToastEffect] Backward derivation INCORRECT for step ${currentStep.stepNumber} (ID: ${currentStep.id}). Prev: Pending, Curr: Incorrect. TRIGGERING TOAST.`);
+          toast.error(`步骤 ${currentStep.stepNumber} 反向推导验证失败！`);
+        }
+      });
+    } else {
+      // console.log('[ToastEffect] Initial run or prevSteps was undefined, no comparison done.');
+    }
+
+    // After checking (or on initial run), update the ref to the current steps for the NEXT run of this effect.
+    prevSolutionStepsForToastRef.current = currentSteps; 
+
+  }, [solutionSteps]); // Still depends on solutionSteps to re-run when it changes
+
+  // Cleanup timeouts on component unmount
+  useEffect(() => {
+    return () => {
+      Object.values(timeoutRefs.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  const handleCheckForwardDerivation = useCallback((stepId: string) => {
+    setSolutionSteps(prevSteppz => {
+      const targetStep = prevSteppz.find(s => s.id === stepId);
+      if (targetStep && targetStep.forwardDerivationStatus === ForwardDerivationStatus.Pending) {
+        return prevSteppz;
+      }
+      const timeoutKey = `forward-${stepId}`;
+      if (timeoutRefs.current[timeoutKey]) {
+        clearTimeout(timeoutRefs.current[timeoutKey]);
+      }
+      return prevSteppz.map(step => {
+        if (step.id === stepId) {
+          const pendingStep = { ...step, forwardDerivationStatus: ForwardDerivationStatus.Pending };
+          timeoutRefs.current[timeoutKey] = setTimeout(() => {
+            setSolutionSteps(currentSteps => {
+              const updatedSteps = currentSteps.map(s => {
+                if (s.id === stepId) {
+                  const nextStatus = Math.random() < 0.7 ? ForwardDerivationStatus.Correct : ForwardDerivationStatus.Incorrect;
+                  const finalStepWithStatus = { ...s, forwardDerivationStatus: nextStatus };
+                  // Update DAG node data directly for immediate visual feedback
+                  setDagNodes(prevDagNodes => prevDagNodes.map(node => 
+                    node.id === stepId 
+                      ? { ...node, data: { ...node.data, forwardDerivationDisplayStatus: nextStatus } } 
+                      : node
+                  ));
+                  return finalStepWithStatus;
+                }
+                return s;
+              });
+              delete timeoutRefs.current[timeoutKey];
+              return updatedSteps;
+            });
+          }, 1500);
+          return pendingStep;
+        }
+        return step;
+      });
+    });
+  }, [setDagNodes]); // Ensure setDagNodes is in dependencies
+
+  const handleCheckBackwardDerivation = useCallback((stepId: string) => {
+    setSolutionSteps(prevSteppz => {
+      const targetStep = prevSteppz.find(s => s.id === stepId);
+      if (targetStep && targetStep.backwardDerivationStatus === ForwardDerivationStatus.Pending) {
+        return prevSteppz;
+      }
+      const timeoutKey = `backward-${stepId}`;
+      if (timeoutRefs.current[timeoutKey]) {
+        clearTimeout(timeoutRefs.current[timeoutKey]);
+      }
+      return prevSteppz.map(step => {
+        if (step.id === stepId) {
+          const pendingStep = { ...step, backwardDerivationStatus: ForwardDerivationStatus.Pending };
+          timeoutRefs.current[timeoutKey] = setTimeout(() => {
+            setSolutionSteps(currentSteps => {
+              const updatedSteps = currentSteps.map(s => {
+                if (s.id === stepId) {
+                  const nextStatus = Math.random() < 0.7 ? ForwardDerivationStatus.Correct : ForwardDerivationStatus.Incorrect;
+                  const finalStepWithStatus = { ...s, backwardDerivationStatus: nextStatus };
+                  // Update DAG node data directly for immediate visual feedback
+                  setDagNodes(prevDagNodes => prevDagNodes.map(node => 
+                    node.id === stepId 
+                      ? { ...node, data: { ...node.data, backwardDerivationDisplayStatus: nextStatus } } 
+                      : node
+                  ));
+                  return finalStepWithStatus;
+                }
+                return s;
+              });
+              delete timeoutRefs.current[timeoutKey];
+              return updatedSteps;
+            });
+          }, 1500);
+          return pendingStep;
+        }
+        return step;
+      });
+    });
+  }, [setDagNodes]); // Ensure setDagNodes is in dependencies
+
   // <<< 辅助函数：确保宽度总和为100%并处理精度 >>>
-  const ensurePanelWidthsSumTo100AndPrecision = (
+  const ensurePanelWidthsSumTo100AndPrecision = useCallback((
     currentWidths: PanelWidthsType,
     mode: LayoutMode // Pass mode to know which panels are active/fixed
   ): PanelWidthsType => {
-    console.log('[ensurePanelWidths] Input:', JSON.parse(JSON.stringify(currentWidths)), 'Mode:', mode);
+    // console.log('[ensurePanelWidths] Input:', JSON.parse(JSON.stringify(currentWidths)), 'Mode:', mode);
     let { dag, solver, ai } = currentWidths;
 
     // Apply MIN_PANEL_PERCENTAGE to panels that should be active and non-zero
@@ -493,7 +818,7 @@ const MainLayout: React.FC = () => {
     if (Math.abs(currentTotal - 100) > 0.01) {
       if (currentTotal <= 0) { // Avoid division by zero or negative; reset to a default for the mode
           // This case indicates a significant issue; log and reset might be best
-          console.error("[ensurePanelWidths] Total width is zero or negative before scaling! Resetting based on mode.", mode, {dag, solver, ai});
+          // console.error("[ensurePanelWidths] Total width is zero or negative before scaling! Resetting based on mode.", mode, {dag, solver, ai});
           // Reset logic here based on mode, e.g., for DEFAULT_THREE_COLUMN:
           // dag = 33.3; solver = 33.4; ai = 33.3;
           // This is a fallback, the logic before should prevent this.
@@ -523,9 +848,9 @@ const MainLayout: React.FC = () => {
 
 
     const finalWidths = { dag, solver, ai }; // Use the corrected dag, solver, ai
-    console.log('[ensurePanelWidths] Output:', JSON.parse(JSON.stringify(finalWidths)));
+    // console.log('[ensurePanelWidths] Output:', JSON.parse(JSON.stringify(finalWidths)));
     return finalWidths;
-  };
+  }, []);
 
   // <<< 核心 useEffect，用于根据 currentLayoutMode 设置 panelWidths >>>
   useEffect(() => {
@@ -664,9 +989,9 @@ const MainLayout: React.FC = () => {
       }
 
       const newWidthsToEnsure = { dag: newDag, solver: newSolver, ai: newAi };
-      console.log('[handleSeparator1Drag] Before ensure:', JSON.parse(JSON.stringify(newWidthsToEnsure)), 'Mode:', currentLayoutMode, 'dx:', dragPercent);
+      // console.log('[handleSeparator1Drag] Before ensure:', JSON.parse(JSON.stringify(newWidthsToEnsure)), 'Mode:', currentLayoutMode, 'dx:', dragPercent);
       const ensuredWidths = ensurePanelWidthsSumTo100AndPrecision(newWidthsToEnsure, currentLayoutMode);
-      console.log('[handleSeparator1Drag] After ensure:', JSON.parse(JSON.stringify(ensuredWidths)));
+      // console.log('[handleSeparator1Drag] After ensure:', JSON.parse(JSON.stringify(ensuredWidths)));
       setPanelWidths(ensuredWidths);
       saveUserPreferenceForMode(currentLayoutMode, ensuredWidths);
     },
@@ -746,9 +1071,9 @@ const MainLayout: React.FC = () => {
           break;
       }
       const newWidthsToEnsure = { dag: newDag, solver: newSolver, ai: newAi };
-      console.log('[handleSeparator2Drag] Before ensure:', JSON.parse(JSON.stringify(newWidthsToEnsure)), 'Mode:', currentLayoutMode, 'dx:', dragPercent);
+      // console.log('[handleSeparator2Drag] Before ensure:', JSON.parse(JSON.stringify(newWidthsToEnsure)), 'Mode:', currentLayoutMode, 'dx:', dragPercent);
       const ensuredWidths = ensurePanelWidthsSumTo100AndPrecision(newWidthsToEnsure, currentLayoutMode);
-      console.log('[handleSeparator2Drag] After ensure:', JSON.parse(JSON.stringify(ensuredWidths)));
+      // console.log('[handleSeparator2Drag] After ensure:', JSON.parse(JSON.stringify(ensuredWidths)));
       setPanelWidths(ensuredWidths);
       saveUserPreferenceForMode(currentLayoutMode, ensuredWidths);
     },
@@ -769,17 +1094,37 @@ const MainLayout: React.FC = () => {
   };
 
   const handleStepContentChange = (stepId: string, newLatexContent: string) => {
-    setSolutionSteps(prevSteps =>
-      prevSteps.map(step =>
-        step.id === stepId 
-          ? { 
-              ...step, 
-              latexContent: newLatexContent, 
-              verificationStatus: VerificationStatus.NotVerified
-            } 
-          : step
-      )
-    );
+    setSolutionSteps(prevSteps => {
+      const editedStepIndex = prevSteps.findIndex(step => step.id === stepId);
+      if (editedStepIndex === -1) return prevSteps; // Should not happen
+
+      return prevSteps.map((step, index) => {
+        if (step.id === stepId) {
+          // This is the EDITED step
+          return {
+            ...step,
+            latexContent: newLatexContent,
+            verificationStatus: VerificationStatus.NotVerified, // Always reset verification status
+            forwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+            backwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+          };
+        } else if (index < editedStepIndex) {
+          // For steps BEFORE the edited one
+          return {
+            ...step,
+            // forwardDerivationStatus remains unchanged
+            backwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+          };
+        } else { // index > editedStepIndex
+          // For steps AFTER the edited one
+          return {
+            ...step,
+            forwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+            // backwardDerivationStatus remains unchanged
+          };
+        }
+      });
+    });
   };
 
   const handleDeleteStep = (stepId: string) => {
@@ -818,36 +1163,74 @@ const MainLayout: React.FC = () => {
         return prevSteps; 
       }
 
-      const newStepsArray = prevSteps.map(s => ({...s}));
+      let newStepsArray = [...prevSteps]; // Create a mutable copy
       const originalStepData = newStepsArray[originalStepIndex];
 
-      newStepsArray[originalStepIndex] = {
+      // Part 1 (modifies the original step)
+      const newStepPart1: SolutionStepData = {
         ...originalStepData,
         latexContent: part1Content,
-        verificationStatus: VerificationStatus.NotVerified, // Reset verification for the first part
-        notes: originalStepData.notes, // Preserve notes for the first part
-        // highlightColor: originalStepData.highlightColor, // Preserve highlight - dagNode generation should handle this
+        verificationStatus: VerificationStatus.NotVerified,
+        forwardDerivationStatus: ForwardDerivationStatus.Undetermined, // Reset for edited part 1
+        backwardDerivationStatus: ForwardDerivationStatus.Undetermined, // Reset for edited part 1
+        // notes, highlightColor etc. are preserved from originalStepData
       };
+      newStepsArray[originalStepIndex] = newStepPart1;
 
+      // Part 2 (new step)
       const newStepPart2: SolutionStepData = {
         id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
         latexContent: part2Content,
         verificationStatus: VerificationStatus.NotVerified,
-        stepNumber: 0, // Will be re-numbered
-        isDeleted: false, // New step is not deleted
-        // notes: undefined, // New step starts without notes
-        // highlightColor: undefined, // New step starts without highlight
+        stepNumber: 0, // Will be re-numbered shortly
+        isDeleted: false,
+        forwardDerivationStatus: ForwardDerivationStatus.Undetermined, // New step starts undetermined
+        backwardDerivationStatus: ForwardDerivationStatus.Undetermined, // New step starts undetermined
+        notes: undefined,
+        // highlightColor: undefined, // No highlight for new part2
       };
-
       newStepsArray.splice(originalStepIndex + 1, 0, newStepPart2);
 
       // Re-number all non-deleted steps for display
       let currentStepNumber = 1;
-      for (let i = 0; i < newStepsArray.length; i++) {
-        if (!newStepsArray[i].isDeleted) {
-          newStepsArray[i].stepNumber = currentStepNumber++;
+      newStepsArray = newStepsArray.map(step => {
+        if (!step.isDeleted) {
+          return { ...step, stepNumber: currentStepNumber++ };
         }
-      }
+        return step;
+      });
+
+      // Apply cascading derivation status resets based on the "edit" of part1 (originalStepIndex)
+      // and insertion of part2
+      newStepsArray = newStepsArray.map((step, index) => {
+        // Rule for steps BEFORE the edited original step (part1)
+        if (index < originalStepIndex) {
+          return {
+            ...step,
+            // forwardDerivationStatus remains unchanged
+            backwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+          };
+        }
+        // Rule for the EDITED original step (part1) - already handled during its creation above
+        if (index === originalStepIndex) { // This is newStepPart1
+          return step; // Its statuses were set correctly when newStepPart1 was defined
+        }
+        // Rule for the NEWLY INSERTED step (part2) - already handled during its creation above
+        if (index === originalStepIndex + 1) { // This is newStepPart2
+          return step; // Its statuses were set correctly when newStepPart2 was defined
+        }
+        // Rule for steps AFTER the newly inserted step (part2)
+        // These are affected as if newStepPart1 was "edited"
+        if (index > originalStepIndex + 1) {
+          return {
+            ...step,
+            forwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+            // backwardDerivationStatus remains unchanged
+          };
+        }
+        return step; // Should not be reached if logic is correct, but as a fallback
+      });
+
       toast.success(`步骤 ${originalStepData.stepNumber} 已成功拆分！`);
       return newStepsArray;
     });
@@ -858,15 +1241,47 @@ const MainLayout: React.FC = () => {
     const stepToDelete = solutionSteps.find(s => s.id === stepId);
     if (!stepToDelete) return;
 
+    const originalStepIndex = solutionSteps.findIndex(s => s.id === stepId);
+
     openConfirmationDialog(
       '确认删除步骤',
       <span>您确定要将步骤 <strong>"步骤 {stepToDelete.stepNumber}"</strong> (ID: {stepToDelete.id}) 标记为删除吗？</span>,
       () => {
-        setSolutionSteps(prevSteps =>
-          prevSteps.map(step =>
-            step.id === stepId ? { ...step, isDeleted: true } : step
-          )
-        );
+        setSolutionSteps(prevSteps => {
+          // First, mark the target step as deleted
+          const stepsWithDeletionMarked = prevSteps.map(step =>
+            step.id === stepId ? { ...step, isDeleted: true, verificationStatus: VerificationStatus.NotVerified } : step // Also reset verification status
+          );
+
+          // Then, apply cascading derivation status resets to other non-deleted steps
+          if (originalStepIndex !== -1) {
+            return stepsWithDeletionMarked.map((step, index) => {
+              // Skip the step that was just marked for deletion OR any other already deleted step
+              if (step.isDeleted && step.id !== stepId) return step; 
+              // For the step that was just deleted, its derivation statuses are no longer relevant for display/interaction.
+              // However, its original position (originalStepIndex) is used to affect others.
+              if (step.id === stepId) return step; // Return the just-deleted step as is (already marked isDeleted:true)
+
+              // For other non-deleted steps (step.id !== stepId AND !step.isDeleted implicitly by not returning above for deleted ones)
+              if (index < originalStepIndex) { // Steps BEFORE the deleted one
+                return {
+                  ...step,
+                  // forwardDerivationStatus remains unchanged
+                  backwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+                };
+              }
+              if (index > originalStepIndex) { // Steps AFTER the deleted one
+                return {
+                  ...step,
+                  forwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+                  // backwardDerivationStatus remains unchanged
+                };
+              }
+              return step; // Should only be reached by steps that are not before/after and not the deleted one (e.g. if originalStepIndex was -1, though guarded)
+            });
+          }
+          return stepsWithDeletionMarked; // Fallback if originalStepIndex was -1
+        });
         toast.success(`步骤 ${stepToDelete.stepNumber} 已成功标记为删除！`);
       },
       { confirmText: '删除', variant: 'destructive' }
@@ -997,7 +1412,7 @@ const MainLayout: React.FC = () => {
 
     toast.success(`节点 ${nodeId} 的解读想法已提交处理。`);
     handleCloseInterpretationModal();
-  }, [handleCloseInterpretationModal, setDagNodes]); // 添加 setDagNodes 到依赖数组
+  }, [handleCloseInterpretationModal, setDagNodes]);
 
   // Modify handleInterpretIdea to use handleOpenInterpretationModal
   const handleInterpretIdea = useCallback((stepId: string, idea?: string) => { 
@@ -1343,7 +1758,6 @@ ${fullLatex}
 
   const handleAnalyzeStepFromSolutionList = useCallback((stepId: string) => {
     console.log("Analyze step requested from SolutionStep list:", stepId);
-    // Logic from existing handleAnalyzeStep (toggling verification status)
     setSolutionSteps(prevSteps =>
       prevSteps.map(step => {
         if (step.id === stepId) {
@@ -1351,7 +1765,7 @@ ${fullLatex}
           if (step.verificationStatus === VerificationStatus.NotVerified) newStatus = VerificationStatus.VerifiedCorrect;
           else if (step.verificationStatus === VerificationStatus.VerifiedCorrect) newStatus = VerificationStatus.VerifiedIncorrect;
           else if (step.verificationStatus === VerificationStatus.VerifiedIncorrect) newStatus = VerificationStatus.NotVerified;
-          toast.info(`步骤 ${step.stepNumber} 状态已模拟切换。`); // Added toast
+          toast.info(`步骤 ${step.stepNumber} 状态已模拟切换。`);
           return { ...step, verificationStatus: newStatus };
         }
         return step;
@@ -1382,7 +1796,7 @@ ${fullLatex}
   const handleNodeSelectedForCopilot = useCallback((nodeId: string, nodeData: DagNodeRfData) => {
     // Extract relevant information. nodeData directly comes from React Flow node.data
     // which we mapped from our appNode.data in DagVisualizationArea.
-    console.log(`[MainLayout] Node selected for Copilot: ID=${nodeId}, Label=${nodeData.label}`);
+    // console.log(`[MainLayout] Node selected for Copilot: ID=${nodeId}, Label=${nodeData.label}`);
     setCopilotContextNodeInfo({
       id: nodeId,
       label: nodeData.label,
@@ -1406,12 +1820,53 @@ ${fullLatex}
   }, []);
 
   // DEBUG: Log state right before rendering DagVisualizationArea
-  console.log('[MainLayout Render] dagNodes to pass:', JSON.parse(JSON.stringify(dagNodes)));
-  console.log('[MainLayout Render] dagEdges to pass:', JSON.parse(JSON.stringify(dagEdges)));
+  // console.log('[MainLayout Render] dagNodes to pass:', JSON.parse(JSON.stringify(dagNodes)));
+  // console.log('[MainLayout Render] dagEdges to pass:', JSON.parse(JSON.stringify(dagEdges)));
 
   const ঐতিহাসিকPanelWidthsRef = useRef<PanelWidthsType | null>(null); // This was a typo in the original file, removing 'PanelWidthsRef' from the name. Assuming it should be 'historicalPanelWidthsRef' or similar, but keeping as is if it was intentional.
 
-  console.log('[MainLayout] Rendering, isAICopilotChatActive to pass to RightSidePanel:', isAICopilotChatActive); // DEBUG LINE ADDED
+  // console.log('[MainLayout] Rendering, isAICopilotChatActive to pass to RightSidePanel:', isAICopilotChatActive); // DEBUG LINE ADDED
+
+  // New handler for AI analysis with pre-checks for derivation
+  const handleInitiateAiAnalysisWithChecks = useCallback((stepId: string, currentForwardStatus?: ForwardDerivationStatus, currentBackwardStatus?: ForwardDerivationStatus) => {
+    let didTriggerForward = false;
+    let didTriggerBackward = false;
+
+    const stepToAnalyze = solutionSteps.find(s => s.id === stepId);
+    if (!stepToAnalyze) {
+      toast.error("AI分析失败：找不到步骤。");
+      return;
+    }
+
+    // Check and trigger forward derivation if undetermined
+    const forwardStatus = currentForwardStatus || stepToAnalyze.forwardDerivationStatus;
+    if (forwardStatus === ForwardDerivationStatus.Undetermined) {
+      console.log(`[MainLayout] AI Analysis for step ${stepId}: Forward derivation is Undetermined. Triggering check.`);
+      handleCheckForwardDerivation(stepId);
+      didTriggerForward = true;
+    }
+
+    // Check and trigger backward derivation if undetermined
+    const backwardStatus = currentBackwardStatus || stepToAnalyze.backwardDerivationStatus;
+    if (backwardStatus === ForwardDerivationStatus.Undetermined) {
+      console.log(`[MainLayout] AI Analysis for step ${stepId}: Backward derivation is Undetermined. Triggering check.`);
+      handleCheckBackwardDerivation(stepId);
+      didTriggerBackward = true;
+    }
+
+    if (didTriggerForward || didTriggerBackward) {
+      toast.info("部分推导检查已启动，请稍后重试AI分析以获得最准确结果，或直接查看当前分析（可能基于不完整推导）。");
+      // Even if derivations were triggered, proceed to call the (simulated) analysis part.
+      // The SolutionStep component will show its own loading indicator.
+      // In a real scenario, we might wait for derivations to complete or manage a more complex state.
+    }
+    
+    // Proceed with the original analysis logic (which currently is a simulation)
+    // This will allow SolutionStep to show its loading/content optimistically.
+    console.log(`[MainLayout] Proceeding with AI analysis part for step ${stepId} after derivation checks.`);
+    handleAnalyzeStepFromSolutionList(stepId); // This is the placeholder for actual AI analysis trigger
+
+  }, [solutionSteps, handleCheckForwardDerivation, handleCheckBackwardDerivation, handleAnalyzeStepFromSolutionList]);
 
   return (
     <main className={styles.mainLayoutContainer} ref={mainLayoutRef}>
@@ -1447,7 +1902,6 @@ ${fullLatex}
               onUndoSoftDeleteStep={handleUndoSoftDeleteStep}
               onUpdateStepVerificationStatus={handleUpdateStepVerificationStatus}
               onInitiateSplitStep={handleInitiateSplitStepFromContextMenu}
-              onAnalyzeStep={handleAnalyzeStepFromContextMenu}
               onViewEditStepDetails={handleViewEditStepDetails}
               onInterpretIdea={handleInterpretIdea}
               onHighlightNode={handleHighlightNode}
@@ -1462,6 +1916,11 @@ ${fullLatex}
               onNodeMouseLeaveForPathPreview={handleNodeMouseLeaveForPathPreview}
               onPaneClickFromLayout={handlePaneClickedInMainLayout}
               onNodeSelectedForCopilot={handleNodeSelectedForCopilot}
+              // --- C6: Pass Focus Analysis props ---
+              onInitiateFocusAnalysis={handleInitiateFocusAnalysis}
+              onCancelFocusAnalysis={handleCancelFocusAnalysis}
+              currentFocusAnalysisNodeId={currentFocusAnalysisNodeId}
+              // --- End C6 ---
             />
           }
         </div>
@@ -1492,8 +1951,10 @@ ${fullLatex}
               step={step}
               onContentChange={handleStepContentChange}
               onDelete={handleDeleteStepFromSolutionList}
-              onAnalyze={handleAnalyzeStepFromSolutionList}
+              onInitiateAiAnalysisWithChecks={handleInitiateAiAnalysisWithChecks}
               onSplit={handleSplitStep}
+              onCheckForwardDerivation={handleCheckForwardDerivation}
+              onCheckBackwardDerivation={handleCheckBackwardDerivation}
             />
           ))}
         </div>
@@ -1564,7 +2025,7 @@ ${fullLatex}
           <RightSidePanel
             currentMode={copilotCurrentMode}
             onModeChange={setCopilotCurrentMode}
-            isChatActive={isAICopilotChatActive} // Pass the chat state
+            // isChatActive={isAICopilotChatActive} // REMOVED
           />
         </div>
       </div>

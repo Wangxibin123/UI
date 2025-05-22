@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from '@reactflow/core';
 import type { DagNodeRfData } from '../../../../types';
-import { VerificationStatus } from '../../../../types';
+import { VerificationStatus, ForwardDerivationStatus } from '../../../../types';
 import styles from './CustomStepNode.module.css';
 import Latex from 'react-latex-next';
 import {
@@ -10,7 +10,8 @@ import {
   AlertTriangle,
   Loader2,
   HelpCircle,
-  StickyNote
+  StickyNote,
+  ArrowRightCircle
 } from 'lucide-react';
 
 // TEMPORARY basic classNames utility - UPDATED TYPE SIGNATURE
@@ -81,6 +82,8 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
           [styles.selected]: !!selected,            
           [styles.inferenceNode]: !!data.isDerived,
           [styles.onNewPath]: !!data.isOnNewPath,
+          [styles.focusSourceNode]: !!data.isFocusSource,
+          [styles.focusPathNode]: !!data.isFocusPath && !data.isFocusSource,
         }
       )}
       style={nodeStyle}
@@ -105,6 +108,33 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
           <Latex>{`$$${displayLatex.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
         </div>
       )}
+
+      <div className={styles.derivationStatusIconsContainer}>
+        {/* Forward Correct */}
+        {data.forwardDerivationDisplayStatus === ForwardDerivationStatus.Correct && (
+          <span title="正向推导正确">
+            <ArrowRightCircle className={`${styles.derivationIcon} ${styles.forwardCorrectIcon}`} size={16} />
+          </span>
+        )}
+        {/* Forward Incorrect */}
+        {data.forwardDerivationDisplayStatus === ForwardDerivationStatus.Incorrect && (
+          <span title="正向推导错误">
+            <XCircle className={`${styles.derivationIcon} ${styles.forwardIncorrectIcon}`} size={16} />
+          </span>
+        )}
+        {/* Backward Correct */}
+        {data.backwardDerivationDisplayStatus === ForwardDerivationStatus.Correct && (
+          <span title="反向推导正确">
+            <CheckCircle2 className={`${styles.derivationIcon} ${styles.backwardCorrectIcon}`} size={16} />
+          </span>
+        )}
+        {/* Backward Incorrect */}
+        {data.backwardDerivationDisplayStatus === ForwardDerivationStatus.Incorrect && (
+          <span title="反向推导错误">
+            <XCircle className={`${styles.derivationIcon} ${styles.backwardIncorrectIcon}`} size={16} />
+          </span>
+        )}
+      </div>
       
       <Handle type="source" position={Position.Bottom} className={styles.handle} id={`${id}-source`} />
     </div>

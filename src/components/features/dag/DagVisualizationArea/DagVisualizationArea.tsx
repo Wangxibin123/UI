@@ -1,25 +1,37 @@
 import React, { useEffect, useCallback, useMemo, useRef } from 'react';
-import {
-  ReactFlow,
+import { 
+  ReactFlow, 
   useNodesState,
   useEdgesState,
   addEdge,
+  Panel,
+  NodeOrigin,
+  useReactFlow,
+  ProOptions,
+  Position,
   type Connection,
-  type Edge as RFEdge,
-  type Node as RFNode,
-  type Position,
-  NodeTypes
+  type Edge,
+  type Node,
+  type Viewport,
+  type ReactFlowInstance,
 } from '@reactflow/core';
+
 import { Controls } from '@reactflow/controls';
-import { Background, BackgroundVariant } from '@reactflow/background';
 import { MiniMap } from '@reactflow/minimap';
-import type { DagNode, DagEdge, DagNodeRfData, SolutionStepData } from '../../../../types';
-import { VerificationStatus } from '../../../../types';
+import { Background, BackgroundVariant } from '@reactflow/background';
+
+import { NodeTypes } from '@reactflow/core';
+
+import { DagNode, DagEdge, VerificationStatus, FocusAnalysisType, type DagNodeRfData, type SolutionStepData } from '../../../../types';
 import styles from './DagVisualizationArea.module.css';
 import CustomStepNode from '../CustomStepNode/CustomStepNode';
 import ContextMenu, { type ContextMenuHandle } from '../../../common/ContextMenu/ContextMenu';
 import { type MenuItemProps } from '../../../common/MenuItem/MenuItem';
-import { Lightbulb, Star, FileText, GitFork, Trash2, CheckCircle, XCircle, Edit3, MessageSquarePlus, Copy, CopyPlus, ClipboardCopy, GitBranchPlus, Palette, Eraser } from 'lucide-react';
+import {
+  ArrowUpLeft, ArrowDownRight, Search, Copy, Maximize, Minimize, Link, Eye,
+  GitFork, MessageSquare, StickyNote, Edit3, Trash2, RotateCcw, CheckCircle,
+  XCircle, Lightbulb, Waypoints, Wand, Zap, ChevronRight, HelpCircle
+} from 'lucide-react';
 
 interface DagVisualizationAreaProps {
   dagNodes: DagNode[];
@@ -29,7 +41,6 @@ interface DagVisualizationAreaProps {
   onUndoSoftDeleteStep: (stepId: string) => void;
   onUpdateStepVerificationStatus: (stepId: string, newStatus: VerificationStatus) => void;
   onInitiateSplitStep: (stepId: string) => void;
-  onAnalyzeStep: (stepId: string) => void;
   onViewEditStepDetails: (stepId: string) => void;
   onInterpretIdea: (stepId: string, idea: string) => void;
   onHighlightNode: (stepId: string, color: string | null) => void;
@@ -46,9 +57,12 @@ interface DagVisualizationAreaProps {
   onStartNewPathFromNode?: (nodeId: string) => void;
   onPaneClickFromLayout?: () => void;
   onNodeSelectedForCopilot?: (nodeId: string, nodeData: DagNodeRfData) => void;
+  onInitiateFocusAnalysis: (nodeId: string, type: FocusAnalysisType) => void;
+  onCancelFocusAnalysis: () => void;
+  currentFocusAnalysisNodeId: string | null;
 }
 
-const isTerminalNode = (nodeId: string, nodes: DagNode[], edges: RFEdge[]): boolean => {
+const isTerminalNode = (nodeId: string, nodes: DagNode[], edges: Edge[]): boolean => {
   const activeOutgoingEdges = edges.filter(
     edge => edge.source === nodeId &&
             !nodes.find(n => n.id === edge.target)?.data.isDeleted
@@ -56,7 +70,7 @@ const isTerminalNode = (nodeId: string, nodes: DagNode[], edges: RFEdge[]): bool
   return activeOutgoingEdges.length === 0;
 };
 
-const isStartNode = (nodeId: string, nodes: DagNode[], edges: RFEdge[]): boolean => {
+const isStartNode = (nodeId: string, nodes: DagNode[], edges: Edge[]): boolean => {
   const activeIncomingEdges = edges.filter(
     edge => edge.target === nodeId &&
             !nodes.find(n => n.id === edge.source)?.data.isDeleted
@@ -64,30 +78,37 @@ const isStartNode = (nodeId: string, nodes: DagNode[], edges: RFEdge[]): boolean
   return activeIncomingEdges.length === 0;
 };
 
-const isEndNode = (nodeId: string, nodes: DagNode[], edges: RFEdge[]): boolean => {
+const isEndNode = (nodeId: string, nodes: DagNode[], edges: Edge[]): boolean => {
     if (!edges || edges.length === 0) return true; // No edges, every node is an end node
     return !edges.some(edge => edge.source === nodeId && nodes.some(n => n.id === edge.target && !n.data.isDeleted));
 };
 
+const nodeTypes: NodeTypes = {
+    customStepNode: CustomStepNode,
+};
+
 const generateContextMenuItems = (
-  node: RFNode<DagNodeRfData>,
+  node: Node<DagNodeRfData>,
   actions: Pick<
     DagVisualizationAreaProps,
-    'onHighlightNode'
+    | 'onHighlightNode'
     | 'onAddOrUpdateNote'
     | 'onNewPathFromNode'
     | 'onCopyNodeInfo'
     | 'onCopyPathInfo'
     | 'onViewEditStepDetails'
     | 'onInitiateSplitStep'
-    | 'onAnalyzeStep'
     | 'onInterpretIdea'
     | 'onSoftDeleteStep'
     | 'onUndoSoftDeleteStep'
     | 'onUpdateStepVerificationStatus'
+    | 'onInitiateFocusAnalysis'
+    | 'onCancelFocusAnalysis'
   >,
   initialNodesFromProps: DagNode[],
-  currentReactFlowEdges: RFEdge[]
+  currentReactFlowEdges: Edge[],
+  currentFocusAnalysisNodeId: string | null,
+  contextMenuRef: React.RefObject<ContextMenuHandle>
 ): MenuItemProps[] => {
   const menuItems: MenuItemProps[] = [];
   const nodeId = node.id;
@@ -98,8 +119,8 @@ const generateContextMenuItems = (
   menuItems.push({
     id: 'view-edit-details',
     label: '查看/编辑步骤详情',
-    icon: <FileText size={16} />,
-    onClick: () => actions.onViewEditStepDetails(nodeId),
+    icon: <MessageSquare size={16} />,
+    onClick: () => { actions.onViewEditStepDetails(nodeId); contextMenuRef.current?.close(); },
     disabled: nodeData.isDeleted,
   });
   
@@ -109,8 +130,8 @@ const generateContextMenuItems = (
   menuItems.push({
     id: 'add-edit-note',
     label: hasNote ? '查看/编辑备注' : '添加备注',
-    icon: <MessageSquarePlus size={16} />,
-    onClick: () => actions.onAddOrUpdateNote(nodeId),
+    icon: <MessageSquare size={16} />,
+    onClick: () => { actions.onAddOrUpdateNote(nodeId); contextMenuRef.current?.close(); },
     disabled: nodeData.isDeleted,
   });
 
@@ -119,7 +140,7 @@ const generateContextMenuItems = (
       id: 'split-step',
       label: '拆分此步骤',
       icon: <GitFork size={16} />,
-      onClick: () => actions.onInitiateSplitStep(nodeId),
+      onClick: () => { actions.onInitiateSplitStep(nodeId); contextMenuRef.current?.close(); },
       disabled: nodeData.isDeleted || isEndNode(nodeId, initialNodesFromProps, currentReactFlowEdges),
     });
   }
@@ -130,24 +151,40 @@ const generateContextMenuItems = (
     id: 'interpret-idea',
     label: '思路解读',
     icon: <Lightbulb size={16} />,
-    onClick: () => actions.onInterpretIdea(nodeId, ''),
+    onClick: () => { actions.onInterpretIdea(nodeId, ''); contextMenuRef.current?.close(); },
     disabled: nodeData.isDeleted,
   });
+  
+  const focusSubItems: MenuItemProps[] = [
+    { id: 'focus-forward', label: '向前路径', icon: <ArrowUpLeft size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'forward'); contextMenuRef.current?.close(); } },
+    { id: 'focus-backward', label: '向后路径', icon: <ArrowDownRight size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'backward'); contextMenuRef.current?.close(); } },
+    { id: 'focus-full', label: '双向完整路径', icon: <Waypoints size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'full'); contextMenuRef.current?.close(); } },
+  ];
 
   menuItems.push({
-    id: 'analyze-step-from-menu',
+    id: 'focus-analysis-main',
     label: '聚焦分析',
-    icon: <MessageSquarePlus size={16} />,
-    onClick: () => actions.onAnalyzeStep(nodeId),
+    icon: <Zap size={16} />,
     disabled: nodeData.isDeleted,
+    subMenu: focusSubItems,
   });
+
+  if (currentFocusAnalysisNodeId) {
+    menuItems.push({ id: 'separator-focus-cancel', type: 'separator' });
+    menuItems.push({
+      id: 'cancel-focus-analysis',
+      label: '取消聚焦分析',
+      icon: <XCircle size={16} />,
+      onClick: () => { actions.onCancelFocusAnalysis(); contextMenuRef.current?.close(); },
+    });
+  }
   
   const isCurrentlyTerminal = isTerminalNode(nodeId, initialNodesFromProps, currentReactFlowEdges);
   menuItems.push({
     id: 'new-path-from-node',
     label: '从此处开始新路径',
-    icon: <GitBranchPlus size={16} />,
-    onClick: () => actions.onNewPathFromNode(nodeId),
+    icon: <GitFork size={16} />,
+    onClick: () => { actions.onNewPathFromNode(nodeId); contextMenuRef.current?.close(); },
     disabled: isCurrentlyTerminal || nodeData.isDeleted, 
   });
 
@@ -157,20 +194,20 @@ const generateContextMenuItems = (
         id: 'unmark-verified',
         label: '取消验证状态',
         icon: <XCircle size={16} />,
-        onClick: () => actions.onUpdateStepVerificationStatus(nodeId, VerificationStatus.NotVerified),
+        onClick: () => { actions.onUpdateStepVerificationStatus(nodeId, VerificationStatus.NotVerified); contextMenuRef.current?.close(); },
       });
     } else {
       menuItems.push({
         id: 'mark-verified-correct',
         label: '标记为已验证 (正确)',
         icon: <CheckCircle size={16} color="green" />,
-        onClick: () => actions.onUpdateStepVerificationStatus(nodeId, VerificationStatus.VerifiedCorrect),
+        onClick: () => { actions.onUpdateStepVerificationStatus(nodeId, VerificationStatus.VerifiedCorrect); contextMenuRef.current?.close(); },
       });
       menuItems.push({
         id: 'mark-verified-incorrect',
         label: '标记为已验证 (错误)',
         icon: <XCircle size={16} color="red" />,
-        onClick: () => actions.onUpdateStepVerificationStatus(nodeId, VerificationStatus.VerifiedIncorrect),
+        onClick: () => { actions.onUpdateStepVerificationStatus(nodeId, VerificationStatus.VerifiedIncorrect); contextMenuRef.current?.close(); },
       });
     }
   }
@@ -181,14 +218,14 @@ const generateContextMenuItems = (
       id: 'undo-soft-delete',
       label: '撤销删除',
       icon: <Trash2 size={16} />,
-      onClick: () => actions.onUndoSoftDeleteStep(nodeId),
+      onClick: () => { actions.onUndoSoftDeleteStep(nodeId); contextMenuRef.current?.close(); },
     });
   } else {
     menuItems.push({
       id: 'soft-delete',
       label: '删除此步骤',
       icon: <Trash2 size={16} />,
-      onClick: () => actions.onSoftDeleteStep(nodeId),
+      onClick: () => { actions.onSoftDeleteStep(nodeId); contextMenuRef.current?.close(); },
     });
   }
   
@@ -196,16 +233,16 @@ const generateContextMenuItems = (
   menuItems.push({
       id: 'copy-path-info',
       label: '复制路径信息',
-      icon: <CopyPlus size={16} />,
-      onClick: () => actions.onCopyPathInfo(nodeId),
+      icon: <Copy size={16} />,
+      onClick: () => { actions.onCopyPathInfo(nodeId); contextMenuRef.current?.close(); },
       disabled: isStartNode(nodeId, initialNodesFromProps, currentReactFlowEdges) || nodeData.isDeleted,
   });
 
   menuItems.push({
     id: 'copy-node-info',
     label: '复制当前信息',
-    icon: <ClipboardCopy size={18} />,
-    onClick: () => actions.onCopyNodeInfo(nodeId),
+    icon: <Copy size={16} />,
+    onClick: () => { actions.onCopyNodeInfo(nodeId); contextMenuRef.current?.close(); },
     disabled: nodeData.isDeleted, 
   });
 
@@ -213,39 +250,39 @@ const generateContextMenuItems = (
   menuItems.push({
     id: 'highlight-actions-main',
     label: '标记高亮',
-    icon: <Palette size={16} />,
+    icon: <Waypoints size={16} />,
     disabled: nodeData.isDeleted,
     subMenu: [
       {
         id: 'highlight-color-yellow',
         label: '黄色',
-        onClick: () => actions.onHighlightNode(nodeId, 'yellow'),
+        onClick: () => { actions.onHighlightNode(nodeId, 'yellow'); contextMenuRef.current?.close(); },
         disabled: nodeData.isDeleted,
       },
       {
         id: 'highlight-color-blue',
         label: '蓝色',
-        onClick: () => actions.onHighlightNode(nodeId, 'dodgerblue'),
+        onClick: () => { actions.onHighlightNode(nodeId, 'dodgerblue'); contextMenuRef.current?.close(); },
         disabled: nodeData.isDeleted,
       },
       {
         id: 'highlight-color-green',
         label: '绿色',
-        onClick: () => actions.onHighlightNode(nodeId, 'lightgreen'),
+        onClick: () => { actions.onHighlightNode(nodeId, 'lightgreen'); contextMenuRef.current?.close(); },
         disabled: nodeData.isDeleted,
       },
       {
         id: 'highlight-color-pink',
         label: '粉色',
-        onClick: () => actions.onHighlightNode(nodeId, 'lightpink'),
+        onClick: () => { actions.onHighlightNode(nodeId, 'lightpink'); contextMenuRef.current?.close(); },
         disabled: nodeData.isDeleted,
       },
       { id: 'highlight-submenu-separator', type: 'separator' },
       {
         id: 'highlight-action-clear',
         label: '清除高亮',
-        icon: <Eraser size={16} />,
-        onClick: () => actions.onHighlightNode(nodeId, null),
+        icon: <Wand size={16} />,
+        onClick: () => { actions.onHighlightNode(nodeId, null); contextMenuRef.current?.close(); },
         disabled: !nodeData.highlightColor || nodeData.isDeleted,
       },
     ],
@@ -262,7 +299,6 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   onUndoSoftDeleteStep,
   onUpdateStepVerificationStatus,
   onInitiateSplitStep,
-  onAnalyzeStep,
   onViewEditStepDetails,
   onInterpretIdea,
   onHighlightNode,
@@ -278,9 +314,12 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   onCopyPathInfo,
   onPaneClickFromLayout,
   onNodeSelectedForCopilot,
+  onInitiateFocusAnalysis,
+  onCancelFocusAnalysis,
+  currentFocusAnalysisNodeId,
 }) => {
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<DagNodeRfData>([]);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const contextMenuRef = useRef<ContextMenuHandle>(null);
   const dagAreaRef = useRef<HTMLDivElement>(null);
 
@@ -300,10 +339,6 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     };
   }, [isCreatingNewPath, dagAreaRef]);
 
-  const rfNodeTypes: NodeTypes = useMemo(() => ({
-    customStepNode: CustomStepNode,
-  }), []);
-
   const contextMenuActions = useMemo(() => ({
     onHighlightNode,
     onAddOrUpdateNote,
@@ -312,19 +347,21 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     onCopyPathInfo,
     onViewEditStepDetails,
     onInitiateSplitStep,
-    onAnalyzeStep,
     onInterpretIdea,
     onSoftDeleteStep,
     onUndoSoftDeleteStep,
     onUpdateStepVerificationStatus,
+    onInitiateFocusAnalysis,
+    onCancelFocusAnalysis,
   }), [
     onHighlightNode, onAddOrUpdateNote, onNewPathFromNode, onCopyNodeInfo, onCopyPathInfo,
-    onViewEditStepDetails, onInitiateSplitStep, onAnalyzeStep, onInterpretIdea,
-    onSoftDeleteStep, onUndoSoftDeleteStep, onUpdateStepVerificationStatus
+    onViewEditStepDetails, onInitiateSplitStep, onInterpretIdea,
+    onSoftDeleteStep, onUndoSoftDeleteStep, onUpdateStepVerificationStatus,
+    onInitiateFocusAnalysis, onCancelFocusAnalysis
   ]);
 
   useEffect(() => {
-    const reactFlowNodes: RFNode<DagNodeRfData>[] = initialNodesFromProps.map(appNode => ({
+    const reactFlowNodes: Node<DagNodeRfData>[] = initialNodesFromProps.map(appNode => ({
       id: appNode.id,
       type: appNode.type || 'customStepNode',
       position: appNode.position,
@@ -337,6 +374,8 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         isDeleted: appNode.data.isDeleted || false,
         notes: appNode.data.notes,
         highlightColor: appNode.data.highlightColor,
+        isFocusPath: appNode.data.isFocusPath,
+        isFocusSource: appNode.data.isFocusSource,
       },
       style: appNode.style,
       sourcePosition: appNode.sourcePosition as Position | undefined,
@@ -346,14 +385,17 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   }, [initialNodesFromProps, setRfNodes]);
 
   useEffect(() => {
-    const reactFlowEdges: RFEdge[] = initialEdgesFromProps.map(e => ({
+    const reactFlowEdges: Edge[] = initialEdgesFromProps.map(e => ({
       id: e.id,
       source: e.source,
       target: e.target,
       label: e.label,
       type: e.type,
-      animated: e.data?.isOnNewPath || e.animated,
-      style: e.data?.isOnNewPath ? { ...e.style, stroke: '#2ecc71' } : e.style,
+      animated: e.data?.isOnNewPath || e.data?.isFocusPath || e.animated,
+      style: {
+        ...e.style,
+        stroke: e.data?.isFocusPath ? '#ff0072' : (e.data?.isOnNewPath ? '#2ecc71' : undefined),
+      },
       markerEnd: e.markerEnd,
       data: e.data,
     }));
@@ -361,12 +403,12 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   }, [initialEdgesFromProps, setRfEdges]);
 
   const onConnect = useCallback(
-    (params: Connection | RFEdge) =>
+    (params: Connection | Edge) =>
       setRfEdges((eds) => addEdge(params, eds)),
     [setRfEdges],
   );
 
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<DagNodeRfData>) => {
     if (isCreatingNewPath && onSelectNewPathTargetNode && node.id !== startNewPathNodeId) {
       onSelectNewPathTargetNode(node.id);
       return;
@@ -389,23 +431,30 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   }, [onNodeSelect, contextMenuRef, onPaneClickFromLayout]);
 
   const handleNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
+    (event: React.MouseEvent, node: Node<DagNodeRfData>) => {
       event.preventDefault();
       if (contextMenuRef.current) {
-        const items = generateContextMenuItems(node, contextMenuActions, initialNodesFromProps, rfEdges);
+        const items = generateContextMenuItems(
+          node, 
+          contextMenuActions, 
+          initialNodesFromProps, 
+          rfEdges,
+          currentFocusAnalysisNodeId,
+          contextMenuRef
+        );
         contextMenuRef.current.open(event.clientX, event.clientY, items, node.id);
       }
     },
-    [contextMenuActions, initialNodesFromProps, rfEdges]
+    [contextMenuActions, initialNodesFromProps, rfEdges, currentFocusAnalysisNodeId]
   );
 
-  const handleNodeMouseEnterInternal = useCallback((event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
+  const handleNodeMouseEnterInternal = useCallback((event: React.MouseEvent, node: Node<DagNodeRfData>) => {
     if (isCreatingNewPath && onNodeMouseEnterForPathPreview) {
       onNodeMouseEnterForPathPreview(node.id);
     }
   }, [isCreatingNewPath, onNodeMouseEnterForPathPreview]);
 
-  const handleNodeMouseLeaveInternal = useCallback((event: React.MouseEvent, node: RFNode<DagNodeRfData>) => {
+  const handleNodeMouseLeaveInternal = useCallback((event: React.MouseEvent, node: Node<DagNodeRfData>) => {
     if (isCreatingNewPath && onNodeMouseLeaveForPathPreview) {
       onNodeMouseLeaveForPathPreview();
     }
@@ -430,11 +479,15 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
 
       const isPreviewEdge = previewPathElements?.edges.includes(edge.id) || false;
       const isOnNewPath = edgeSpecificData?.isOnNewPath;
+      const isFocusPathEdge = edgeSpecificData?.isFocusPath;
 
       let style = { ...(edge.style || {}) };
       let animated = edge.animated || false;
 
-      if (isPreviewEdge) {
+      if (isFocusPathEdge) {
+        style = { ...style, stroke: '#ff0072', strokeWidth: 2 };
+        animated = true;
+      } else if (isPreviewEdge) {
         style = { ...style, stroke: '#e74c3c', strokeDasharray: '5,5' };
         animated = true;
       } else if (isOnNewPath) {
@@ -454,8 +507,10 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     });
   }, [rfEdges, previewPathElements]);
 
-  const miniMapNodeColor = (node: RFNode<DagNodeRfData>): string => {
+  const miniMapNodeColor = (node: Node<DagNodeRfData>): string => {
     if (node.data?.isDeleted) return '#aaaaaa';
+    if (node.data?.isFocusSource) return '#1976D2';
+    if (node.data?.isFocusPath) return '#FFA000';
     if (node.data?.isPreviewingPath) return '#e74c3c';
     if (node.data?.highlightColor) return node.data.highlightColor;
     if (node.data?.verificationStatus) {
@@ -477,14 +532,12 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       className={styles.dagVisualizationAreaContainer}
       style={{ height: '100%', width: '100%' }}
     >
-      {/* --- NEW: Path Creation Hint --- */}
       {isCreatingNewPath && (
         <div className={styles.pathCreationHint}>
-          <Lightbulb size={16} style={{ marginRight: '8px' }} /> {/* Optional icon */}
+          <Lightbulb size={16} style={{ marginRight: '8px' }} />
           正在创建新路径。请选择目标节点，或点击空白处取消。
         </div>
       )}
-      {/* --- END NEW --- */}
 
       {rfNodes.length === 0 && initialNodesFromProps.length === 0 && (
         <div className={styles.emptyDagMessage}>
@@ -497,7 +550,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        nodeTypes={rfNodeTypes}
+        nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onNodeContextMenu={handleNodeContextMenu}

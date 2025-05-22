@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SolutionStepData, VerificationStatus } from '../../../../types';
+import { SolutionStepData, VerificationStatus, ForwardDerivationStatus } from '../../../../types';
 import Latex from 'react-latex-next';
 import styles from './SolutionStep.module.css';
 import { 
-  Pencil, Save, Undo2, Trash2, SearchCode, Scissors, 
-  CheckCircle2, XCircle, RefreshCw, Check, X // Check for confirm split, X for cancel split
+  Pencil, Save, Undo2, Trash2, /* SearchCode, */ Scissors, 
+  CheckCircle2, XCircle, RefreshCw, Check, X, // Check for confirm split, X for cancel split
+  ArrowRightCircle, ArrowLeftCircle, Wand2 // <<< ADDED: Wand2 for AI Analysis
 } from 'lucide-react';
 
 // Placeholder icons
@@ -19,17 +20,30 @@ interface SolutionStepProps {
   step: SolutionStepData;
   onContentChange: (stepId: string, newLatexContent: string) => void;
   onDelete: (stepId: string) => void;
-  onAnalyze: (stepId: string) => void;
-  onSplit: (originalStepId: string, part1Content: string, part2Content: string) => void; // New prop
+  onInitiateAiAnalysisWithChecks: (stepId: string, currentForwardStatus?: ForwardDerivationStatus, currentBackwardStatus?: ForwardDerivationStatus) => void;
+  onSplit: (originalStepId: string, part1Content: string, part2Content: string) => void;
+  onCheckForwardDerivation?: (stepId: string) => void;
+  onCheckBackwardDerivation?: (stepId: string) => void;
 }
 
-const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDelete, onAnalyze, onSplit }) => {
+const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDelete, onInitiateAiAnalysisWithChecks, onSplit, onCheckForwardDerivation, onCheckBackwardDerivation }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentEditText, setCurrentEditText] = useState(step.latexContent);
 
   const [isSplitting, setIsSplitting] = useState(false);
   const [splitPart1Text, setSplitPart1Text] = useState('');
   const [splitPart2Text, setSplitPart2Text] = useState('');
+
+  // --- States for AI Analysis ---
+  const [aiAnalysisContent, setAiAnalysisContent] = useState<string | null>(null);
+  const [isAiAnalysisLoading, setIsAiAnalysisLoading] = useState<boolean>(false);
+  const [isAiOutputVisible, setIsAiOutputVisible] = useState<boolean>(false);
+  // --- End States for AI Analysis ---
+
+  // Log when the component receives step prop updates
+  useEffect(() => {
+    // console.log(`[SolutionStep ${step.id}] received step.forwardDerivationStatus: ${step.forwardDerivationStatus}`);
+  }, [step.forwardDerivationStatus, step.id]);
 
   useEffect(() => {
     if (!isEditing && step.latexContent !== currentEditText) {
@@ -68,9 +82,49 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
     onDelete(step.id);
   }, [step.id, onDelete]);
 
-  const handleAnalyze = useCallback(() => {
-    onAnalyze(step.id);
-  }, [step.id, onAnalyze]);
+  const handleAiAnalysisClick = useCallback(() => {
+    // AI Analysis button itself no longer directly shows loading or content.
+    // It delegates to MainLayout, which will handle the sequence of checks and then the actual AI call.
+    // The UI for loading/content of AI analysis will still be managed by SolutionStep based on props from MainLayout if needed,
+    // or MainLayout could manage a global AI analysis display.
+    // For now, SolutionStep retains its local AI display state, assuming onInitiateAiAnalysisWithChecks will trigger MainLayout
+    // which then might update props that cause SolutionStep to show loading/results.
+
+    // Call the new handler in MainLayout, passing current derivation statuses
+    onInitiateAiAnalysisWithChecks(step.id, step.forwardDerivationStatus, step.backwardDerivationStatus);
+    
+    // We can optimistically show the AI output area and a loading state here, 
+    // assuming the MainLayout will proceed with the AI call.
+    // However, the actual API call and content setting should be driven by MainLayout.
+    // For this iteration, to keep SolutionStep simpler, we'll let MainLayout manage the AI call fully.
+    // The local AI display state in SolutionStep might become redundant or repurposed later.
+    // For now, let's just ensure the AI panel opens and shows a generic loading message
+    // if it's not already visible.
+    if (!isAiOutputVisible) {
+        setIsAiOutputVisible(true); // Show the panel
+        setIsAiAnalysisLoading(true); // Assume loading will start
+        setAiAnalysisContent(null); // Clear previous content
+    }
+
+  }, [step.id, step.forwardDerivationStatus, step.backwardDerivationStatus, onInitiateAiAnalysisWithChecks, isAiOutputVisible]);
+
+  const handleCheckForwardDerivationClick = useCallback(() => {
+    if (step.forwardDerivationStatus === ForwardDerivationStatus.Pending) {
+      return;
+    }
+    if (onCheckForwardDerivation) {
+      onCheckForwardDerivation(step.id);
+    }
+  }, [step.id, step.forwardDerivationStatus, onCheckForwardDerivation]);
+
+  const handleCheckBackwardDerivationClick = useCallback(() => {
+    if (step.backwardDerivationStatus === ForwardDerivationStatus.Pending) {
+      return;
+    }
+    if (onCheckBackwardDerivation) {
+      onCheckBackwardDerivation(step.id);
+    }
+  }, [step.id, step.backwardDerivationStatus, onCheckBackwardDerivation]);
 
   const handleEnterSplitMode = useCallback(() => {
     setIsSplitting(true);
@@ -103,6 +157,22 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
     setSplitPart2Text(event.target.value);
   };
 
+  const getStepVerificationClassName = () => {
+    switch (step.verificationStatus) {
+      case VerificationStatus.VerifiedCorrect:
+        return styles.verifiedCorrectStep;
+      case VerificationStatus.VerifiedIncorrect:
+        return styles.verifiedIncorrectStep;
+      case VerificationStatus.Error:
+        return styles.errorStep;
+      case VerificationStatus.Verifying:
+        return styles.verifyingStep;
+      case VerificationStatus.NotVerified:
+      default:
+        return styles.notVerifiedStep;
+    }
+  };
+
   const getVerificationIcon = () => {
     let iconElement: JSX.Element | null = null;
     let titleText = '';
@@ -121,6 +191,8 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
         break;
       case VerificationStatus.NotVerified:
       default:
+        // For NotVerified, we won't show an icon in the header next to the content,
+        // but the overall step style will reflect this state.
         return null; 
     }
     return <span title={titleText}>{iconElement}</span>;
@@ -129,8 +201,73 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
   const canSaveRegularEdit = currentEditText.trim() !== step.latexContent.trim() && currentEditText.trim() !== '';
   const canConfirmSplit = splitPart1Text.trim() !== '' && splitPart2Text.trim() !== '';
 
+  const getForwardDerivationButtonClassName = () => {
+    let className = styles.iconButton; // Base class
+    if (step.forwardDerivationStatus === ForwardDerivationStatus.Correct) {
+      className += ` ${styles.forwardCorrect}`;
+    } else if (step.forwardDerivationStatus === ForwardDerivationStatus.Incorrect) {
+      className += ` ${styles.forwardIncorrect}`;
+    } else if (step.forwardDerivationStatus === ForwardDerivationStatus.Pending) {
+      className += ` ${styles.forwardPending}`;
+    }
+    // console.log(`[SolutionStep ${step.id}] getForwardDerivationButtonClassName generated: ${className}`); // Log generated class name
+    return className;
+  };
+
+  const isForwardDerivationDisabled = 
+    step.forwardDerivationStatus === ForwardDerivationStatus.Correct ||
+    step.forwardDerivationStatus === ForwardDerivationStatus.Incorrect ||
+    step.forwardDerivationStatus === ForwardDerivationStatus.Pending;
+
+  const getBackwardDerivationButtonClassName = () => {
+    let className = styles.iconButton; // Base class
+    if (step.backwardDerivationStatus === ForwardDerivationStatus.Correct) {
+      className += ` ${styles.forwardCorrect}`;
+    } else if (step.backwardDerivationStatus === ForwardDerivationStatus.Incorrect) {
+      className += ` ${styles.forwardIncorrect}`;
+    } else if (step.backwardDerivationStatus === ForwardDerivationStatus.Pending) {
+      className += ` ${styles.forwardPending}`;
+    }
+    return className;
+  };
+
+  const isBackwardDerivationDisabled = 
+    step.backwardDerivationStatus === ForwardDerivationStatus.Correct ||
+    step.backwardDerivationStatus === ForwardDerivationStatus.Incorrect ||
+    step.backwardDerivationStatus === ForwardDerivationStatus.Pending;
+
+  // <<< ADDED: Tooltip function for forward derivation >>>
+  const getForwardDerivationTooltip = () => {
+    switch (step.forwardDerivationStatus) {
+      case ForwardDerivationStatus.Pending:
+        return "正在检查正向推导...";
+      case ForwardDerivationStatus.Correct:
+        return "正向推导已验证正确";
+      case ForwardDerivationStatus.Incorrect:
+        return "正向推导已验证错误";
+      case ForwardDerivationStatus.Undetermined:
+      default:
+        return "正向推导正确性（检查能否从头推导至此）";
+    }
+  };
+
+  // <<< ADDED: Tooltip function for backward derivation >>>
+  const getBackwardDerivationTooltip = () => {
+    switch (step.backwardDerivationStatus) {
+      case ForwardDerivationStatus.Pending:
+        return "正在检查反向推导...";
+      case ForwardDerivationStatus.Correct:
+        return "反向推导已验证正确";
+      case ForwardDerivationStatus.Incorrect:
+        return "反向推导已验证错误";
+      case ForwardDerivationStatus.Undetermined:
+      default:
+        return "反向推导正确性（检查能否从此步骤反向推导至最终目标或已知结论）";
+    }
+  };
+
   return (
-    <div className={styles.solutionStep}>
+    <div className={`${styles.solutionStep} ${getStepVerificationClassName()}`}>
       <div className={styles.stepNumberContainer}>
         <span className={styles.stepNumber}>{step.stepNumber}</span>
       </div>
@@ -182,6 +319,31 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
             </Latex>
           )}
         </div>
+        {/* --- AI Analysis Output Area --- */}
+        {isAiOutputVisible && (
+          <div className={styles.aiAnalysisOutputArea}>
+            {isAiAnalysisLoading ? (
+              <div className={styles.aiLoadingIndicator}>
+                <RefreshCw className={`${styles.icon} ${styles.spin}`} size={18} />
+                <span>AI 分析中...</span>
+              </div>
+            ) : (
+              aiAnalysisContent && (
+                <div className={styles.aiAnalysisContent}>
+                  <Latex delimiters={[
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\(", right: "\)", display: false },
+                    { left: "\[", right: "\]", display: true }
+                  ]}>
+                    {aiAnalysisContent}
+                  </Latex>
+                </div>
+              )
+            )}
+          </div>
+        )}
+        {/* --- End AI Analysis Output Area --- */}
       </div>
       <div className={styles.actions}>
         {isEditing ? (
@@ -218,8 +380,33 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
                 <button onClick={handleDelete} className={styles.iconButton} title="删除此步骤" aria-label="删除此步骤">
                     <Trash2 size={18} />
                 </button>
-                <button onClick={handleAnalyze} className={styles.iconButton} title="AI解析此步骤" aria-label="AI解析此步骤">
-                    <SearchCode size={18} />
+                {/* AI Analysis Button */}
+                <button 
+                  onClick={handleAiAnalysisClick} 
+                  className={`${styles.iconButton} ${isAiAnalysisLoading ? styles.disabledButton : ''}`}
+                  title="AI 解析此步骤" 
+                  aria-label="AI 解析此步骤"
+                  disabled={isAiAnalysisLoading}
+                >
+                  <Wand2 size={18} />
+                </button>
+                <button 
+                  onClick={handleCheckForwardDerivationClick} 
+                  className={getForwardDerivationButtonClassName()}
+                  title={getForwardDerivationTooltip()}
+                  aria-label="正向推导正确性检查" 
+                  disabled={isForwardDerivationDisabled}
+                >
+                  <ArrowRightCircle size={18} />
+                </button>
+                <button 
+                  onClick={handleCheckBackwardDerivationClick} 
+                  className={getBackwardDerivationButtonClassName()}
+                  title={getBackwardDerivationTooltip()}
+                  aria-label="反向推导正确性检查" 
+                  disabled={isBackwardDerivationDisabled}
+                >
+                  <ArrowLeftCircle size={18} />
                 </button>
              </>
         )}

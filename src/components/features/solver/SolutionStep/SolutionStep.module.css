@@ -3,12 +3,39 @@
   display: flex;
   align-items: flex-start;
   padding: 15px;
-  background-color: white;
+  /* background-color: white; Default background, overridden by status */
   border: 1px solid #f0f0f0;
   border-radius: 6px;
   margin-bottom: 10px;
   min-height: 70px; /* Adjusted from 100px for a more compact look if needed */
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: background-color 0.3s ease, border-left-color 0.3s ease; /* Smooth transition for color changes */
+}
+
+/* Status-specific styles for the entire step bar */
+.notVerifiedStep {
+  background-color: #ffffff; /* Default white or a very light gray */
+  border-left: 5px solid #d1d5db; /* Neutral gray border */
+}
+
+.verifyingStep {
+  background-color: #e0f2fe; /* Light blue */
+  border-left: 5px solid #3b82f6; /* Blue border */
+}
+
+.verifiedCorrectStep {
+  background-color: #dcfce7; /* Light green */
+  border-left: 5px solid #22c55e; /* Green border */
+}
+
+.verifiedIncorrectStep {
+  background-color: #fee2e2; /* Light red */
+  border-left: 5px solid #ef4444; /* Red border */
+}
+
+.errorStep {
+  background-color: #fffbeb; /* Light yellow/orange for error */
+  border-left: 5px solid #f59e0b; /* Amber/Orange border */
 }
 
 .stepNumberContainer {
@@ -122,57 +149,139 @@
 }
 
 .iconButton {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1em;
-  padding: 5px;
-  margin-bottom: 5px;
-  color: #555;
-}
-
-.iconButton:hover {
-  color: #000;
-}
-
-.statusMark {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 20px;
-}
-
-.statusMarkCorrect {
-  color: #4CAF50; /* Green */
-}
-
-/* No specific style for "not yet validated", so no .statusMarkNeutral or similar needed yet */
-
-.actionButtons {
-  position: absolute;
-  right: 10px;
-  bottom: 10px; /* Aligned to bottom right as per ProblemBlock for consistency */
-  display: flex;
-  gap: 8px;
-}
-
-/* Reusing iconButton style from ProblemBlock. Ideally, this would be a common component */
-.iconButton {
   background-color: transparent;
   border: 1px solid var(--color-light-gray);
   border-radius: 4px;
-  width: 30px;
-  height: 30px;
+  width: 32px; /* Fixed width for all icon buttons */
+  height: 32px; /* Fixed height for all icon buttons */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
+  padding: 0; /* Remove padding if fixed size and centering handles it */
+  /* font-size: 14px; Removed as buttons are icon-only now */
   color: var(--color-dark-gray);
+  /* white-space: nowrap; Removed as buttons are icon-only now */
+  margin-bottom: 8px; /* Consistent margin for all buttons in the column */
+  box-sizing: border-box; /* Ensure padding/border are part of width/height */
+}
+
+.iconButton:last-child {
+  margin-bottom: 0; /* Remove margin from the last button in the column */
 }
 
 .iconButton:hover {
   background-color: #f0f0f0;
   border-color: var(--color-primary-blue);
   color: var(--color-primary-blue);
+}
+
+/* Styles for ForwardDerivationStatus button */
+.iconButton.forwardCorrect {
+  background-color: #e6ffed; /* Light green background */
+  border-color: #52c41a; /* Green border */
+  color: #389e0d; /* Darker green text/icon */
+}
+
+.iconButton.forwardCorrect:hover:not(:disabled) {
+  background-color: #d9f7be;
+  border-color: #389e0d;
+  color: #237804;
+}
+
+.iconButton.forwardIncorrect {
+  background-color: #fff1f0; /* Light red background */
+  border-color: #ff4d4f; /* Red border */
+  color: #cf1322; /* Darker red text/icon */
+}
+
+.iconButton.forwardIncorrect:hover:not(:disabled) {
+  background-color: #ffccc7;
+  border-color: #cf1322;
+  color: #a8071a;
+}
+
+/* MODIFIED SECTION START */
+/* Pending state - specific disabled appearance */
+.iconButton.forwardPending {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #b0b0b0;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Correct and Incorrect states when disabled:
+   They should retain their respective colors (green/red)
+   but appear disabled via opacity and cursor.
+*/
+.iconButton.forwardCorrect:disabled,
+.iconButton.forwardIncorrect:disabled {
+  opacity: 0.7; /* Apply opacity for disabled look */
+  cursor: not-allowed;
+  /* Colors (background, border, text) will be inherited from
+     .iconButton.forwardCorrect and .iconButton.forwardIncorrect respectively.
+  */
+}
+/* MODIFIED SECTION END */
+
+/* If the button contains text, ensure good contrast */
+.iconButton.forwardCorrect span,
+.iconButton.forwardIncorrect span {
+  font-weight: 500; /* Make text slightly bolder for clarity */
+}
+
+/* --- Styles for AI Analysis Feature --- */
+.aiAnalysisOutputArea {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #e9e9e9;
+  border-radius: 4px;
+  background-color: #fdfdfd;
+  width: 100%; /* Ensure it takes full width within its parent */
+  box-sizing: border-box;
+}
+
+.aiLoadingIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center loading indicator */
+  gap: 8px;
+  color: #555;
+  font-style: italic;
+  padding: 15px 0; /* Add some vertical padding when loading */
+}
+
+.aiLoadingIndicator .icon.spin {
+  /* The spin animation is already defined globally */
+}
+
+.aiAnalysisContent {
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: #333;
+  /* Allow katex content to break words if needed */
+  word-break: break-word; 
+}
+
+.aiAnalysisContent .katex-display {
+  margin: 0.5em 0 !important; /* Adjust margins for KaTeX display math */
+}
+
+/* General disabled button style if not already present or specific enough */
+.iconButton:disabled,
+.disabledButton {
+  opacity: 0.6;
+  cursor: not-allowed !important; /* Ensure cursor changes */
+  background-color: #e0e0e0 !important; /* Optional: slightly different bg for disabled */
+  border-color: #c0c0c0 !important;  /* Optional: slightly different border for disabled */
+  color: #888 !important; /* Optional: slightly different color for disabled */
+}
+
+.iconButton:disabled:hover,
+.disabledButton:hover {
+  /* Override hover effects for disabled buttons */
+  background-color: #e0e0e0 !important; 
+  border-color: #c0c0c0 !important;
+  color: #888 !important;
 } 

@@ -1,0 +1,127 @@
+.nodeDetailViewerContainer {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9f9f9; /* Light background for the whole viewer */
+  overflow-y: auto; /* Allow scrolling for the entire viewer if content overflows */
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 1.4em;
+  color: #333;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.saveButton {
+  background-color: #4CAF50; /* Green */
+  color: white;
+  border-color: #4CAF50;
+}
+
+.saveButton:hover {
+  background-color: #45a049;
+}
+
+.cancelButton {
+  background-color: #f0f0f0;
+  color: #333;
+  border-color: #ccc;
+}
+
+.cancelButton:hover {
+  background-color: #e0e0e0;
+}
+
+.contentArea {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between rendered and editable sections */
+  overflow-y: hidden; /* Let inner sections handle their scroll if needed */
+}
+
+.renderedLatexSection,
+.editableLatexSection {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.renderedLatexSection h4,
+.editableLatexSection h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+  color: #555;
+}
+
+.latexDisplayBox {
+  padding: 10px;
+  min-height: 80px; /* Minimum height for the preview box */
+  border: 1px dashed #ccc;
+  border-radius: 3px;
+  background-color: #fdfdfd;
+  overflow-y: auto; /* Scroll if content is too tall */
+  max-height: 200px; /* Max height before scrolling */
+}
+
+.emptyContentPlaceholder {
+  color: #888;
+  font-style: italic;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.latexTextarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 1em;
+  resize: vertical;
+  min-height: 150px; /* Good starting height */
+  box-sizing: border-box;
+  flex-grow: 1; /* Allow textarea to take available space in its section */
+}
+
+/* Ensure KaTeX display math is not overly large and fits well */
+.latexDisplayBox .katex-display {
+  margin: 0.5em 0 !important;
+  font-size: 1em !important; /* Adjust if needed, relative to surrounding text */
+}
+
+.latexDisplayBox .katex {
+    font-size: 1.1em; /* General KaTeX font size adjustment */
+} 

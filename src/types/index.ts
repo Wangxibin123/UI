@@ -12,6 +12,16 @@ export enum VerificationStatus {
 }
 
 /**
+ * Represents the status of forward derivation for a step.
+ */
+export enum ForwardDerivationStatus {
+  Undetermined = 'undetermined', // Not yet determined
+  Pending = 'pending',           // Determination in progress
+  Correct = 'correct',           // Determined to be correct
+  Incorrect = 'incorrect',       // Determined to be incorrect
+}
+
+/**
  * Represents the data associated with a DAG node when used with React Flow.
  * This is typically passed to the `data` prop of a React Flow node.
  */
@@ -27,6 +37,12 @@ export interface DagNodeRfData {
   notes?: string;
   isOnNewPath?: boolean; // Added for highlighting nodes on a new path
   interpretationIdea?: string; // <--- 新增的行
+  forwardDerivationDisplayStatus?: ForwardDerivationStatus; // <<< ADDED for DAG node display
+  backwardDerivationDisplayStatus?: ForwardDerivationStatus; // <<< ADDED for DAG node display
+  // --- C1: Add fields for Focus Analysis ---
+  isFocusPath?: boolean; // True if the node is part of the current focus path
+  isFocusSource?: boolean; // True if this node is the source of the current focus analysis
+  // --- End C1 ---
   // Add any other custom data your nodes might need
   [key: string]: any; // Allows for other arbitrary data
 }
@@ -64,6 +80,9 @@ export interface DagEdge {
   data?: { // Added data field for custom properties like isOnNewPath
     isOnNewPath?: boolean;
     isDeleted?: boolean;
+    // --- C1: Add field for Focus Analysis to Edge Data ---
+    isFocusPath?: boolean; // True if the edge is part of the current focus path
+    // --- End C1 ---
     [key: string]: any; // Allows for other arbitrary data
   };
   // Potentially add a deleted flag for edges too if they need special styling
@@ -81,6 +100,8 @@ export interface SolutionStepData {
   isDeleted?: boolean; // Added for soft delete tracking
   isHardDeleted?: boolean;
   notes?: string;
+  forwardDerivationStatus?: ForwardDerivationStatus; // New field for forward derivation status
+  backwardDerivationStatus?: ForwardDerivationStatus; // <<< ADDED LINE: New field for backward derivation status
 }
 
 /**
@@ -97,4 +118,8 @@ export enum LayoutMode {
   DAG_COLLAPSED_SIMPLE = 'dagCollapsedSimple',
   DAG_EXPANDED_FULL = 'dagExpandedFull',
   AI_PANEL_ACTIVE = 'aiPanelActive',
-} 
+}
+
+// --- C1: Define FocusAnalysisType ---
+export type FocusAnalysisType = 'forward' | 'backward' | 'full' | null;
+// --- End C1 --- 

@@ -169,3 +169,77 @@
   /* 你也可以调整这里的样式，比如背景色，但注意不要与 data.highlightColor 冲突 */
   /* background-color: rgba(255, 0, 114, 0.1); */ /* 例如一个淡淡的粉色背景 */
 }
+
+/* src/components/features/dag/CustomStepNode/CustomStepNode.module.css */
+/* ... existing styles ... */
+
+.pathToCompletionIcon {
+  /* This class might be unused now, or you can repurpose/remove it */
+  /* position: absolute; */
+  /* top: 5px; */
+  /* right: 5px; */
+  /* color: #28a745; */
+  /* z-index: 10; */
+}
+
+.derivationStatusIconsContainer {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  z-index: 5; /* Ensure it's above general node content but potentially below handles or selection outlines if needed */
+}
+
+.derivationIcon {
+  /* Common styles for derivation icons, if any */
+}
+
+.forwardCorrectIcon {
+  color: var(--color-success-dark, #388E3C); /* Slightly darker green for good contrast */
+}
+
+.backwardCorrectIcon {
+  color: var(--color-success-dark, #388E3C); /* Can use same green, or a different shade if preferred */
+}
+
+.forwardIncorrectIcon {
+  color: var(--color-error-dark, #D32F2F); /* Red for incorrect */
+}
+
+.backwardIncorrectIcon {
+  color: var(--color-error-dark, #D32F2F); /* Red for incorrect, can be same as forward */
+}
+
+/* --- C5: Styles for Focus Analysis Highlighting --- */
+.focusSourceNode {
+  border-width: 3px; /* Thicker border for the source node */
+  border-color: var(--color-primary-blue, #1976D2); /* A distinct blue for focus source */
+  box-shadow: 0 0 12px rgba(25, 118, 210, 0.7), 0 0 8px rgba(25, 118, 210, 0.5) inset; /* More prominent shadow */
+  /* background-color: rgba(25, 118, 210, 0.1); Slightly tinted background */
+}
+
+.focusPathNode {
+  border-width: 2px;
+  border-color: var(--color-secondary-orange, #FFA000); /* An orange for path nodes */
+  background-color: rgba(255, 160, 0, 0.08); /* Light orange tint */
+  box-shadow: 0 0 6px rgba(255, 160, 0, 0.5);
+}
+
+/* Ensure focus styles override some base styles if needed, but be specific */
+.customNode.focusSourceNode,
+.customNode.focusPathNode {
+  /* You can add !important here if absolutely necessary, but try to avoid it */
+  /* For example, if .verifiedCorrect background needs to be overridden by focusPathNode background */
+}
+
+/* If selected, focus highlighting should still be prominent or combine */
+.customNode.selected.focusSourceNode {
+  box-shadow: 0 0 12px rgba(25, 118, 210, 0.9), 0 0 0 3px rgba(25, 118, 210, 0.4); /* Combine selection and focus shadow */
+}
+
+.customNode.selected.focusPathNode {
+  border-color: var(--color-secondary-orange, #FFA000); /* Ensure path border remains */
+  box-shadow: 0 0 8px rgba(255, 160, 0, 0.7), 0 0 0 2px rgba(33, 150, 243, 0.3); /* Combine selection shadow with path glow */
+}
