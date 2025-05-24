@@ -4,7 +4,9 @@
   border-radius: 8px; /* 稍微调整圆角以匹配更现代的风格 */
   background-color: var(--color-white, #ffffff);
   border: 2px solid var(--color-border-neutral, #ccc);
-  min-width: 150px; /* 给予更多空间 */
+  width: 220px; /* Fixed width for consistency with customNode */
+  min-width: 220px; /* 给予更多空间 */
+  max-width: 220px; /* Ensure consistent width */
   text-align: center;
   font-size: var(--font-size-small, 13px);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -75,8 +77,9 @@
   border: 1px solid #9e9e9e; /* Default border color */
   border-radius: 6px;
   background: white;
-  min-width: 200px; /* Increased min-width slightly */
-  max-width: 250px; /* Added max-width to prevent overly wide nodes */
+  width: 220px; /* Fixed width for consistency */
+  min-width: 220px; /* Ensure minimum width matches fixed width */
+  max-width: 220px; /* Ensure maximum width matches fixed width */
   font-size: 13px;
   text-align: left; /* Changed to left align for better readability of content */
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -112,18 +115,42 @@
 }
 
 .nodeContent {
-  font-size: 12px;
-  color: #555;
-  margin-bottom: 8px;
-  max-height: 50px; /* Limit content height */
-  overflow-y: auto; /* Allow scrolling for overflow */
-  word-break: break-word; /* Break long words */
-  /* Styles for react-latex-next if needed, though it usually adapts well */
+  font-size: 12px; /* Base font size for content area */
+  color: #454545; /* Darker grey for better readability */
+  margin-top: 8px; /* Space below header */
+  margin-bottom: 8px; /* Space above bottom handle */
+  max-height: 60px; /* Adjusted max-height, e.g., for 2-3 lines of text */
+  overflow-y: auto;   /* Enable vertical scroll if content exceeds max-height */
+  overflow-x: hidden; /* Hide horizontal scrollbar, LaTeX should wrap or scale */
+  word-break: break-word; /* Break long words if any */
+  line-height: 1.4; /* Improve line spacing for readability */
+  padding: 5px; /* Add some padding inside the content area */
+  background-color: rgba(0,0,0,0.02); /* Very subtle background to differentiate */
+  border-radius: 3px;
+}
+
+/* Styling for react-latex-next rendered content */
+.nodeContent .katex {
+  font-size: 0.9em !important; /* Scale KaTeX font size relative to .nodeContent's 12px */
+  text-align: left !important; /* Ensure LaTeX is left-aligned */
+  display: block; /* Allow KaTeX block to take full width if needed */
 }
 
 .nodeContent .katex-display {
-  margin: 0.2em 0 !important; /* Reduce KaTeX default margins if too large */
-  font-size: 0.95em !important; /* Adjust KaTeX font size within node */
+  margin: 0.1em 0 !important; /* Reduce KaTeX default vertical margins significantly */
+  padding: 0 !important; /* Remove padding if any from katex-display */
+  overflow-x: auto; /* Allow horizontal scroll for very wide equations */
+  overflow-y: hidden;
+}
+
+.nodeContent .katex-display > .katex-html {
+  display: block; /* Or inline-block, helps with scroll */
+  white-space: nowrap; /* Prevent wrapping within the formula itself if scrolling */
+}
+
+.noContentFallback {
+  color: #888;
+  font-style: italic;
 }
 
 .handle {
@@ -212,34 +239,83 @@
   color: var(--color-error-dark, #D32F2F); /* Red for incorrect, can be same as forward */
 }
 
-/* --- C5: Styles for Focus Analysis Highlighting --- */
+/* --- C5: Styles for Focus Analysis Highlighting - Adjusted for Scheme A Variant --- */
 .focusSourceNode {
-  border-width: 3px; /* Thicker border for the source node */
-  border-color: var(--color-primary-blue, #1976D2); /* A distinct blue for focus source */
-  box-shadow: 0 0 12px rgba(25, 118, 210, 0.7), 0 0 8px rgba(25, 118, 210, 0.5) inset; /* More prominent shadow */
-  /* background-color: rgba(25, 118, 210, 0.1); Slightly tinted background */
+  /* Primarily uses background for highlighting */
+  background-color: var(--color-focus-source-bg, rgba(25, 118, 210, 0.2)); 
+  /* Optional: a subtle shadow, or remove if it clashes with mainPathNode shadow */
+  box-shadow: inset 0 0 5px var(--color-focus-source-shadow, rgba(25, 118, 210, 0.3));
+  /* Remove specific border, relies on default or mainPathNode border */
+  /* border-width: 1px; */
+  /* border-color: var(--color-focus-source-border, #1976D2); */
 }
 
 .focusPathNode {
-  border-width: 2px;
-  border-color: var(--color-secondary-orange, #FFA000); /* An orange for path nodes */
-  background-color: rgba(255, 160, 0, 0.08); /* Light orange tint */
-  box-shadow: 0 0 6px rgba(255, 160, 0, 0.5);
-}
-
-/* Ensure focus styles override some base styles if needed, but be specific */
-.customNode.focusSourceNode,
-.customNode.focusPathNode {
-  /* You can add !important here if absolutely necessary, but try to avoid it */
-  /* For example, if .verifiedCorrect background needs to be overridden by focusPathNode background */
+  /* Primarily uses background for highlighting */
+  background-color: var(--color-focus-path-bg, rgba(255, 0, 114, 0.15)); 
+  /* Optional: a subtle shadow or glow */
+  box-shadow: inset 0 0 5px var(--color-focus-path-shadow, rgba(255, 0, 114, 0.25));
+  /* Remove specific border */
+  /* border-width: 1px; */
+  /* border-color: var(--color-focus-path-border, #ff0072); */
 }
 
 /* If selected, focus highlighting should still be prominent or combine */
 .customNode.selected.focusSourceNode {
-  box-shadow: 0 0 12px rgba(25, 118, 210, 0.9), 0 0 0 3px rgba(25, 118, 210, 0.4); /* Combine selection and focus shadow */
+  /* Selected source node: enhance background or shadow */
+  background-color: var(--color-focus-source-selected-bg, rgba(25, 118, 210, 0.3));
+  box-shadow: inset 0 0 8px var(--color-focus-source-selected-shadow, rgba(25, 118, 210, 0.5)), 0 0 0 2px var(--color-selection-border, #2196F3) ; /* Keep selection outline */
 }
 
 .customNode.selected.focusPathNode {
-  border-color: var(--color-secondary-orange, #FFA000); /* Ensure path border remains */
-  box-shadow: 0 0 8px rgba(255, 160, 0, 0.7), 0 0 0 2px rgba(33, 150, 243, 0.3); /* Combine selection shadow with path glow */
+  /* Selected path node: enhance background or shadow */
+  background-color: var(--color-focus-path-selected-bg, rgba(255, 0, 114, 0.25));
+  box-shadow: inset 0 0 8px var(--color-focus-path-selected-shadow, rgba(255, 0, 114, 0.4)), 0 0 0 2px var(--color-selection-border, #2196F3); /* Keep selection outline */
+}
+
+/* +++ T2.2: Styles for Main Path Node (Ensures it doesn't set background) +++ */
+.mainPathNode {
+  border: 3px solid var(--color-accent-gold, #FFD700); 
+  box-shadow: 0 0 10px var(--color-accent-gold-shadow, rgba(255, 215, 0, 0.5));
+  /* CRITICAL: DO NOT set background-color here if focus background needs to show */
+}
+
+.customNode.mainPathNode .nodeLabel {
+  /* Optional: if you want to change the label style for main path nodes */
+  /* color: var(--color-accent-gold-dark, #b8860b); */
+  /* font-weight: bold; */
+}
+
+.customNode.selected.mainPathNode {
+  /* Styles for selected main path nodes - can be same as mainPathNode or more prominent */
+  /* border-color: var(--color-main-path-border-selected, #FFC107); */
+  box-shadow: 0 0 0 3px var(--color-main-path-border-selected, #FFC107), inset 0 0 0 2px var(--color-background, white); 
+}
+/* +++ End T2.2 +++ */
+
+/* --- NP_FEAT_1: Styles for New Path Starting Node --- */
+@keyframes newPathStartPulse {
+  0% {
+    box-shadow: 0 0 0 0px var(--color-new-path-start-glow, rgba(46, 204, 113, 0.5));
+  }
+  70% {
+    box-shadow: 0 0 0 10px var(--color-new-path-start-glow-transparent, rgba(46, 204, 113, 0));
+  }
+  100% {
+    box-shadow: 0 0 0 0px var(--color-new-path-start-glow-transparent, rgba(46, 204, 113, 0));
+  }
+}
+
+.newPathStartNode {
+  border: 2px dashed var(--color-new-path-start-border, #2ecc71); /* Bright green dashed border */
+  animation: newPathStartPulse 2s infinite;
+  /* Ensure it doesn't fully override other important borders like selection, 
+     but it should be distinct. We can add more specific combined styles if needed. */
+}
+
+/* Optional: Style for selected new path start node if needed for more emphasis */
+.customNode.selected.newPathStartNode {
+  /* Example: Thicker dashed border or different pulse */
+  border-width: 3px;
+  box-shadow: 0 0 0 3px var(--color-new-path-start-border, #2ecc71), inset 0 0 0 2px var(--color-background, white);
 }

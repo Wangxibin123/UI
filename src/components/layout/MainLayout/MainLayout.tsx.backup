@@ -1,0 +1,1212 @@
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import styles from './MainLayout.module.css';
+import panelStyles from '../../common/CollapsiblePanel/CollapsiblePanel.module.css';
+import ControlBar from '../../features/dag/ControlBar/ControlBar';
+import DagVisualizationArea from '../../features/dag/DagVisualizationArea/DagVisualizationArea';
+import ProblemBlock from '../../features/solver/ProblemBlock/ProblemBlock';
+import SolutionStep from '../../features/solver/SolutionStep/SolutionStep';
+import SolverActions from '../../features/solver/SolverActions/SolverActions';
+import CollapsiblePanel from '../../common/CollapsiblePanel/CollapsiblePanel';
+import DraggableSeparator from '../../common/DraggableSeparator/DraggableSeparator';
+import {
+  type SolutionStepData,
+  type DagNode,
+  type DagEdge,
+  type ProblemData,
+  VerificationStatus,
+  LayoutMode,
+  type DagNodeRfData,
+  ForwardDerivationStatus,
+  type FocusAnalysisType,
+} from '../../../types';
+import { MarkerType, ReactFlowProvider } from '@reactflow/core';
+import ConfirmationDialog from '../../common/ConfirmationDialog/ConfirmationDialog';
+
+import { toast } from 'react-toastify';
+import NodeNoteModal from '../../common/NodeNoteModal/NodeNoteModal';
+import SplitStepModal from '../../common/SplitStepModal/SplitStepModal';
+import InterpretationModal from '../../common/InterpretationModal/InterpretationModal';
+import AICopilotPanel, { type AICopilotPanelProps, type Message as AICopilotMessage, type DagNodeInfo as CopilotDagNodeInfo, type CopilotMode } from '../../features/ai/AICopilotPanel/AICopilotPanel';
+import RightSidePanel from '../../features/rightPanel/RightSidePanel';
+import { Bot, Save, X as IconX, AlertTriangle } from 'lucide-react';
+import { BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
+
+interface PanelWidthsType {
+  dag: number;
+  solver: number;
+  ai: number;
+}
+
+// Helper function to find a path between two nodes using BFS
+const findPathBetweenNodes = (
+  sourceId: string,
+  targetId: string,
+  nodes: DagNode[], // Should be all potentially visible nodes
+  edges: DagEdge[]
+): { pathNodes: string[]; pathEdges: string[] } | null => {
+  const adj: Map<string, { neighbor: string; edgeId: string }[]> = new Map();
+  const nodePool = nodes.filter(n => !n.data.isHardDeleted); // Use only non-hard-deleted nodes for path finding
+
+  nodePool.forEach(node => {
+    adj.set(node.id, []);
+  });
+
+  edges.forEach(edge => {
+    // Ensure both source and target nodes for the edge exist in our current nodePool and are not soft-deleted
+    const sourceNodeInPool = nodePool.find(n => n.id === edge.source && !n.data.isDeleted);
+    const targetNodeInPool = nodePool.find(n => n.id === edge.target && !n.data.isDeleted);
+    const edgeNotDeleted = !edge.data?.isDeleted; // Consider edge's own soft-delete status
+
+    if (sourceNodeInPool && targetNodeInPool && edgeNotDeleted) {
+      adj.get(edge.source)!.push({ neighbor: edge.target, edgeId: edge.id });
+    }
+  });
+
+  const queue: { nodeId: string; path: string[]; currentEdges: string[] }[] = [{ nodeId: sourceId, path: [sourceId], currentEdges: [] }];
+  const visited: Set<string> = new Set([sourceId]);
+
+  while (queue.length > 0) {
+    const { nodeId, path, currentEdges } = queue.shift()!;
+    if (nodeId === targetId) {
+      return { pathNodes: path, pathEdges: currentEdges };
+    }
+    const neighbors = adj.get(nodeId) || [];
+    for (const { neighbor, edgeId } of neighbors) {
+      if (!visited.has(neighbor)) {
+        // Check if neighbor is in the nodePool and not soft-deleted (already implicitly handled by adj construction if strict)
+         const neighborNodeInPool = nodePool.find(n => n.id === neighbor && !n.data.isDeleted);
+         if (neighborNodeInPool) {
+            visited.add(neighbor);
+            queue.push({
+                nodeId: neighbor,
+                path: [...path, neighbor],
+                currentEdges: [...currentEdges, edgeId]
+            });
+         }
+      }
+    }
+  }
+  return null;
+};
+
+// --- C3: Pathfinding utilities for Focus Analysis ---
+const findForwardPath = (
+  startNodeId: string,
+  nodes: DagNode[],
+  edges: DagEdge[]
+): { pathNodes: string[]; pathEdges: string[] } => {
+  const pathNodesSet: Set<string> = new Set();
+  const pathEdgesSet: Set<string> = new Set();
+  const queue: string[] = [];
+  const visitedNodes: Set<string> = new Set();
+
+  const startNode = nodes.find(n => n.id === startNodeId);
+  if (startNode && !startNode.data.isDeleted) {
+    queue.push(startNodeId);
+    visitedNodes.add(startNodeId);
+    pathNodesSet.add(startNodeId);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const currentId = queue[head++];
+    edges.forEach(edge => {
+      if (edge.source === currentId) {
+        const targetNode = nodes.find(n => n.id === edge.target);
+        if (targetNode && !targetNode.data.isDeleted) {
+          pathEdgesSet.add(edge.id);
+          if (!visitedNodes.has(edge.target)) {
+            visitedNodes.add(edge.target);
+            pathNodesSet.add(edge.target);
+            queue.push(edge.target);
+          }
+        }
+      }
+    });
+  }
+  return { pathNodes: Array.from(pathNodesSet), pathEdges: Array.from(pathEdgesSet) };
+};
+
+const findBackwardPath = (
+  endNodeId: string,
+  nodes: DagNode[],
+  edges: DagEdge[]
+): { pathNodes: string[]; pathEdges: string[] } => {
+  const pathNodesSet: Set<string> = new Set();
+  const pathEdgesSet: Set<string> = new Set();
+  const queue: string[] = [];
+  const visitedNodes: Set<string> = new Set();
+
+  const endNode = nodes.find(n => n.id === endNodeId);
+  if (endNode && !endNode.data.isDeleted) {
+    queue.push(endNodeId);
+    visitedNodes.add(endNodeId);
+    pathNodesSet.add(endNodeId);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const currentId = queue[head++];
+    edges.forEach(edge => {
+      if (edge.target === currentId) {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        if (sourceNode && !sourceNode.data.isDeleted) {
+          pathEdgesSet.add(edge.id);
+          if (!visitedNodes.has(edge.source)) {
+            visitedNodes.add(edge.source);
+            pathNodesSet.add(edge.source);
+            queue.push(edge.source);
+          }
+        }
+      }
+    });
+  }
+  return { pathNodes: Array.from(pathNodesSet), pathEdges: Array.from(pathEdgesSet) };
+};
+// --- End C3 ---
+
+// +++ T_FIX_LINTER_ADD_GETMAINPATHELEMENTS: Restore getMainPathElements function +++
+// Helper function to get all nodes and edges in the main path starting from a given node
+const getMainPathElements = (
+  startNodeId: string,
+  nodes: DagNode[], 
+  edges: DagEdge[]  
+): { nodes: string[]; edges: string[] } => {
+  const pathNodes: string[] = [];
+  const pathEdges: string[] = [];
+  const queue: string[] = [];
+  const visited: Set<string> = new Set();
+
+  const startNode = nodes.find(n => n.id === startNodeId);
+
+  if (startNode && !startNode.data.isDeleted) {
+    queue.push(startNodeId);
+    visited.add(startNodeId);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const currentId = queue[head++];
+    pathNodes.push(currentId);
+
+    const outgoingEdges = edges.filter(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+      return edge.source === currentId &&
+             sourceNode && !sourceNode.data.isDeleted &&
+             targetNode && !targetNode.data.isDeleted &&
+             !(edge.data?.isUserMarkedDeleted); 
+    });
+
+    if (outgoingEdges.length > 0) {
+        const nextEdge = outgoingEdges[0]; 
+        if (nextEdge && !visited.has(nextEdge.target)) {
+            pathEdges.push(nextEdge.id);
+            visited.add(nextEdge.target);
+            queue.push(nextEdge.target);
+        }
+    }
+  }
+  return { nodes: pathNodes, edges: pathEdges };
+};
+// --- End T_FIX_LINTER_ADD_GETMAINPATHELEMENTS ---
+
+// --- ADD COMPARISON FUNCTIONS HERE ---
+const compareNodeData = (dataA: DagNodeRfData, dataB: DagNodeRfData): boolean => {
+  return (
+    dataA.label === dataB.label &&
+    dataA.fullLatexContent === dataB.fullLatexContent &&
+    dataA.verificationStatus === dataB.verificationStatus &&
+    dataA.stepNumber === dataB.stepNumber &&
+    (dataA.isDeleted || false) === (dataB.isDeleted || false) &&
+    dataA.notes === dataB.notes &&
+    dataA.highlightColor === dataB.highlightColor &&
+    dataA.interpretationIdea === dataB.interpretationIdea &&
+    dataA.forwardDerivationDisplayStatus === dataB.forwardDerivationDisplayStatus &&
+    dataA.backwardDerivationDisplayStatus === dataB.backwardDerivationDisplayStatus &&
+    (dataA.isFocusPath || false) === (dataB.isFocusPath || false) &&
+    (dataA.isFocusSource || false) === (dataB.isFocusSource || false) &&
+    (dataA.isMainPathNode || false) === (dataB.isMainPathNode || false) &&
+    (dataA.isNewPathStart || false) === (dataB.isNewPathStart || false) &&
+    (dataA.isOnNewPath || false) === (dataB.isOnNewPath || false) &&
+    (dataA.isOnPreviewPath || false) === (dataB.isOnPreviewPath || false)
+  );
+};
+
+const areNodesEqual = (nodesA: DagNode[], nodesB: DagNode[]): boolean => {
+  if (nodesA.length !== nodesB.length) return false;
+  for (let i = 0; i < nodesA.length; i++) {
+    const nodeA = nodesA[i];
+    const nodeB = nodesB.find(n => n.id === nodeA.id);
+    if (!nodeB) return false;
+    if (
+      nodeA.id !== nodeB.id ||
+      nodeA.type !== nodeB.type ||
+      nodeA.position.x !== nodeB.position.x ||
+      nodeA.position.y !== nodeB.position.y ||
+      !compareNodeData(nodeA.data, nodeB.data)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const compareEdgeData = (dataA: any, dataB: any): boolean => {
+  if (!dataA && !dataB) return true;
+  if (!dataA || !dataB) return false;
+  return (
+    (dataA.isDeleted || false) === (dataB.isDeleted || false) &&
+    (dataA.isFocusPath || false) === (dataB.isFocusPath || false) &&
+    (dataA.isMainPathEdge || false) === (dataB.isMainPathEdge || false) &&
+    (dataA.isOnNewPath || false) === (dataB.isOnNewPath || false) &&
+    (dataA.isOnPreviewPath || false) === (dataB.isOnPreviewPath || false)
+  );
+};
+
+const areEdgesEqual = (edgesA: DagEdge[], edgesB: DagEdge[]): boolean => {
+  if (edgesA.length !== edgesB.length) return false;
+  for (let i = 0; i < edgesA.length; i++) {
+    const edgeA = edgesA[i];
+    const edgeB = edgesB.find(e => e.id === edgeA.id);
+    if (!edgeB) return false;
+    if (
+      edgeA.id !== edgeB.id ||
+      edgeA.source !== edgeB.source ||
+      edgeA.target !== edgeB.target ||
+      edgeA.type !== edgeB.type ||
+      (edgeA.markerEnd?.type !== edgeB.markerEnd?.type) || 
+      (JSON.stringify(edgeA.style) !== JSON.stringify(edgeB.style)) || 
+      (edgeA.animated || false) === (edgeB.animated || false) || 
+      !compareEdgeData(edgeA.data, edgeB.data)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+// --- END COMPARISON FUNCTIONS ---
+
+const LOCAL_STORAGE_PREFIX = 'aiMath_layoutPrefs_';
+
+function saveUserPreferenceForMode(mode: LayoutMode, widths: PanelWidthsType): void {
+  try {
+    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${mode}`, JSON.stringify(widths));
+  } catch (error) {
+    console.warn("Could not save user layout preference:", error);
+  }
+}
+
+function loadUserPreferenceForMode(mode: LayoutMode): PanelWidthsType | null {
+  try {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${mode}`);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.warn("Could not load user layout preference:", error);
+    return null;
+  }
+}
+
+const initialSolutionStepsData: SolutionStepData[] = [
+  { id: 'step-1', stepNumber: 1, latexContent: "$$\\lambda^2 + 4\\lambda + 4 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+  { id: 'step-2', stepNumber: 2, latexContent: "$$(\\lambda + 2)^2 = 0$$", verificationStatus: VerificationStatus.VerifiedCorrect, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+  { id: 'step-3', stepNumber: 3, latexContent: "$$\\lambda = -2 \\text{ (重根)}$$", verificationStatus: VerificationStatus.NotVerified, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+];
+
+const MIN_PANEL_PERCENTAGE = 10; // Minimum width for any panel in percentage
+
+interface CopilotContextNodeInfo {
+  id: string;
+  label?: string;
+  content?: string; 
+}
+
+// +++ 定义 StepDetailEditorPanel 组件 +++
+interface StepDetailEditorPanelProps {
+  nodeId: string | null;
+  latexContent: string;
+  onSave: (newLatex: string) => void;
+  onCancel: () => void;
+  onChange: (newLatex: string) => void;
+}
+
+const StepDetailEditorPanel: React.FC<StepDetailEditorPanelProps> = ({
+  nodeId,
+  latexContent,
+  onSave,
+  onCancel,
+  onChange,
+}) => {
+  if (!nodeId) return null;
+
+  return (
+    <div className={styles.stepDetailEditorPanel}>
+      <h4>查看/编辑步骤: {nodeId}</h4>
+      <div className={styles.stepDetailPreviewSection}>
+        <h5>LaTeX 预览:</h5>
+        {/* Use react-katex for actual rendering */}
+        <BlockMath math={latexContent} renderError={(error: any) => <span>LaTeX 错误: {error.name}</span>} />
+      </div>
+      <div className={styles.stepDetailEditSection}>
+        <h5>编辑 LaTeX:</h5>
+        <textarea
+          value={latexContent}
+          onChange={(e) => onChange(e.target.value)}
+          rows={8}
+          className={styles.stepDetailTextarea}
+        />
+      </div>
+      <div className={styles.stepDetailActions}>
+        <button onClick={() => onSave(latexContent)} className={styles.stepDetailButtonSave}>
+          <Save size={16} /> 保存
+        </button>
+        <button onClick={onCancel} className={styles.stepDetailButtonCancel}>
+          <IconX size={16} /> 取消
+        </button>
+      </div>
+    </div>
+  );
+};
+// +++ 结束 StepDetailEditorPanel 组件定义 +++
+
+// +++ LINTER_FIX_COMPONENT_DEF_POS: Move NewPathCreationHintBar definition out of MainLayout component +++
+interface NewPathCreationHintBarProps {
+  onCancel: () => void;
+}
+
+const NewPathCreationHintBar: React.FC<NewPathCreationHintBarProps> = ({ onCancel }) => {
+  return (
+    <div className={styles.newPathCreationHintBar}>
+      <AlertTriangle size={16} className={styles.hintIcon} />
+      <span>正在创建新路径：请在图中选择一个目标节点。</span>
+      <button onClick={onCancel} className={styles.hintCancelButton}>
+        <IconX size={14} /> 取消
+      </button>
+    </div>
+  );
+};
+// +++ End LINTER_FIX_COMPONENT_DEF_POS +++
+
+// Helper function to convert SolutionStepData[] to a simplified DagNode[] for pathfinding
+const solutionStepsToDagNodes = (steps: SolutionStepData[]): DagNode[] => {
+  return steps.map(step => ({
+    id: step.id,
+    type: 'customStepNode', 
+    position: { x: 0, y: 0 }, 
+    data: {
+      label: `Step ${step.stepNumber}`,
+      verificationStatus: step.verificationStatus,
+      isDeleted: step.isDeleted,
+      isHardDeleted: step.isHardDeleted,
+    } as DagNodeRfData, // Ensure data conforms to DagNodeRfData
+  }));
+};
+
+// MOVED MainLayout COMPONENT DEFINITION DOWN HERE
+const MainLayout: React.FC = () => {
+  // MOVED HOOKS INSIDE
+  const [isAICopilotChatActive, setIsAICopilotChatActive] = useState(false);
+  // console.log('[MainLayout] Initial isAICopilotChatActive:', isAICopilotChatActive); // DEBUG LINE REMOVED
+
+  const handleAICopilotChatStateChange = useCallback((isActive: boolean) => {
+    // console.log('[MainLayout] handleAICopilotChatStateChange called with isActive:', isActive); // DEBUG LINE REMOVED
+    setIsAICopilotChatActive(isActive);
+  }, []);
+
+  const [currentLayoutMode, setCurrentLayoutMode] = useState<LayoutMode>(() => {
+    return LayoutMode.DEFAULT_THREE_COLUMN;
+  });
+  // ... (rest of the MainLayout component's state, effects, callbacks, and return JSX) ...
+  // ... ENSURE ALL OTHER HOOKS (useState, useEffect, useCallback, useMemo, useRef) ARE WITHIN THIS MainLayout SCOPE ...
+
+  const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
+    return initialSolutionStepsData.map(step => ({ 
+      ...step, 
+      isDeleted: step.isDeleted || false,
+      forwardDerivationStatus: step.forwardDerivationStatus || ForwardDerivationStatus.Undetermined, // Ensure it has a default
+      backwardDerivationStatus: step.backwardDerivationStatus || ForwardDerivationStatus.Undetermined // Ensure it has a default for backward
+    }));
+  });
+  const [dagNodes, setDagNodes] = useState<DagNode[]>([]);
+  const [dagEdges, setDagEdges] = useState<DagEdge[]>([]);
+  const dagEdgesRef = useRef(dagEdges); // Using a ref for dagEdges to get the latest value in callbacks
+  useEffect(() => {
+    dagEdgesRef.current = dagEdges;
+  }, [dagEdges]);
+
+  const [problemData, setProblemData] = useState<ProblemData | null>(null);
+
+  // Add missing state variables needed by the component
+  const initialPanelWidths = useRef<PanelWidthsType>({ dag: 35, solver: 35, ai: 30 });
+  const [panelWidths, setPanelWidths] = useState<PanelWidthsType>(initialPanelWidths.current);
+  const [currentFocusAnalysisNodeId, setCurrentFocusAnalysisNodeId] = useState<string | null>(null);
+  const [currentFocusAnalysisType, setCurrentFocusAnalysisType] = useState<FocusAnalysisType>(null);
+  const [currentFocusPathElements, setCurrentFocusPathElements] = useState<{ nodes: string[]; edges: string[] } | null>(null);
+  const [mainPathNodeId, setMainPathNodeId] = useState<string | null>(null);
+  const [isCreatingNewPath, setIsCreatingNewPath] = useState(false);
+  const [startNewPathNodeId, setStartNewPathNodeId] = useState<string | null>(null);
+  const [currentNewPathElements, setCurrentNewPathElements] = useState<{ nodes: string[]; edges: string[] } | null>(null);
+  const [previewPathElements, setPreviewPathElements] = useState<{ nodes: string[]; edges: string[] } | null>(null);
+  const [isAiCopilotPanelOpen, setIsAiCopilotPanelOpen] = useState(false);
+  const [copilotContextNodeInfo, setCopilotContextNodeInfo] = useState<CopilotContextNodeInfo | null>(null);
+  const [copilotCurrentMode, setCopilotCurrentMode] = useState<CopilotMode>('latex');
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [confirmationDialogConfig, setConfirmationDialogConfig] = useState<{
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
+  const [showStepDetailEditor, setShowStepDetailEditor] = useState(false);
+  const [editingStepDetailNodeId, setEditingStepDetailNodeId] = useState<string | null>(null);
+  const [editingStepLatexContent, setEditingStepLatexContent] = useState('');
+  const [showSplitStepModal, setShowSplitStepModal] = useState(false);
+  const [splitStepModalNodeId, setSplitStepModalNodeId] = useState<string | null>(null);
+  const [splittingStepId, setSplittingStepId] = useState<string | null>(null);
+  const [splittingStepOriginalContent, setSplittingStepOriginalContent] = useState('');
+  const [splittingStepOriginalLabel, setSplittingStepOriginalLabel] = useState('');
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteModalNodeId, setNoteModalNodeId] = useState<string | null>(null);
+  const [noteModalInitialContent, setNoteModalInitialContent] = useState('');
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [editingNoteForNodeId, setEditingNoteForNodeId] = useState<string | null>(null);
+  const [currentEditingNote, setCurrentEditingNote] = useState('');
+  const [currentEditingNodeLabel, setCurrentEditingNodeLabel] = useState('');
+  const [showInterpretationModal, setShowInterpretationModal] = useState(false);
+  const [interpretationModalNodeId, setInterpretationModalNodeId] = useState<string | null>(null);
+  const [interpretationModalInitialIdea, setInterpretationModalInitialIdea] = useState('');
+  const [isInterpretationModalOpen, setIsInterpretationModalOpen] = useState(false);
+  const [interpretingNodeInfo, setInterpretingNodeInfo] = useState<{ id: string; idea: string } | null>(null);
+  const [hideDeleted, setHideDeleted] = useState(false);
+  
+  // Add missing refs
+  const mainLayoutRef = useRef<HTMLDivElement>(null);
+  const dagColumnRef = useRef<HTMLDivElement>(null);
+  const solverColumnRef = useRef<HTMLDivElement>(null);
+  const aiPanelRef = useRef<HTMLDivElement>(null);
+
+  // Add missing helper functions and variables
+  const MIN_PANEL_PERCENTAGE = 10;
+
+  const openConfirmationDialog = (
+    title: string,
+    message: React.ReactNode,
+    onConfirm: () => void,
+    options?: { confirmText?: string; variant?: string }
+  ) => {
+    setConfirmationDialogConfig({
+      message: typeof message === 'string' ? message : 'Are you sure?',
+      onConfirm,
+      onCancel: () => {
+        setShowConfirmationDialog(false);
+        setConfirmationDialogConfig(null);
+      }
+    });
+    setShowConfirmationDialog(true);
+  };
+
+  // Add missing handler functions
+  const handleSetLayoutMode = (mode: LayoutMode) => {
+    setCurrentLayoutMode(mode);
+  };
+
+  const handleNodeSelect = (nodeId: string | null) => {
+    // Implementation for node selection
+    console.log('Node selected:', nodeId);
+  };
+
+  const handleCopyPathInfo = (targetNodeId: string) => {
+    // Implementation for copying path info
+    console.log('Copy path info for:', targetNodeId);
+  };
+
+  // Fix the path elements structure
+  const handleInitiateFocusAnalysis = (nodeId: string, type: FocusAnalysisType) => {
+    setCurrentFocusAnalysisNodeId(nodeId);
+    setCurrentFocusAnalysisType(type);
+    
+    // Convert pathNodes/pathEdges to nodes/edges structure
+    let pathElements = null;
+    if (type === 'forward') {
+      const result = findForwardPath(nodeId, dagNodes, dagEdges);
+      pathElements = { nodes: result.pathNodes, edges: result.pathEdges };
+    } else if (type === 'backward') {
+      const result = findBackwardPath(nodeId, dagNodes, dagEdges);
+      pathElements = { nodes: result.pathNodes, edges: result.pathEdges };
+    }
+    
+    setCurrentFocusPathElements(pathElements);
+  };
+
+  const handleNodeMouseEnterForPathPreview = (nodeId: string) => {
+    if (isCreatingNewPath && startNewPathNodeId) {
+      const result = findPathBetweenNodes(startNewPathNodeId, nodeId, dagNodes, dagEdges);
+      if (result) {
+        setPreviewPathElements({ nodes: result.pathNodes, edges: result.pathEdges });
+      }
+    }
+  };
+
+  // Add missing handler functions
+  const handleNodeMouseLeaveForPathPreview = () => {
+    setPreviewPathElements(null);
+  };
+
+  const handleInitiateSplitStep = (stepId: string) => {
+    setSplittingStepId(stepId);
+    setShowSplitStepModal(true);
+  };
+
+  const handleOpenViewEditStepDetails = (stepId: string) => {
+    const step = solutionSteps.find(s => s.id === stepId);
+    if (step) {
+      setEditingStepDetailNodeId(stepId);
+      setEditingStepLatexContent(step.latexContent);
+      setShowStepDetailEditor(true);
+    }
+  };
+
+  const handleSaveStepDetailEditor = (newLatex: string) => {
+    if (editingStepDetailNodeId) {
+      setSolutionSteps(prevSteps =>
+        prevSteps.map(step =>
+          step.id === editingStepDetailNodeId
+            ? { ...step, latexContent: newLatex }
+            : step
+        )
+      );
+    }
+    setShowStepDetailEditor(false);
+    setEditingStepDetailNodeId(null);
+    setEditingStepLatexContent('');
+  };
+
+  const handleCloseStepDetailEditor = () => {
+    setShowStepDetailEditor(false);
+    setEditingStepDetailNodeId(null);
+    setEditingStepLatexContent('');
+  };
+
+  const handleInterpretIdea = (stepId: string, idea: string) => {
+    setInterpretingNodeInfo({ id: stepId, idea });
+    setShowInterpretationModal(true);
+  };
+
+  const handleHighlightNode = (stepId: string, color: string | null) => {
+    setDagNodes(prevNodes =>
+      prevNodes.map(node =>
+        node.id === stepId
+          ? { ...node, data: { ...node.data, highlightColor: color } }
+          : node
+      )
+    );
+  };
+
+  const handleAddOrUpdateNote = (stepId: string) => {
+    const step = solutionSteps.find(s => s.id === stepId);
+    if (step) {
+      setNoteModalNodeId(stepId);
+      setNoteModalInitialContent(step.notes || '');
+      setShowNoteModal(true);
+    }
+  };
+
+  const handleSaveNote = async (noteContent: string) => {
+    if (noteModalNodeId) {
+      setSolutionSteps(prevSteps =>
+        prevSteps.map(step =>
+          step.id === noteModalNodeId
+            ? { ...step, notes: noteContent }
+            : step
+        )
+      );
+      setDagNodes(prevNodes =>
+        prevNodes.map(node =>
+          node.id === noteModalNodeId
+            ? { ...node, data: { ...node.data, notes: noteContent } }
+            : node
+        )
+      );
+    }
+    setShowNoteModal(false);
+    setNoteModalNodeId(null);
+    setNoteModalInitialContent('');
+  };
+
+  const handleCloseNoteModal = () => {
+    setShowNoteModal(false);
+    setNoteModalNodeId(null);
+    setNoteModalInitialContent('');
+  };
+
+  const handleCopyNodeInfo = (stepId: string) => {
+    const step = solutionSteps.find(s => s.id === stepId);
+    if (step) {
+      const info = `Step ${step.stepNumber}: ${step.latexContent}`;
+      navigator.clipboard.writeText(info);
+      toast.success('节点信息已复制到剪贴板');
+    }
+  };
+
+  const handleNewPathFromNode = (stepId: string) => {
+    setIsCreatingNewPath(true);
+    setStartNewPathNodeId(stepId);
+  };
+
+  const handleSelectNewPathTargetNode = (nodeId: string) => {
+    if (isCreatingNewPath && startNewPathNodeId) {
+      const result = findPathBetweenNodes(startNewPathNodeId, nodeId, dagNodes, dagEdges);
+      if (result) {
+        setCurrentNewPathElements({ nodes: result.pathNodes, edges: result.pathEdges });
+        toast.success("新路径已创建!");
+      } else {
+        setCurrentNewPathElements(null);
+      }
+    }
+    setIsCreatingNewPath(false);
+    setStartNewPathNodeId(null);
+    setPreviewPathElements(null);
+  };
+
+  const handleCancelNewPathCreation = () => {
+    setIsCreatingNewPath(false);
+    setStartNewPathNodeId(null);
+    setPreviewPathElements(null);
+    setCurrentNewPathElements(null);
+  };
+
+  const clearPreviewPath = useCallback(() => {
+    setPreviewPathElements(null);
+  }, []);
+
+  const handleNodeMouseEnterForPathPreview = useCallback((hoveredNodeId: string) => {
+    if (isCreatingNewPath && startNewPathNodeId && hoveredNodeId !== startNewPathNodeId) {
+      const nodesForPathfinding = solutionStepsToDagNodes(solutionSteps.filter(s => !s.isHardDeleted));
+      const allCurrentEdges = dagEdgesRef.current;
+      const pathResult = findPathBetweenNodes(startNewPathNodeId, hoveredNodeId, nodesForPathfinding, allCurrentEdges);
+      setPreviewPathElements(pathResult); // Set to null if no path found by findPathBetweenNodes
+    }
+  }, [isCreatingNewPath, startNewPathNodeId, solutionSteps, dagEdgesRef]); // Added dagEdgesRef
+
+  const handleNodeMouseLeaveForPathPreview = useCallback(() => {
+    // Optionally, clear preview path only if not hovering over another valid target
+    // For simplicity now, always clear on mouse leave from a node.
+    // More complex logic could involve checking relatedTarget in the event.
+    clearPreviewPath();
+  }, [clearPreviewPath]);
+  // --- End NP_FEAT ---
+
+  // --- NEW: Callback for pane click, primarily to cancel new path creation ---
+  const handlePaneClickedInMainLayout = useCallback(() => {
+    if (isCreatingNewPath) {
+      handleCancelNewPathCreation();
+    }
+    setCopilotContextNodeInfo(null); // <--- 代码修改：清除 Copilot 上下文
+    // Note: Node deselection (setSelectedNodeId(null)) is not handled here directly,
+    // as its state management (selectedNodeId) isn't passed to DagVisualizationArea via onNodeSelect.
+    // DagVisualizationArea can handle its own deselection if its onNodeSelect prop is utilized internally by it.
+  }, [isCreatingNewPath, handleCancelNewPathCreation, setCopilotContextNodeInfo]); // <--- 代码修改：更新依赖数组
+
+  // --- NEW IMPLEMENTATION FOR CopyNodeInfo ---
+  const handleCopyNodeInfo = useCallback(async (stepId: string) => {
+    const nodeToCopy = dagNodes.find(n => n.id === stepId);
+    const stepDetails = solutionSteps.find(s => s.id === stepId);
+
+    if (nodeToCopy && stepDetails) {
+      const nodeSpecificData = nodeToCopy.data; 
+      const id = stepId;
+      const stepNumberDisplay = nodeSpecificData.label || `步骤 ${nodeSpecificData.stepNumber || 'N/A'}`;
+      const fullLatex = stepDetails.latexContent || 'LaTeX内容未提供';
+      const verificationStatusDisplay = nodeSpecificData.verificationStatus || VerificationStatus.NotVerified;
+      // const methodConcept = nodeSpecificData.methodConcept || '未指定'; // Uncomment if you add this field
+
+      let textToCopy = `步骤详情:
+-------------------------
+ID: ${id}
+编号: ${stepNumberDisplay}
+LaTeX:
+${fullLatex}
+-------------------------
+验证状态: ${verificationStatusDisplay}
+`;
+      // textToCopy += `方法/概念: ${methodConcept}\n`; // Uncomment if field exists
+
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        toast.success("节点信息已复制到剪贴板！");
+      } catch (err) {
+        console.error('无法复制节点信息: ', err);
+        toast.error("复制失败。请检查浏览器权限或手动复制。");
+      }
+    } else {
+      toast.error("找不到要复制的节点数据。");
+      if (!nodeToCopy) console.warn(`[handleCopyNodeInfo] Node with id ${stepId} not found in dagNodes`);
+      if (!stepDetails) console.warn(`[handleCopyNodeInfo] Step details for id ${stepId} not found in solutionSteps`);
+    }
+  }, [dagNodes, solutionSteps]); // Dependencies: dagNodes and solutionSteps
+
+  // <<< NEW HELPER FUNCTION FOR PATH FINDING (DFS approach) >>>
+  // Find one path from any root node to the targetNodeId, excluding deleted nodes
+  const findPathToNodeRecursive = (
+    targetNodeId: string,
+    allNodes: DagNode[],
+    allEdges: DagEdge[],
+    currentPath: string[] = [],
+    visited: Set<string> = new Set()
+  ): string[] | null => {
+    const lastNodeIdInPath = currentPath.length > 0 ? currentPath[currentPath.length - 1] : null;
+
+    // If currentPath is empty, we need to find a root node to start from.
+    if (!lastNodeIdInPath) {
+      const rootNodes = allNodes.filter(n => 
+        !n.data.isDeleted &&
+        !allEdges.some(edge => edge.target === n.id && !allNodes.find(srcNode => srcNode.id === edge.source)?.data.isDeleted)
+      );
+
+      for (const root of rootNodes) {
+        if (root.id === targetNodeId) return [root.id]; // Target is a root node
+        visited.clear(); // Clear visited for new search from new root
+        const path = findPathToNodeRecursive(targetNodeId, allNodes, allEdges, [root.id], new Set([root.id]));
+        if (path) return path;
+      }
+      return null; // No path found from any root
+    }
+
+    // We are in a recursive call with a currentPath
+    const currentNodeId = lastNodeIdInPath;
+    if (currentNodeId === targetNodeId) {
+      return [...currentPath]; // Found the target
+    }
+
+    visited.add(currentNodeId);
+
+    // Find outgoing edges from the current node
+    const outgoingEdges = allEdges.filter(
+      edge => edge.source === currentNodeId && 
+              !allNodes.find(n => n.id === edge.target)?.data.isDeleted
+    );
+
+    for (const edge of outgoingEdges) {
+      const neighborNodeId = edge.target;
+      if (!visited.has(neighborNodeId)) {
+        currentPath.push(neighborNodeId);
+        const result = findPathToNodeRecursive(targetNodeId, allNodes, allEdges, currentPath, visited);
+        if (result) return result; // Path found
+        currentPath.pop(); // Backtrack
+      }
+    }
+
+    return null; // No path from this branch
+  };
+
+  // --- NEW IMPLEMENTATION FOR CopyPathInfo ---
+  const handleCopyPathInfo = useCallback(async (targetNodeId: string) => {
+    const activeNodes = dagNodes.filter(n => !n.data.isDeleted);
+    const activeEdges = dagEdges.filter(edge => {
+      const sourceNode = dagNodes.find(n => n.id === edge.source);
+      const targetNode = dagNodes.find(n => n.id === edge.target);
+      return sourceNode && !sourceNode.data.isDeleted && targetNode && !targetNode.data.isDeleted;
+    });
+  
+    const pathNodeIds = findPathToNodeRecursive(targetNodeId, activeNodes, activeEdges);
+
+    if (pathNodeIds && pathNodeIds.length > 0) {
+      let textToCopy = "路径信息:\n=========================\n";
+      let pathStepCounter = 1;
+
+      for (const nodeId of pathNodeIds) {
+        const nodeDetails = dagNodes.find(n => n.id === nodeId);
+        const stepDetails = solutionSteps.find(s => s.id === nodeId);
+
+        if (nodeDetails && stepDetails && !nodeDetails.data.isDeleted) { // Ensure node is not deleted
+          const nodeSpecificData = nodeDetails.data;
+          const id = nodeId;
+          const stepNumberDisplay = nodeSpecificData.label || `步骤 ${nodeSpecificData.stepNumber || 'N/A'}`;
+          const fullLatex = stepDetails.latexContent || 'LaTeX内容未提供';
+          const verificationStatusDisplay = nodeSpecificData.verificationStatus || VerificationStatus.NotVerified;
+
+          textToCopy += `\n--- 路径步骤 ${pathStepCounter++} ---\n`;
+          textToCopy += `ID: ${id}\n`;
+          textToCopy += `原始编号: ${stepNumberDisplay}\n`;
+          textToCopy += `LaTeX:\n${fullLatex}\n`;
+          textToCopy += `验证状态: ${verificationStatusDisplay}\n`;
+          textToCopy += "-------------------------\n";
+        }
+      }
+
+      if (pathStepCounter === 1) { // No actual nodes were added to text (e.g. target was deleted or only root was deleted)
+        toast.error("未能构建有效路径的文本信息。");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        toast.success("路径信息已复制到剪贴板！");
+      } catch (err) {
+        console.error('无法复制路径信息: ', err);
+        toast.error("复制路径失败。请检查浏览器权限。");
+      }
+    } else {
+      toast.info("未找到到达当前节点的有效路径，或当前节点是孤立节点。将仅复制当前节点信息。");
+      // Fallback to copying just the current node's info if no path is found
+      // This reuses the existing single node copy logic for convenience
+      await handleCopyNodeInfo(targetNodeId); 
+    }
+  }, [dagNodes, dagEdges, solutionSteps, handleCopyNodeInfo]); // Added handleCopyNodeInfo to dependencies
+
+  // <<< NEW CALLBACKS FOR NOTE MODAL >>>
+  const handleOpenNoteModal = useCallback((stepId: string) => {
+    const stepToEdit = solutionSteps.find(s => s.id === stepId);
+    const nodeToEdit = dagNodes.find(n => n.id === stepId);
+    if (stepToEdit) {
+      setEditingNoteForNodeId(stepId);
+      setCurrentEditingNote(stepToEdit.notes || '');
+      setCurrentEditingNodeLabel(nodeToEdit?.data?.label || stepToEdit.stepNumber?.toString() || 'N/A');
+      setIsNoteModalOpen(true);
+    } else {
+      toast.error(`无法找到ID为 ${stepId} 的步骤以添加备注。`);
+    }
+  }, [solutionSteps, dagNodes]);
+
+  const handleCloseNoteModal = useCallback(() => {
+    setIsNoteModalOpen(false);
+    setEditingNoteForNodeId(null);
+    setCurrentEditingNote('');
+    setCurrentEditingNodeLabel('');
+  }, []);
+
+  const handleSaveNote = useCallback(async (noteContent: string) => {
+    if (!editingNoteForNodeId) {
+      toast.error("无法保存备注：未指定目标节点。");
+      return;
+    }
+
+    const trimmedNote = noteContent.trim();
+
+    setSolutionSteps(prevSteps => 
+      prevSteps.map(step => 
+        step.id === editingNoteForNodeId ? { ...step, notes: trimmedNote } : step
+      )
+    );
+    // Note: generateAndSetDagData will be called automatically if solutionSteps is a dependency of the useEffect that calls it.
+    // If not, we need to call it manually here to update dagNodes' notes.
+    // For now, assuming solutionSteps change triggers dag regeneration.
+    // We might need to explicitly update dagNodes here too if generateDagData is complex or not triggered.
+    setDagNodes(prevDagNodes => 
+      prevDagNodes.map(node => 
+        node.id === editingNoteForNodeId 
+          ? { ...node, data: { ...node.data, notes: trimmedNote } } 
+          : node
+      )
+    );
+
+    toast.success(`节点 ${editingNoteForNodeId} 的备注已保存。`);
+    handleCloseNoteModal();
+  }, [editingNoteForNodeId, setSolutionSteps, setDagNodes, handleCloseNoteModal]);
+
+  // <<< RESTORE THESE CALLBACKS >>>
+  const handleAnalyzeStepFromContextMenu = useCallback((stepId: string) => {
+    console.log(`Context menu: Analyze step ${stepId}`);
+    toast.info("聚焦分析功能尚未实现。");
+  }, []);
+
+  const handleDeleteStepFromSolutionList = useCallback((stepId: string) => {
+    const stepToDelete = solutionSteps.find(s => s.id === stepId);
+    if (!stepToDelete) return;
+    openConfirmationDialog(
+      '确认删除步骤 (来自列表)',
+      <span>您确定要从列表中删除步骤 <strong>"步骤 {stepToDelete.stepNumber}"</strong> (ID: {stepToDelete.id}) 吗？此操作会将其标记为已删除。</span>,
+      () => {
+        setSolutionSteps(prevSteps =>
+          prevSteps.map(step => (step.id === stepId ? { ...step, isDeleted: true } : step))
+        );
+        toast.success(`步骤 ${stepToDelete.stepNumber} 已从列表标记为删除。`);
+      },
+      { confirmText: '删除', variant: 'destructive' }
+    );
+  }, [solutionSteps, openConfirmationDialog, setSolutionSteps]);
+
+  const handleAnalyzeStepFromSolutionList = useCallback((stepId: string) => {
+    console.log("Analyze step requested from SolutionStep list:", stepId);
+    setSolutionSteps(prevSteps =>
+      prevSteps.map(step => {
+        if (step.id === stepId) {
+          let newStatus = VerificationStatus.NotVerified;
+          if (step.verificationStatus === VerificationStatus.NotVerified) newStatus = VerificationStatus.VerifiedCorrect;
+          else if (step.verificationStatus === VerificationStatus.VerifiedCorrect) newStatus = VerificationStatus.VerifiedIncorrect;
+          else if (step.verificationStatus === VerificationStatus.VerifiedIncorrect) newStatus = VerificationStatus.NotVerified;
+          toast.info(`步骤 ${step.stepNumber} 状态已模拟切换。`);
+          return { ...step, verificationStatus: newStatus };
+        }
+        return step;
+      })
+    );
+  }, [setSolutionSteps]); // Added missing dependencies
+
+  // --- 3. CALLBACK TO TOGGLE AI COPILOT PANEL (ENHANCED) ---
+  const toggleAiCopilotPanel = useCallback(() => {
+    const newOpenState = !isAiCopilotPanelOpen;
+    setIsAiCopilotPanelOpen(newOpenState);
+
+    if (newOpenState) { // When opening the panel
+      if (panelWidths.ai < MIN_PANEL_PERCENTAGE) {
+        if (currentLayoutMode !== LayoutMode.AI_PANEL_ACTIVE) {
+            setCurrentLayoutMode(LayoutMode.AI_PANEL_ACTIVE);
+        } else {
+            const userPrefsForAiMode = loadUserPreferenceForMode(LayoutMode.AI_PANEL_ACTIVE);
+            const targetAiModeWidths = userPrefsForAiMode || { dag: 2, solver: 49, ai: 49 }; 
+            setPanelWidths(ensurePanelWidthsSumTo100AndPrecision(targetAiModeWidths, LayoutMode.AI_PANEL_ACTIVE));
+        }
+      } 
+    } 
+  }, [isAiCopilotPanelOpen, panelWidths.ai, currentLayoutMode, setCurrentLayoutMode, setPanelWidths, ensurePanelWidthsSumTo100AndPrecision]);
+  // --- END AI COPILOT PANEL TOGGLE CALLBACK ---
+
+  // --- 2. Implement the callback to receive node info from DagVisualizationArea ---
+  const handleNodeSelectedForCopilot = useCallback((nodeId: string, nodeData: DagNodeRfData) => {
+    // Extract relevant information. nodeData directly comes from React Flow node.data
+    // which we mapped from our appNode.data in DagVisualizationArea.
+    // console.log(`[MainLayout] Node selected for Copilot: ID=${nodeId}, Label=${nodeData.label}`);
+    setCopilotContextNodeInfo({
+      id: nodeId,
+      label: nodeData.label,
+      content: nodeData.fullLatexContent, // Assuming fullLatexContent is what we want for 'content'
+    });
+    // Optionally, if the AI Copilot panel isn't open, open it.
+    if (!isAiCopilotPanelOpen) {
+      toggleAiCopilotPanel(); // This will also handle layout adjustments if needed
+    }
+  }, [isAiCopilotPanelOpen, toggleAiCopilotPanel]);
+
+  // --- ADDED handleCopilotSendMessage callback ---
+  const handleCopilotSendMessage = useCallback((message: string, mode: CopilotMode, model: string, contextNode?: CopilotDagNodeInfo | null) => {
+    console.log('MainLayout: Copilot Message Sent', {
+      message,
+      mode,
+      model,
+      contextNodeId: contextNode?.id,
+    });
+    // Placeholder for actual message sending logic
+  }, []);
+
+  // DEBUG: Log state right before rendering DagVisualizationArea
+  // console.log('[MainLayout Render] dagNodes to pass:', JSON.parse(JSON.stringify(dagNodes)));
+  // console.log('[MainLayout Render] dagEdges to pass:', JSON.parse(JSON.stringify(dagEdges)));
+
+  const ঐতিহাসিকPanelWidthsRef = useRef<PanelWidthsType | null>(null); // This was a typo in the original file, removing 'PanelWidthsRef' from the name. Assuming it should be 'historicalPanelWidthsRef' or similar, but keeping as is if it was intentional.
+
+  // console.log('[MainLayout] Rendering, isAICopilotChatActive to pass to RightSidePanel:', isAICopilotChatActive); // DEBUG LINE ADDED
+
+  // New handler for AI analysis with pre-checks for derivation
+  const handleInitiateAiAnalysisWithChecks = useCallback((stepId: string, currentForwardStatus?: ForwardDerivationStatus, currentBackwardStatus?: ForwardDerivationStatus) => {
+    let didTriggerForward = false;
+    let didTriggerBackward = false;
+
+    const stepToAnalyze = solutionSteps.find(s => s.id === stepId);
+    if (!stepToAnalyze) {
+      toast.error("AI分析失败：找不到步骤。");
+      return;
+    }
+
+    // Check and trigger forward derivation if undetermined
+    const forwardStatus = currentForwardStatus || stepToAnalyze.forwardDerivationStatus;
+    if (forwardStatus === ForwardDerivationStatus.Undetermined) {
+      console.log(`[MainLayout] AI Analysis for step ${stepId}: Forward derivation is Undetermined. Triggering check.`);
+      handleCheckForwardDerivation(stepId);
+      didTriggerForward = true;
+    }
+
+    // Check and trigger backward derivation if undetermined
+    const backwardStatus = currentBackwardStatus || stepToAnalyze.backwardDerivationStatus;
+    if (backwardStatus === ForwardDerivationStatus.Undetermined) {
+      console.log(`[MainLayout] AI Analysis for step ${stepId}: Backward derivation is Undetermined. Triggering check.`);
+      handleCheckBackwardDerivation(stepId);
+      didTriggerBackward = true;
+    }
+
+    if (didTriggerForward || didTriggerBackward) {
+      toast.info("部分推导检查已启动，请稍后重试AI分析以获得最准确结果，或直接查看当前分析（可能基于不完整推导）。");
+      // Even if derivations were triggered, proceed to call the (simulated) analysis part.
+      // The SolutionStep component will show its own loading indicator.
+      // In a real scenario, we might wait for derivations to complete or manage a more complex state.
+    }
+    
+    // Proceed with the original analysis logic (which currently is a simulation)
+    // This will allow SolutionStep to show its loading/content optimistically.
+    console.log(`[MainLayout] Proceeding with AI analysis part for step ${stepId} after derivation checks.`);
+    handleAnalyzeStepFromSolutionList(stepId); // This is the placeholder for actual AI analysis trigger
+
+  }, [solutionSteps, handleCheckForwardDerivation, handleCheckBackwardDerivation, handleAnalyzeStepFromSolutionList]);
+
+  useEffect(() => {
+    // Persist panel widths when they change or when layout mode changes
+    saveUserPreferenceForMode(currentLayoutMode, panelWidths);
+  }, [panelWidths, currentLayoutMode]);
+
+  return (
+    <ReactFlowProvider>
+      <div className={styles.mainLayoutContainer} ref={mainLayoutRef}>
+        <ControlBar
+          isCreatingNewPath={isCreatingNewPath}
+          onCancelNewPathCreation={handleCancelNewPathCreation}
+          onUndo={() => { /* TODO */ }}
+          onRedo={() => { /* TODO */ }}
+          hideDeleted={hideDeleted} 
+          onToggleHideDeleted={() => setHideDeleted(prev => !prev)}
+          currentLayoutMode={currentLayoutMode}
+          onSetLayoutMode={handleSetLayoutMode} 
+          onToggleDagCollapse={handleToggleDagCollapse} 
+          onExpandDagFully={handleExpandDagFully} 
+          onActivateAiPanel={handleActivateAiPanel} 
+        />
+         <div className={styles.panelsContainer}>
+            <div 
+                className={`${styles.dagRegion} ${currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE ? styles.dagRegionCollapsed : ''}`}
+                style={{ width: `${panelWidths.dag}%` }}
+                ref={dagColumnRef} 
+            >
+                {isCreatingNewPath && ( 
+                    <NewPathCreationHintBar onCancel={handleCancelNewPathCreation} />
+                )}
+                <DagVisualizationArea
+                    dagNodes={dagNodes}
+                    dagEdges={dagEdges}
+                    onNodeSelect={handleNodeSelect} 
+                    onSoftDeleteStep={handleSoftDeleteStep} 
+                    onUndoSoftDeleteStep={handleUndoSoftDeleteStep} 
+                    onUpdateStepVerificationStatus={handleUpdateStepVerificationStatus} 
+                    onInitiateSplitStep={handleInitiateSplitStep} 
+                    onViewEditStepDetails={handleOpenViewEditStepDetails} 
+                    onInterpretIdea={handleInterpretIdea} 
+                    onHighlightNode={handleHighlightNode} 
+                    onAddOrUpdateNote={handleAddOrUpdateNote} 
+                    onCopyNodeInfo={handleCopyNodeInfo} 
+                    onInitiateFocusAnalysis={handleInitiateFocusAnalysis} 
+                    onCancelFocusAnalysis={handleCancelFocusAnalysis} 
+                    currentFocusAnalysisNodeId={currentFocusAnalysisNodeId}
+                    onSetAsMainPath={handleSetAsMainPath} 
+                    onCancelMainPath={handleCancelMainPath} 
+                    mainPathNodeId={mainPathNodeId}
+                    isCreatingNewPath={isCreatingNewPath}
+                    startNewPathNodeId={startNewPathNodeId} 
+                    onNewPathFromNode={handleNewPathFromNode} 
+                    onSelectNewPathTargetNode={handleSelectNewPathTargetNode} 
+                    previewPathElements={previewPathElements} 
+                    onNodeMouseEnterForPathPreview={handleNodeMouseEnterForPathPreview} 
+                    onNodeMouseLeaveForPathPreview={handleNodeMouseLeaveForPathPreview} 
+                    onPaneClickFromLayout={handlePaneClickForLayout} 
+                    onNodeSelectedForCopilot={handleNodeSelectedForCopilot} 
+                />
+            </div>
+            <DraggableSeparator 
+                orientation="vertical" 
+                onDrag={(delta) => handleDrag(delta, 'dag', 'solver')} 
+            />
+            <div 
+                className={`${styles.solverRegion} ${currentLayoutMode === LayoutMode.DAG_COLLAPSED_SIMPLE ? styles.solverRegionCollapsed : ''}`}
+                style={{ width: `${panelWidths.solver}%` }}
+                ref={solverColumnRef} 
+            >
+              <CollapsiblePanel title="问题描述" initialCollapsed={false}>
+                {problemData ? (
+                    <ProblemBlock problem={problemData} onContentChange={handleProblemChange} />
+                ) : (
+                    <p className={styles.placeholderText}>没有加载问题。</p>
+                )}
+              </CollapsiblePanel>
+              <CollapsiblePanel title="解答步骤" initialCollapsed={false} className={styles.solutionStepsContainer}>
+                {solutionSteps.filter(step => !step.isHardDeleted && !(step.isDeleted && hideDeleted)).map((step) => (
+                    <SolutionStep
+                        key={step.id}
+                        step={step}
+                        onContentChange={handleStepContentChange}
+                        onDelete={() => confirmHardDelete(step.id)}
+                        onInitiateAiAnalysisWithChecks={(stepId, currentForward, currentBackward) => handleAnalyzeStep(stepId, currentForward, currentBackward)}                         
+                        onSplit={(originalStepId, p1, p2) => handleConfirmSplitStep(originalStepId, p1, p2)}
+                    />
+                ))}
+                {solutionSteps.filter(step => !step.isHardDeleted && !(step.isDeleted && hideDeleted)).length === 0 && (
+                    <p className={styles.placeholderText}>还没有解题步骤。</p>
+                )}
+              </CollapsiblePanel>
+              <SolverActions onAddStep={handleAddSolutionStep} /> 
+              {showStepDetailEditor && editingStepDetailNodeId && (
+                <StepDetailEditorPanel
+                    nodeId={editingStepDetailNodeId}
+                    latexContent={editingStepLatexContent}
+                    onSave={handleSaveStepDetailEditor}
+                    onCancel={handleCloseStepDetailEditor}
+                    onChange={setEditingStepLatexContent}
+                />
+              )}
+            </div>
+
+            {(currentLayoutMode === LayoutMode.AI_PANEL_ACTIVE || currentLayoutMode === LayoutMode.DEFAULT_THREE_COLUMN) && (
+              <>
+                <DraggableSeparator 
+                    orientation="vertical" 
+                    onDrag={(delta) => handleDrag(delta, 'solver', 'ai')} 
+                />
+                <div 
+                    className={styles.aiPanelRegion}
+                    style={{ width: `${panelWidths.ai}%` }}
+                    ref={aiPanelRef} 
+                >
+                    <AICopilotPanel 
+                        isOpen={isAiCopilotPanelOpen}
+                        onToggle={toggleAiCopilotPanel} 
+                        dagNodes={dagNodes.filter(n => !n.data.isDeleted && n.type === 'customStepNode').map(n => ({id: n.id, label: n.data.label || '', content: n.data.fullLatexContent || ''}))}
+                        contextNodeInfo={copilotContextNodeInfo}
+                        onSendMessage={handleSendAiMessage} 
+                        currentMode={copilotCurrentMode}
+                        onModeChange={setCopilotCurrentMode}
+                        onChatStateChange={handleAICopilotChatStateChange}
+                    />
+                </div>
+              </>
+            )}
+        </div>
+
+        {showNoteModal && noteModalNodeId && (
+          <NodeNoteModal
+            nodeId={noteModalNodeId}
+            initialContent={noteModalInitialContent}
+            onSave={handleSaveNote} 
+            onClose={handleCloseNoteModal} 
+          />
+        )}
+        {showSplitStepModal && splitStepModalNodeId && (
+          <SplitStepModal
+            nodeId={splitStepModalNodeId}
+            originalContent={solutionSteps.find(s=>s.id === splitStepModalNodeId)?.latexContent || ''}
+            onConfirmSplit={handleConfirmSplitStep} 
+            onClose={handleCloseSplitStepModal} 
+          />
+        )}
+        {showInterpretationModal && interpretationModalNodeId && (
+          <InterpretationModal
+            nodeId={interpretationModalNodeId}
+            initialIdea={interpretationModalInitialIdea}
+            onSave={handleSaveInterpretation} 
+            onClose={handleCloseInterpretationModal} 
+          />
+        )}
+        {showConfirmationDialog && confirmationDialogConfig && (
+          <ConfirmationDialog
+            message={confirmationDialogConfig.message}
+            onConfirm={confirmationDialogConfig.onConfirm}
+            onCancel={confirmationDialogConfig.onCancel}
+            isOpen={showConfirmationDialog}
+            onClose={() => {
+                setShowConfirmationDialog(false);
+                setConfirmationDialogConfig(null);
+            }}
+          />
+        )}
+      </div>
+    </ReactFlowProvider>
+  ); // This is the closing parenthesis for the return statement
+}; // This is the closing brace for the MainLayout function component
+
+export default MainLayout; // This ensures the component is exported correctly

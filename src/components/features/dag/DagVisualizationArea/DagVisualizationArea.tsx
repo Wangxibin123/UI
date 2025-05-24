@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { 
   ReactFlow, 
   useNodesState,
@@ -30,7 +30,7 @@ import { type MenuItemProps } from '../../../common/MenuItem/MenuItem';
 import {
   ArrowUpLeft, ArrowDownRight, Search, Copy, Maximize, Minimize, Link, Eye,
   GitFork, MessageSquare, StickyNote, Edit3, Trash2, RotateCcw, CheckCircle,
-  XCircle, Lightbulb, Waypoints, Wand, Zap, ChevronRight, HelpCircle
+  XCircle, Lightbulb, Waypoints, Wand, Zap, ChevronRight, HelpCircle, LogOut, Anchor
 } from 'lucide-react';
 
 interface DagVisualizationAreaProps {
@@ -60,7 +60,23 @@ interface DagVisualizationAreaProps {
   onInitiateFocusAnalysis: (nodeId: string, type: FocusAnalysisType) => void;
   onCancelFocusAnalysis: () => void;
   currentFocusAnalysisNodeId: string | null;
+  onSetAsMainPath: (nodeId: string) => void;
+  onCancelMainPath?: () => void;
+  mainPathNodeId?: string | null;
+  // +++ EDGE_SELECTION: Add edge selection props +++
+  onEdgeSelect?: (edgeId: string | null) => void;
+  onDeleteEdge?: (edgeId: string) => void;
+  selectedEdgeId?: string | null;
+  // +++ End EDGE_SELECTION +++
+  // +++ PATH_GROUPS: Add path group connection props +++
+  onPathGroupConnect?: (sourceNodeId: string, targetNodeId: string, newEdgeId: string) => void;
+  // +++ End PATH_GROUPS +++
 }
+
+// Helper to get DagNodeRfData from a generic Node
+const getNodeRfData = (node: Node | undefined): DagNodeRfData | undefined => {
+  return node?.data as DagNodeRfData;
+};
 
 const isTerminalNode = (nodeId: string, nodes: DagNode[], edges: Edge[]): boolean => {
   const activeOutgoingEdges = edges.filter(
@@ -104,22 +120,25 @@ const generateContextMenuItems = (
     | 'onUpdateStepVerificationStatus'
     | 'onInitiateFocusAnalysis'
     | 'onCancelFocusAnalysis'
+    | 'onSetAsMainPath'
+    | 'onCancelMainPath'
   >,
   initialNodesFromProps: DagNode[],
   currentReactFlowEdges: Edge[],
   currentFocusAnalysisNodeId: string | null,
-  contextMenuRef: React.RefObject<ContextMenuHandle>
+  contextMenuRef: React.RefObject<ContextMenuHandle>,
+  mainPathNodeId?: string | null
 ): MenuItemProps[] => {
   const menuItems: MenuItemProps[] = [];
   const nodeId = node.id;
-  const nodeData = node.data;
+  const nodeData = getNodeRfData(node);
 
   if (!nodeData) return menuItems;
 
   menuItems.push({
     id: 'view-edit-details',
     label: '查看/编辑步骤详情',
-    icon: <MessageSquare size={16} />,
+    icon: <Eye size={16} />,
     onClick: () => { actions.onViewEditStepDetails(nodeId); contextMenuRef.current?.close(); },
     disabled: nodeData.isDeleted,
   });
@@ -155,30 +174,55 @@ const generateContextMenuItems = (
     disabled: nodeData.isDeleted,
   });
   
-  const focusSubItems: MenuItemProps[] = [
-    { id: 'focus-forward', label: '向前路径', icon: <ArrowUpLeft size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'forward'); contextMenuRef.current?.close(); } },
-    { id: 'focus-backward', label: '向后路径', icon: <ArrowDownRight size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'backward'); contextMenuRef.current?.close(); } },
-    { id: 'focus-full', label: '双向完整路径', icon: <Waypoints size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'full'); contextMenuRef.current?.close(); } },
-  ];
-
-  menuItems.push({
-    id: 'focus-analysis-main',
-    label: '聚焦分析',
-    icon: <Zap size={16} />,
-    disabled: nodeData.isDeleted,
-    subMenu: focusSubItems,
-  });
-
-  if (currentFocusAnalysisNodeId) {
-    menuItems.push({ id: 'separator-focus-cancel', type: 'separator' });
+  if (currentFocusAnalysisNodeId === nodeId) {
     menuItems.push({
       id: 'cancel-focus-analysis',
       label: '取消聚焦分析',
       icon: <XCircle size={16} />,
       onClick: () => { actions.onCancelFocusAnalysis(); contextMenuRef.current?.close(); },
     });
+  } else {
+    const focusSubItems: MenuItemProps[] = [
+      { id: 'focus-forward', label: '向前路径分析', icon: <ArrowUpLeft size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'forward'); contextMenuRef.current?.close(); } },
+      { id: 'focus-backward', label: '向后路径分析', icon: <ArrowDownRight size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'backward'); contextMenuRef.current?.close(); } },
+      { id: 'focus-full', label: '全路径分析', icon: <Waypoints size={16} />, onClick: () => { actions.onInitiateFocusAnalysis(nodeId, 'full'); contextMenuRef.current?.close(); } },
+    ];
+
+    menuItems.push({
+      id: 'focus-analysis-group',
+      label: '聚焦分析',
+      icon: <Search size={16} />,
+      disabled: nodeData.isDeleted || !!currentFocusAnalysisNodeId,
+      subMenu: focusSubItems,
+    });
   }
   
+  if (nodeData && !nodeData.isDeleted) {
+    if (mainPathNodeId === nodeId) {
+      menuItems.push({
+        id: 'cancel-main-path',
+        label: '取消设置主路径',
+        icon: <LogOut size={16} />,
+        onClick: () => {
+          if (actions.onCancelMainPath) {
+            actions.onCancelMainPath();
+          }
+          contextMenuRef.current?.close();
+        },
+      });
+    } else {
+      menuItems.push({
+        id: 'set-as-main-path',
+        label: '设置为主路径',
+        icon: <Anchor size={16} />,
+        onClick: () => {
+          actions.onSetAsMainPath(nodeId);
+          contextMenuRef.current?.close();
+        },
+      });
+    }
+  }
+
   const isCurrentlyTerminal = isTerminalNode(nodeId, initialNodesFromProps, currentReactFlowEdges);
   menuItems.push({
     id: 'new-path-from-node',
@@ -317,27 +361,27 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   onInitiateFocusAnalysis,
   onCancelFocusAnalysis,
   currentFocusAnalysisNodeId,
+  onSetAsMainPath,
+  onCancelMainPath,
+  mainPathNodeId,
+  // +++ EDGE_SELECTION: Add edge selection parameters +++
+  onEdgeSelect,
+  onDeleteEdge,
+  selectedEdgeId,
+  // +++ End EDGE_SELECTION +++
+  // +++ PATH_GROUPS: Add path group connection parameters +++
+  onPathGroupConnect,
+  // +++ End PATH_GROUPS +++
 }) => {
+  // --- T_FIX_LINTER_DAGAREA_STATE: Restore useNodesState and useEdgesState ---
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<DagNodeRfData>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  // --- End T_FIX_LINTER_DAGAREA_STATE ---
+  
+  const { project, fitView, getNode } = useReactFlow();
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const contextMenuRef = useRef<ContextMenuHandle>(null);
-  const dagAreaRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const dagElement = dagAreaRef.current;
-    if (dagElement) {
-      if (isCreatingNewPath) {
-        dagElement.style.cursor = 'crosshair';
-      } else {
-        dagElement.style.cursor = 'default';
-      }
-    }
-    return () => {
-      if (dagElement) {
-        dagElement.style.cursor = 'default';
-      }
-    };
-  }, [isCreatingNewPath, dagAreaRef]);
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const contextMenuActions = useMemo(() => ({
     onHighlightNode,
@@ -353,11 +397,13 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     onUpdateStepVerificationStatus,
     onInitiateFocusAnalysis,
     onCancelFocusAnalysis,
+    onSetAsMainPath,
+    onCancelMainPath,
   }), [
     onHighlightNode, onAddOrUpdateNote, onNewPathFromNode, onCopyNodeInfo, onCopyPathInfo,
     onViewEditStepDetails, onInitiateSplitStep, onInterpretIdea,
     onSoftDeleteStep, onUndoSoftDeleteStep, onUpdateStepVerificationStatus,
-    onInitiateFocusAnalysis, onCancelFocusAnalysis
+    onInitiateFocusAnalysis, onCancelFocusAnalysis, onSetAsMainPath, onCancelMainPath
   ]);
 
   useEffect(() => {
@@ -376,6 +422,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         highlightColor: appNode.data.highlightColor,
         isFocusPath: appNode.data.isFocusPath,
         isFocusSource: appNode.data.isFocusSource,
+        isMainPathNode: appNode.data.isMainPathNode,
       },
       style: appNode.style,
       sourcePosition: appNode.sourcePosition as Position | undefined,
@@ -391,21 +438,33 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       target: e.target,
       label: e.label,
       type: e.type,
-      animated: e.data?.isOnNewPath || e.data?.isFocusPath || e.animated,
+      animated: e.data?.isMainPathEdge || e.data?.isFocusPath || e.data?.isOnNewPath || e.animated,
       style: {
         ...e.style,
-        stroke: e.data?.isFocusPath ? '#ff0072' : (e.data?.isOnNewPath ? '#2ecc71' : undefined),
+        stroke: e.data?.isMainPathEdge ? 'gold' : (e.data?.isFocusPath ? '#ff0072' : (e.data?.isOnNewPath ? '#2ecc71' : undefined)),
+        strokeWidth: e.data?.isMainPathEdge ? 3 : (e.data?.isFocusPath ? 2 : (e.data?.isOnNewPath ? 2 : e.style?.strokeWidth)),
       },
       markerEnd: e.markerEnd,
-      data: e.data,
+      data: { ...e.data },
+      zIndex: e.zIndex,
     }));
     setRfEdges(reactFlowEdges);
   }, [initialEdgesFromProps, setRfEdges]);
 
   const onConnect = useCallback(
-    (params: Connection | Edge) =>
-      setRfEdges((eds) => addEdge(params, eds)),
-    [setRfEdges],
+    (params: Connection | Edge) => {
+      const newEdge = addEdge(params, rfEdges)[rfEdges.length]; // Get the newly added edge
+      const newEdgeId = newEdge?.id || `edge-${Date.now()}`;
+      
+      setRfEdges((eds) => addEdge(params, eds));
+      
+      // +++ PATH_GROUPS: Notify parent about new connection for path group merging +++
+      if (onPathGroupConnect && params.source && params.target) {
+        onPathGroupConnect(params.source, params.target, newEdgeId);
+      }
+      // +++ End PATH_GROUPS +++
+    },
+    [setRfEdges, rfEdges, onPathGroupConnect],
   );
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<DagNodeRfData>) => {
@@ -421,14 +480,26 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     }
   }, [isCreatingNewPath, onSelectNewPathTargetNode, onNodeSelect, startNewPathNodeId, onNodeSelectedForCopilot]);
 
-  const handlePaneClick = useCallback(() => {
+  const handlePaneClickInternal = useCallback(() => {
     if (onNodeSelect) onNodeSelect(null);
+    // +++ EDGE_SELECTION: Clear edge selection on pane click +++
+    if (onEdgeSelect) onEdgeSelect(null);
+    // +++ End EDGE_SELECTION +++
     contextMenuRef.current?.close();
 
     if (onPaneClickFromLayout) {
       onPaneClickFromLayout();
     }
-  }, [onNodeSelect, contextMenuRef, onPaneClickFromLayout]);
+  }, [onNodeSelect, onEdgeSelect, contextMenuRef, onPaneClickFromLayout]);
+
+  // +++ EDGE_SELECTION: Add edge click handler +++
+  const handleEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    event.stopPropagation();
+    if (onEdgeSelect) {
+      onEdgeSelect(edge.id);
+    }
+  }, [onEdgeSelect]);
+  // +++ End EDGE_SELECTION +++
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<DagNodeRfData>) => {
@@ -440,12 +511,13 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
           initialNodesFromProps, 
           rfEdges,
           currentFocusAnalysisNodeId,
-          contextMenuRef
+          contextMenuRef,
+          mainPathNodeId
         );
         contextMenuRef.current.open(event.clientX, event.clientY, items, node.id);
       }
     },
-    [contextMenuActions, initialNodesFromProps, rfEdges, currentFocusAnalysisNodeId]
+    [contextMenuActions, initialNodesFromProps, rfEdges, currentFocusAnalysisNodeId, mainPathNodeId]
   );
 
   const handleNodeMouseEnterInternal = useCallback((event: React.MouseEvent, node: Node<DagNodeRfData>) => {
@@ -480,11 +552,19 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       const isPreviewEdge = previewPathElements?.edges.includes(edge.id) || false;
       const isOnNewPath = edgeSpecificData?.isOnNewPath;
       const isFocusPathEdge = edgeSpecificData?.isFocusPath;
+      // +++ EDGE_SELECTION: Check if edge is selected +++
+      const isSelected = selectedEdgeId === edge.id;
+      // +++ End EDGE_SELECTION +++
 
       let style = { ...(edge.style || {}) };
       let animated = edge.animated || false;
 
-      if (isFocusPathEdge) {
+      // +++ EDGE_SELECTION: Priority order for edge styling +++
+      if (isSelected) {
+        // Selected edges have highest priority
+        style = { ...style, stroke: '#ff6b35', strokeWidth: 4, strokeDasharray: '3,3' };
+        animated = true;
+      } else if (isFocusPathEdge) {
         style = { ...style, stroke: '#ff0072', strokeWidth: 2 };
         animated = true;
       } else if (isPreviewEdge) {
@@ -497,6 +577,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         style = { ...style, stroke: edgeSpecificData?.isDeleted ? '#ccc' : undefined };
         animated = !(edgeSpecificData?.isDeleted);
       }
+      // +++ End EDGE_SELECTION +++
       
       return { 
         ...edge, 
@@ -505,7 +586,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         data: edge.data
       };
     });
-  }, [rfEdges, previewPathElements]);
+  }, [rfEdges, previewPathElements, selectedEdgeId]);
 
   const miniMapNodeColor = (node: Node<DagNodeRfData>): string => {
     if (node.data?.isDeleted) return '#aaaaaa';
@@ -527,23 +608,12 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   };
 
   return (
-    <div
-      ref={dagAreaRef}
-      className={styles.dagVisualizationAreaContainer}
-      style={{ height: '100%', width: '100%' }}
+    <div 
+      data-testid="dag-visualization-area"
+      className={`${styles.dagVisualizationAreaContainer} ${isCreatingNewPath ? styles.pathCreationMode : ''}`}
+      ref={reactFlowWrapper} 
+      onClick={handlePaneClickInternal}
     >
-      {isCreatingNewPath && (
-        <div className={styles.pathCreationHint}>
-          <Lightbulb size={16} style={{ marginRight: '8px' }} />
-          正在创建新路径。请选择目标节点，或点击空白处取消。
-        </div>
-      )}
-
-      {rfNodes.length === 0 && initialNodesFromProps.length === 0 && (
-        <div className={styles.emptyDagMessage}>
-          <p>添加解题步骤后，相关的流程图将在此处展示。</p>
-        </div>
-      )}
       <ReactFlow
         nodes={nodesWithPreview}
         edges={edgesWithPreview}
@@ -552,10 +622,13 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
-        onPaneClick={handlePaneClick}
+        onPaneClick={handlePaneClickInternal}
         onNodeContextMenu={handleNodeContextMenu}
         onNodeMouseEnter={handleNodeMouseEnterInternal}
         onNodeMouseLeave={handleNodeMouseLeaveInternal}
+        // +++ EDGE_SELECTION: Add edge click handler +++
+        onEdgeClick={handleEdgeClick}
+        // +++ End EDGE_SELECTION +++
         fitView
         attributionPosition="bottom-left"
       >

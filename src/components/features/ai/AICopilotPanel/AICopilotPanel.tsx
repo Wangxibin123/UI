@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styles from './AICopilotPanel.module.css';
-import { Send, ChevronDown, ChevronUp, Trash2, PlusCircle, Settings, Wand2, Paperclip, Sigma, Brain, AlignLeft, Check } from 'lucide-react'; // Added Sigma, Brain, AlignLeft, Check
-import NodeMentionSuggestions from './NodeMentionSuggestions'; // Import the new component
+import { Send, ChevronDown, ChevronUp, Trash2, PlusCircle, Settings, Wand2, Paperclip, Sigma, Brain, AlignLeft, Check } from 'lucide-react';
+import NodeMentionSuggestions from './NodeMentionSuggestions';
 
-// Define the structure for a chat message
 export interface Message {
   id: string;
   text: string;
@@ -11,15 +10,14 @@ export interface Message {
   timestamp?: Date;
 }
 
-// --- Define DagNodeInfo interface ---
 export interface DagNodeInfo {
   id: string;
   label?: string;
-  content?: string; // Added optional content property
-  // Potentially other simple data useful for suggestions, like type
+  content?: string;
 }
 
-// Define the props for the AICopilotPanel
+export type CopilotMode = 'latex' | 'analysis' | 'summary';
+
 export interface AICopilotPanelProps {
   isOpen: boolean;
   onToggle?: () => void;
@@ -33,9 +31,6 @@ export interface AICopilotPanelProps {
   onChatStateChange?: (isActive: boolean) => void;
 }
 
-// Define mode type and display names
-export type CopilotMode = 'latex' | 'analysis' | 'summary';
-
 const modeDisplayNames: Record<CopilotMode, string> = {
   latex: 'LaTeX 格式化',
   analysis: '解析分析',
@@ -43,17 +38,16 @@ const modeDisplayNames: Record<CopilotMode, string> = {
 };
 
 const modeIcons: Record<CopilotMode, React.ElementType> = {
-  latex: Sigma,     // Sigma for LaTeX/Math
-  analysis: Brain,  // Brain for Analysis
-  summary: AlignLeft, // AlignLeft for Summarization (like document icon)
+  latex: Sigma,
+  analysis: Brain,
+  summary: AlignLeft,
 };
 
-// --- Model Definitions ---
 const availableModels: string[] = [
   'openai/o3',
   'openai/gpt-4.5-preview',
   'google/gemini-2.5-flash-preview:thinking',
-  'deepseek/deepseek-prover-v2 (671 B)', // Default
+  'deepseek/deepseek-prover-v2 (671 B)',
   'deepseek/deepseek-chat-v3-0324',
   'deepseek/deepseek-r1',
   'qwen/qwen3-30b-a3b',
@@ -74,7 +68,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   className,
   onChatStateChange,
 }) => {
-  console.log('Received dagNodes:', dagNodes); // <--- 添加这行来调试
+  console.log('Received dagNodes:', dagNodes);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState<string>('');
   const [isInputUserModified, setIsInputUserModified] = useState(false);
@@ -82,23 +76,24 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   const [showModeDropdown, setShowModeDropdown] = useState<boolean>(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
 
-  // --- 1. Create a ref for the messages container ---
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  // --- 1. Create a ref for the input textarea ---
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null); // <<< 确保 messagesEndRef 的定义存在
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // --- States for Node Mention Suggestions ---
   const [showNodeSuggestions, setShowNodeSuggestions] = useState<boolean>(false);
   const [nodeSuggestionQuery, setNodeSuggestionQuery] = useState<string>('');
   const [filteredDagNodes, setFilteredDagNodes] = useState<DagNodeInfo[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(0);
-  const suggestionsRef = useRef<HTMLDivElement>(null); // Ref for the suggestions panel itself
+  const suggestionsRef = useRef<HTMLUListElement>(null);
 
-  // --- States for Model Selector ---
-  const [selectedModel, setSelectedModel] = useState<string>(availableModels[3]); // Default to deepseek/deepseek-prover-v2 (671 B)
+  const [selectedModel, setSelectedModel] = useState<string>(availableModels[3]);
   const [showModelSelectorDropdown, setShowModelSelectorDropdown] = useState<boolean>(false);
   const modelSelectorDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // 文件上传相关状态
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;
@@ -109,36 +104,27 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     let showSuggestions = false;
     let currentMentionQuery = '';
 
-    // Check for an active mention trigger: an '@' symbol not preceded by a non-whitespace character
-    // and not followed immediately by a space (if it's the last char, that's ok for now)
     for (let i = cursorPos - 1; i >= 0; i--) {
       if (newValue[i] === '@') {
         if (i === 0 || /\s/.test(newValue[i - 1])) {
           const query = newValue.substring(i + 1, cursorPos);
-          // A mention query part itself should not contain spaces.
-          // If it does, the part before the space might be the query.
-          // For simplicity now, we assume the query is up to the cursor or next space.
           const spaceAfterQueryIndex = query.indexOf(' ');
-          if (spaceAfterQueryIndex === -1) { // No space within the query part itself
+          if (spaceAfterQueryIndex === -1) {
             currentMentionQuery = query;
             showSuggestions = true;
           } else {
-            // If there is a space after the @query, then suggestions should not be shown for this segment
-            // currentMentionQuery = query.substring(0, spaceAfterQueryIndex);
-            // showSuggestions = true; // Uncomment and adjust if you want to allow query then space
-            showSuggestions = false; // For now, space in query hides suggestions
+            showSuggestions = false;
           }
         }
-        break; // Found the nearest '@' to the left, process and exit loop
+        break;
       }
-      // If we hit a space walking backwards and haven't found an '@', it's not an active mention from this point
       if (newValue[i] === ' ') {
         break;
       }
     }
 
     if (showSuggestions && dagNodes && dagNodes.length > 0) {
-      console.log('Trying to filter. Query:', currentMentionQuery, 'Nodes:', dagNodes); // <---
+      console.log('Trying to filter. Query:', currentMentionQuery, 'Nodes:', dagNodes);
       const normalizedQuery = currentMentionQuery.toLowerCase();
       const filtered = dagNodes.filter(
         (node) =>
@@ -148,9 +134,9 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
 
       if (filtered.length > 0) {
         setFilteredDagNodes(filtered);
-        setNodeSuggestionQuery(currentMentionQuery); // Store the actual query used
+        setNodeSuggestionQuery(currentMentionQuery);
         setShowNodeSuggestions(true);
-        setActiveSuggestionIndex(0); // Reset active index
+        setActiveSuggestionIndex(0);
       } else {
         setShowNodeSuggestions(false);
         setFilteredDagNodes([]);
@@ -162,9 +148,8 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     }
   };
 
-  // --- Handle selecting a node from suggestions ---
   const handleNodeSelect = (node: DagNodeInfo) => {
-    const mentionText = `@[${node.label || node.id}]`; // Simple format, can be customized
+    const mentionText = `@[${node.label || node.id}]`;
     
     const currentVal = currentInput;
     const cursorPos = inputRef.current?.selectionStart ?? currentVal.length;
@@ -172,13 +157,9 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     let beforeCursor = currentVal.substring(0, cursorPos);
     const afterCursor = currentVal.substring(cursorPos);
 
-    // Find the start of the @mention query
     const atSymbolIndex = beforeCursor.lastIndexOf('@');
     
     if (atSymbolIndex !== -1) {
-      // Ensure this @ is the one that triggered the suggestions
-      // (e.g. not part of some other text unrelated to current mention query)
-      // This check can be more robust if needed, but for now, lastIndexOf is a good start.
       const partBeforeAt = beforeCursor.substring(0, atSymbolIndex);
       const newText = partBeforeAt + mentionText + afterCursor;
       
@@ -186,9 +167,8 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
       setShowNodeSuggestions(false);
       setFilteredDagNodes([]);
       setNodeSuggestionQuery('');
-      setIsInputUserModified(true); // User has made a selection
+      setIsInputUserModified(true);
 
-      // Focus and set cursor position after the inserted mention
       setTimeout(() => {
         inputRef.current?.focus();
         const newCursorPos = partBeforeAt.length + mentionText.length;
@@ -197,7 +177,6 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     }
   };
 
-  // --- Handle keyboard navigation for suggestions ---
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showNodeSuggestions && filteredDagNodes.length > 0) {
       switch (event.key) {
@@ -214,7 +193,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
           );
           break;
         case 'Enter':
-          event.preventDefault(); // Prevent form submission & newline
+          event.preventDefault();
           if (activeSuggestionIndex >= 0 && activeSuggestionIndex < filteredDagNodes.length) {
             handleNodeSelect(filteredDagNodes[activeSuggestionIndex]);
           }
@@ -222,30 +201,127 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
         case 'Escape':
           event.preventDefault();
           setShowNodeSuggestions(false);
-          // Optionally clear filteredDagNodes and nodeSuggestionQuery here as well
-          // setFilteredDagNodes([]);
-          // setNodeSuggestionQuery('');
           break;
         default:
           break;
       }
     } else if (event.key === 'Enter' && !event.shiftKey) {
-      // 当没有显示建议时，按 Enter 直接提交消息
       event.preventDefault();
       handleSubmit();
     }
   };
 
+  // 文件上传处理函数
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+    const validFiles = newFiles.filter(file => {
+      // 支持的文件类型：图片、文档
+      const supportedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+        'application/pdf', 'text/plain', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      
+      const maxSize = 10 * 1024 * 1024; // 10MB限制
+      
+      if (!supportedTypes.includes(file.type)) {
+        alert(`不支持的文件类型: ${file.name}`);
+        return false;
+      }
+      
+      if (file.size > maxSize) {
+        alert(`文件过大: ${file.name} (最大支持10MB)`);
+        return false;
+      }
+      
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      setUploadedFiles(prev => [...prev, ...validFiles]);
+      // 清空input以允许重复上传同一文件
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, []);
+
+  const handleRemoveFile = useCallback((fileIndex: number) => {
+    setUploadedFiles(prev => prev.filter((_, index) => index !== fileIndex));
+  }, []);
+
+  const handleAttachmentClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  // 处理文件上传到后端（模拟）
+  const uploadFilesToBackend = useCallback(async (files: File[]): Promise<string[]> => {
+    setIsUploading(true);
+    try {
+      // 这里是模拟的上传逻辑，实际情况下需要调用后端API
+      const uploadPromises = files.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // 模拟上传延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 实际情况下，这里应该是:
+        // const response = await fetch('/api/upload', {
+        //   method: 'POST',
+        //   body: formData,
+        // });
+        // const result = await response.json();
+        // return result.fileUrl || result.fileId;
+        
+        // 模拟返回文件URL或ID
+        return `uploaded_${file.name}_${Date.now()}`;
+      });
+      
+      const uploadResults = await Promise.all(uploadPromises);
+      console.log('文件上传成功:', uploadResults);
+      return uploadResults;
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      alert('文件上传失败，请重试');
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
   const handleSubmit = useCallback(async (event?: React.FormEvent<HTMLFormElement>) => {
-    event?.preventDefault(); // Prevent default form submission if event is passed
-    if (!currentInput.trim()) {
+    event?.preventDefault();
+    if (!currentInput.trim() && uploadedFiles.length === 0) {
         inputRef.current?.focus();
         return;
     }
 
+    // 处理文件上传（如果有文件的话）
+    let uploadResults: string[] = [];
+    if (uploadedFiles.length > 0) {
+      uploadResults = await uploadFilesToBackend(uploadedFiles);
+      if (uploadResults.length === 0) {
+        // 如果文件上传失败，不继续发送消息
+        return;
+      }
+    }
+
+    // 创建包含文件信息的消息文本
+    let messageText = currentInput.trim();
+    if (uploadedFiles.length > 0) {
+      const fileNames = uploadedFiles.map(f => f.name).join(', ');
+      messageText += uploadedFiles.length > 0 ? `\n\n📎 已上传文件: ${fileNames}` : '';
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
-      text: currentInput.trim(),
+      text: messageText,
       sender: 'user',
       timestamp: new Date(),
     };
@@ -253,16 +329,18 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setIsLoading(true);
     const userInput = currentInput.trim();
+    
+    // 清空输入和文件
     setCurrentInput(''); 
-    setIsInputUserModified(false); 
+    setIsInputUserModified(false);
+    setUploadedFiles([]);
 
-    // Simulate AI response (replace with actual API call)
-    console.log(`User sent to AI (simulated): ${userInput}, Context: ${contextNodeInfo?.id}`);
+    console.log(`User sent to AI (simulated): ${userInput}, Files: ${uploadResults.join(', ')}, Context: ${contextNodeInfo?.id}`);
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     const aiResponse: Message = {
       id: `ai-${Date.now()}`,
-      text: `模拟AI回复针对: "${userInput.substring(0, 30)}${userInput.length > 30 ? '...' : ''}"`,
+      text: `模拟AI回复针对: "${userInput.substring(0, 30)}${userInput.length > 30 ? '...' : ''}"${uploadResults.length > 0 ? ` (已处理 ${uploadResults.length} 个文件)` : ''}`,
       sender: 'ai',
       timestamp: new Date(),
     };
@@ -273,22 +351,18 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
       inputRef.current?.focus();
     }, 0);
 
-    // Pass currentMode and selectedModel to onSendMessage
+    // 将文件信息传递给父组件（这里需要扩展onSendMessage接口以支持文件）
     onSendMessage(userInput, currentMode, selectedModel, contextNodeInfo);
-  }, [currentInput, isInputUserModified, contextNodeInfo, messages, setIsLoading, onSendMessage, currentMode, selectedModel]);
+  }, [currentInput, isInputUserModified, contextNodeInfo, messages, setIsLoading, onSendMessage, currentMode, selectedModel, uploadedFiles, uploadFilesToBackend]);
 
-  // --- Callback to clear messages ---
   const handleClearMessages = useCallback(() => {
-    if (messages.length === 0) return; // No need to confirm if already empty
+    if (messages.length === 0) return;
 
     if (window.confirm("您确定要清空所有对话记录吗？此操作无法撤销。")) {
       setMessages([]);
-      // Optionally, focus input after clearing if desired, though not strictly necessary here
-      // inputRef.current?.focus(); 
     }
-  }, [messages]); // Dependency on messages to re-evaluate if it's empty
+  }, [messages]);
 
-  // --- 2. useEffect to scroll to bottom when messages change ---
   useEffect(() => {
     if (messagesContainerRef.current) {
       const { scrollHeight, clientHeight } = messagesContainerRef.current;
@@ -297,19 +371,12 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     if (onChatStateChange) {
       onChatStateChange(messages.length > 0);
     }
-  }, [messages, onChatStateChange]); // ADDED: onChatStateChange to dependency array
+  }, [messages, onChatStateChange]);
 
-  // --- 4. useEffect to update input when contextNodeInfo changes ---
   useEffect(() => {
     if (contextNodeInfo && contextNodeInfo.id) {
-      // To prevent re-filling if the input was manually cleared after context was set
-      // We can compare with previous contextNodeInfo.id if we store it, or just always fill.
-      // For simplicity now, always fill if contextNodeInfo has an id.
-      // A more robust way might be to check if currentInput is empty or doesn't already contain this context.
-      
       let pretext = `关于节点 "${contextNodeInfo.label || contextNodeInfo.id}":\n`;
       if (contextNodeInfo.content) {
-        // Keep content short for the input field
         const summarizedContent = contextNodeInfo.content.length > 70 
             ? contextNodeInfo.content.substring(0, 67) + "..." 
             : contextNodeInfo.content;
@@ -325,22 +392,14 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
         setIsInputUserModified(false);
       }
 
-      inputRef.current?.focus(); // Focus input when context is set
-      // Optionally, scroll the input to the top if the pretext is multi-line
+      inputRef.current?.focus();
       if(inputRef.current) inputRef.current.scrollTop = 0;
 
     } else {
-      // Optional: Clear input if context is removed, but only if the input still contains context-specific text.
-      // This part can be tricky. For now, let's not auto-clear when contextNodeInfo becomes null to avoid deleting user's manual input.
-      // setCurrentInput(''); 
     }
-    // Dependency array: listen to changes in contextNodeInfo object itself.
-    // If contextNodeInfo is an object, React compares it by reference. 
-    // A new object from MainLayout will trigger this effect.
   }, [contextNodeInfo, currentInput, isInputUserModified]);
 
   useEffect(() => {
-    // 点击外部区域时关闭节点建议面板
     function handleClickOutside(event: MouseEvent) {
       if (
         suggestionsRef.current &&
@@ -357,26 +416,18 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     };
   }, [suggestionsRef, inputRef]);
 
-  // --- Helper function to format model name for display on button ---
   const formatDisplayModelName = (modelId: string): string => {
     if (!modelId) return 'Select Model';
-    // Example: "deepseek/deepseek-prover-v2 (671 B)" -> "DeepSeek Prover v2"
-    // Example: "google/gemini-2.5-flash-preview:thinking" -> "Gemini Flash Preview"
     let name = modelId.substring(modelId.indexOf('/') + 1);
-    name = name.replace(/:thinking/g, '').replace(/ \(.*\)/g, ''); // Remove :thinking and (XXX B)
+    name = name.replace(/:thinking/g, '').replace(/ \(.*\)/g, '');
     name = name.replace(/-/g, ' ').replace(/preview/g, 'Preview');
-    // Capitalize words
     return name.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').trim();
   };
   
-  // --- Helper function to format model name for list items ---
   const formatModelListItem = (modelId: string): React.ReactNode => {
-    // Show the full ID, perhaps with parts styled differently if needed later
-    // For now, just the ID. Can be enhanced to return JSX with styled suffixes.
     return modelId;
   };
 
-  // Update textarea placeholder based on props.currentMode
   const getPlaceholderText = () => {
     switch (currentMode) {
       case 'latex':
@@ -390,7 +441,6 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     }
   };
 
-  // Effect to handle clicks outside the mode dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
@@ -403,7 +453,6 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     };
   }, [modeDropdownRef]);
 
-  // --- useEffect for Model Selector Dropdown outside click ---
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (modelSelectorDropdownRef.current && !modelSelectorDropdownRef.current.contains(event.target as Node)) {
@@ -425,7 +474,6 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>{title}</span>
         
-        {/* Mode Selector - remains as is */}
         <div className={styles.mainModeSelectorWrapper} ref={modeDropdownRef}>
           <button onClick={() => setShowModeDropdown(!showModeDropdown)} className={styles.mainModeButton}>
             {React.createElement(modeIcons[currentMode], { size: 16, className: styles.currentModeIcon })}
@@ -449,26 +497,23 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
           )}
         </div>
 
-        {/* NEW: Container for header action buttons (clear and toggle) */}
         <div className={styles.headerActionButtons}> 
           <button
             type="button"
-            onClick={handleClearMessages} // Use existing handler
-            className={`${styles.iconButton} ${styles.clearChatButton}`} // Apply general and specific styles
+            onClick={handleClearMessages}
+            className={`${styles.iconButton} ${styles.clearChatButton}`}
             title="清空聊天记录"
           >
-            <Trash2 size={18} /> {/* Adjust size as needed */}
+            <Trash2 size={18} />
           </button>
           
-          {/* Existing Toggle Button - moved inside the new container */}
-          {onToggle && ( // Conditionally render toggle button only if onToggle is provided
+          {onToggle && (
             <button onClick={onToggle} className={`${styles.iconButton} ${styles.toggleButton}`} title={isOpen ? "折叠面板" : "展开面板"}>
               {isOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
             </button>
           )}
         </div>
       </div>
-      {/* --- Move context display text here --- */}
       {contextNodeInfo && (contextNodeInfo.label || contextNodeInfo.id) && (
         <div className={styles.contextDisplay}>
           当前分析节点: {contextNodeInfo.label || contextNodeInfo.id}
@@ -492,24 +537,43 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Modified input area to be a form directly */}
       <form className={styles.inputSection} onSubmit={handleSubmit}>
         <div className={styles.contextBar}>
           <PlusCircle size={16} className={styles.contextBarIcon} />
           <span className={styles.contextBarText}>Add context</span>
         </div>
 
+                 {/* 文件显示区域 */}
+        {uploadedFiles.length > 0 && (
+          <div className={styles.uploadedFilesContainer}>
+            {uploadedFiles.map((file, index) => (
+              <div key={index} className={styles.uploadedFileItem}>
+                <span className={styles.fileName}>{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile(index)}
+                  className={styles.removeFileButton}
+                  title="移除文件"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className={styles.textAreaWrapper}>
-          {showNodeSuggestions && filteredDagNodes.length > 0 && (
-            <div ref={suggestionsRef} className={styles.suggestionsPanel}>
-              <NodeMentionSuggestions
-                suggestions={filteredDagNodes}
-                activeSuggestionIndex={activeSuggestionIndex}
-                onSelectNode={handleNodeSelect}
-                containerRef={suggestionsRef}
-              />
-            </div>
-          )}
+           {showNodeSuggestions && filteredDagNodes.length > 0 && (
+             <div className={styles.suggestionsPanel}>
+               <NodeMentionSuggestions
+                 ref={suggestionsRef}
+                 suggestions={filteredDagNodes}
+                 activeSuggestionIndex={activeSuggestionIndex}
+                 onSelectNode={handleNodeSelect}
+                 suggestionsRef={suggestionsRef}
+               />
+             </div>
+           )}
           <textarea
             ref={inputRef}
             value={currentInput}
@@ -521,10 +585,8 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
           />
         </div>
 
-        {/* Fully implemented Bottom Action Bar - MODIFIED */}
         <div className={styles.bottomActionBar}> 
           <div className={styles.actionBarLeft}>
-            {/* Model Selector Dropdown */}
             <div className={styles.modelSelectorWrapper} ref={modelSelectorDropdownRef}>
               <button 
                 type="button" 
@@ -532,7 +594,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
                 onClick={() => setShowModelSelectorDropdown(!showModelSelectorDropdown)}
                 title={`Current model: ${selectedModel}. Click to switch.`}
               >
-                <Brain size={16} className={styles.selectedModelPrefixIcon} /> {/* Cursor-like brain icon */}
+                <Brain size={16} className={styles.selectedModelPrefixIcon} />
                 <span className={styles.selectedModelName}>{formatDisplayModelName(selectedModel)}</span>
                 <ChevronDown size={14} className={`${styles.modelSelectorChevronIcon} ${showModelSelectorDropdown ? styles.chevronUp : ''}`}/>
               </button>
@@ -543,28 +605,40 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
                       key={modelId}
                       className={selectedModel === modelId ? styles.activeModelOption : ''}
                       onClick={() => { setSelectedModel(modelId); setShowModelSelectorDropdown(false); }}
-                      title={modelId} // Show full ID on hover for clarity
+                      title={modelId}
                     >
-                      {formatModelListItem(modelId)} {/* Shows full ID for now */}
+                      {formatModelListItem(modelId)}
                       {selectedModel === modelId && <Check size={16} className={styles.selectedModelCheckmarkIcon} />}
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            {/* Other future left action buttons can go here */}
-            {/* Removed Wand2 placeholder, Settings was replaced by model selector */}
           </div>
           <div className={styles.actionBarRight}>
-            <button type="button" className={styles.actionButton} title="Attach file (Coming Soon)">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+            <button 
+              type="button" 
+              className={styles.actionButton} 
+              onClick={handleAttachmentClick}
+              disabled={isUploading}
+              title={isUploading ? "上传中..." : "上传文件"}
+            >
               <Paperclip size={16} />
             </button>
             <button 
               type="submit"
               className={`${styles.sendButton} ${styles.actionBarSendButton}`} 
-              disabled={!currentInput.trim() || isLoading}
+              disabled={(!currentInput.trim() && uploadedFiles.length === 0) || isLoading || isUploading}
             >
-              {isLoading ? 'Sending...' : <Send size={16} />}
+              {isLoading || isUploading ? 'Sending...' : <Send size={16} />}
             </button>
           </div>
         </div>

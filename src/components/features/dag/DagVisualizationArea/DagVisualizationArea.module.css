@@ -5,6 +5,7 @@
   height: 100%;
   background-color: var(--color-background-light-blue, #F0F8FF);
   position: relative;
+  min-height: 200px; /* Ensure it doesn't collapse too much */
 }
 
 .miniMap {
@@ -44,4 +45,9 @@
   align-items: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
   white-space: nowrap; /* Prevent text from wrapping if too long for simple messages */
+}
+
+/* Styles for when in path creation mode */
+.pathCreationMode {
+  cursor: crosshair;
 }

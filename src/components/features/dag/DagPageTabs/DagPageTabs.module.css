@@ -1,0 +1,216 @@
+.dagPageTabsContainer {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 13px;
+  gap: 8px;
+  overflow-x: auto; /* 🔥 启用横向滚动 */
+  white-space: nowrap; /* 防止换行 */
+  min-height: 48px; /* 确保有足够高度 */
+}
+
+.tabsList {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0; /* 防止标签被压缩 */
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 60px;
+  position: relative;
+}
+
+.tab:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.activeTab {
+  background-color: #007bff !important;
+  border-color: #007bff !important;
+  color: white;
+}
+
+.activeTab:hover {
+  background-color: #0056b3 !important;
+  border-color: #0056b3 !important;
+}
+
+.tabNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.activeTab .tabNumber {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.tabLabel {
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer; /* 🔥 提示可以双击 */
+}
+
+/* 🔥 重命名输入框样式 */
+.renameInput {
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 80px;
+  border: 1px solid #007bff;
+  border-radius: 3px;
+  padding: 2px 4px;
+  background: white;
+  outline: none;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  margin-left: 4px;
+}
+
+.closeButton:hover {
+  background: rgba(255, 0, 0, 0.2);
+  color: #dc3545;
+}
+
+.activeTab .closeButton {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.activeTab .closeButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.addTab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px dashed #6c757d;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 4px;
+}
+
+.addTab:hover {
+  border-color: #007bff;
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.addIcon {
+  font-size: 16px;
+  font-weight: bold;
+  color: #6c757d;
+  transition: color 0.2s ease;
+}
+
+.addTab:hover .addIcon {
+  color: #007bff;
+}
+
+.pageInfo {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  color: #6c757d;
+}
+
+.pageCount {
+  font-weight: 500;
+}
+
+/* 🔥 右键菜单样式 */
+.contextMenu {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 140px;
+  font-size: 13px;
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.contextMenuItem:hover {
+  background-color: #f8f9fa;
+}
+
+.contextMenuIcon {
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.contextMenuSeparator {
+  height: 1px;
+  background-color: #e9ecef;
+  margin: 4px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .dagPageTabsContainer {
+    padding: 6px 8px;
+  }
+  
+  .tab {
+    padding: 4px 8px;
+    min-width: 50px;
+  }
+  
+  .tabLabel {
+    display: none; /* 在小屏幕上隐藏标签文字 */
+  }
+  
+  .addTab {
+    width: 28px;
+    height: 28px;
+  }
+} 

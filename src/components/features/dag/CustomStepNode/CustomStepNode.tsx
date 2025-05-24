@@ -11,7 +11,8 @@ import {
   Loader2,
   HelpCircle,
   StickyNote,
-  ArrowRightCircle
+  ArrowRightCircle,
+  ArrowLeftCircle
 } from 'lucide-react';
 
 // TEMPORARY basic classNames utility - UPDATED TYPE SIGNATURE
@@ -45,11 +46,13 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
     }
   };
 
-  const { className: statusClassName, IconComponent, iconClass: statusIconSpecificClass } = getStatusStyleAndIcon(data.verificationStatus);
+  const { className: statusClassNameBase, IconComponent, iconClass: statusIconSpecificClass } = getStatusStyleAndIcon(data.verificationStatus);
 
-  const displayLatex = data.fullLatexContent && data.fullLatexContent.length > 40
-    ? `${data.fullLatexContent.substring(0, 37)}...`
-    : data.fullLatexContent || '';
+  // const displayLatex = data.fullLatexContent && data.fullLatexContent.length > 40
+  //   ? `${data.fullLatexContent.substring(0, 37)}...`
+  //   : data.fullLatexContent || '';
+  // 对于节点内部显示，我们总是尝试渲染，截断交给CSS处理（如果需要）
+  const nodeContentToRender = data.fullLatexContent || '';
 
   const nodeStyle: React.CSSProperties = {
     // control panel overrides position, so we don't need to set it here
@@ -72,71 +75,86 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
 
   const hasNotes = data.notes && data.notes.trim() !== '';
 
-  return (
-    <div
-      className={classNames(
-        styles.customNode,
-        statusClassName,
-        { 
-          [styles.deletedNode]: isActuallyDeleted,
-          [styles.selected]: !!selected,            
-          [styles.inferenceNode]: !!data.isDerived,
-          [styles.onNewPath]: !!data.isOnNewPath,
-          [styles.focusSourceNode]: !!data.isFocusSource,
-          [styles.focusPathNode]: !!data.isFocusPath && !data.isFocusSource,
-        }
-      )}
-      style={nodeStyle}
-    >
-      <Handle type="target" position={Position.Top} className={styles.handle} id={`${id}-target`} />
-      
-      <div className={styles.nodeHeaderIcons}> 
-        {IconComponent && (
-          <IconComponent className={`${styles.statusIcon} ${statusIconSpecificClass}`} size={20} />
-        )}
-        {hasNotes && ( 
-          <span title="包含备注">
-            <StickyNote className={styles.noteIndicatorIcon} size={16} />
-          </span>
-        )}
-      </div>
-      
-      <div className={styles.nodeLabel}>{data.label}</div>
-      
-      {displayLatex && (
-        <div className={styles.nodeContent}>
-          <Latex>{`$$${displayLatex.replace(/^\$\$|\$\$$/g, '')}$$`}</Latex>
-        </div>
-      )}
+  // Build up className string for the node
+  const nodeClasses = classNames(
+    styles.customNode,
+    statusClassNameBase,
+    { 
+      [styles.selected]: selected, 
+      [styles.deletedNode]: data.isDeleted,
+      [styles.onNewPath]: data.isOnNewPath,
+      [styles.focusSourceNode]: data.isFocusSource,
+      [styles.focusPathNode]: data.isFocusPath && !data.isFocusSource,
+      [styles.mainPathNode]: data.isMainPathNode,
+      [styles.newPathStartNode]: data.isNewPathStart,
+    },
+    data.isDeleted ? styles.deletedNode : ''
+  );
 
-      <div className={styles.derivationStatusIconsContainer}>
-        {/* Forward Correct */}
-        {data.forwardDerivationDisplayStatus === ForwardDerivationStatus.Correct && (
-          <span title="正向推导正确">
-            <ArrowRightCircle className={`${styles.derivationIcon} ${styles.forwardCorrectIcon}`} size={16} />
-          </span>
-        )}
-        {/* Forward Incorrect */}
-        {data.forwardDerivationDisplayStatus === ForwardDerivationStatus.Incorrect && (
-          <span title="正向推导错误">
-            <XCircle className={`${styles.derivationIcon} ${styles.forwardIncorrectIcon}`} size={16} />
-          </span>
-        )}
-        {/* Backward Correct */}
-        {data.backwardDerivationDisplayStatus === ForwardDerivationStatus.Correct && (
-          <span title="反向推导正确">
-            <CheckCircle2 className={`${styles.derivationIcon} ${styles.backwardCorrectIcon}`} size={16} />
-          </span>
-        )}
-        {/* Backward Incorrect */}
-        {data.backwardDerivationDisplayStatus === ForwardDerivationStatus.Incorrect && (
-          <span title="反向推导错误">
-            <XCircle className={`${styles.derivationIcon} ${styles.backwardIncorrectIcon}`} size={16} />
-          </span>
+  return (
+    <div className={nodeClasses} style={nodeStyle}>
+      <Handle type="target" position={Position.Top} className={styles.handle} id={`${id}-target-top`} />
+      <Handle type="target" position={Position.Left} className={styles.handle} id={`${id}-target-left`} />
+      
+      <div className={styles.nodeHeader}>
+        <span className={styles.nodeLabel}>{data.label || `步骤 ${data.stepNumber || id}`}</span>
+        <div className={styles.nodeHeaderIcons}>
+          {hasNotes && ( 
+            <span title={data.notes}>
+              <StickyNote 
+                size={14} 
+                className={styles.noteIndicatorIcon} 
+              />
+            </span>
+          )}
+          <IconComponent 
+            size={16} 
+            className={classNames(
+              styles.statusIcon, 
+              statusIconSpecificClass, 
+              { [styles.spin]: data.verificationStatus === VerificationStatus.Verifying }
+            )} 
+          />
+          {(data.forwardDerivationDisplayStatus || data.backwardDerivationDisplayStatus) && (
+            <div className={styles.derivationStatusIconsContainerInHeader}>
+              {data.forwardDerivationDisplayStatus === ForwardDerivationStatus.Correct && 
+                <span title="Forward derivation correct">
+                  <ArrowRightCircle size={12} className={`${styles.derivationIcon} ${styles.forwardCorrectIcon}`} />
+                </span>}
+              {data.forwardDerivationDisplayStatus === ForwardDerivationStatus.Incorrect && 
+                <span title="Forward derivation incorrect">
+                  <XCircle size={12} className={`${styles.derivationIcon} ${styles.forwardIncorrectIcon}`} />
+                </span>}
+              {data.backwardDerivationDisplayStatus === ForwardDerivationStatus.Correct && 
+                <span title="Backward derivation correct">
+                  <ArrowLeftCircle size={12} className={`${styles.derivationIcon} ${styles.backwardCorrectIcon}`} />
+                </span>}
+              {data.backwardDerivationDisplayStatus === ForwardDerivationStatus.Incorrect && 
+                <span title="Backward derivation incorrect">
+                  <XCircle size={12} className={`${styles.derivationIcon} ${styles.backwardIncorrectIcon}`} />
+                </span>}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className={styles.nodeContent}>
+        {nodeContentToRender ? (
+          <Latex delimiters={[
+            { left: "$$", right: "$$", display: true },
+            { left: "$", right: "$", display: false },
+            { left: "\\(", right: "\\)", display: false },
+            { left: "\\[", right: "\\]", display: true }
+          ]}>
+            {nodeContentToRender}
+          </Latex>
+        ) : (
+          <span className={styles.noContentFallback}>无内容</span>
         )}
       </div>
       
-      <Handle type="source" position={Position.Bottom} className={styles.handle} id={`${id}-source`} />
+      <Handle type="source" position={Position.Bottom} className={styles.handle} id={`${id}-source-bottom`} />
+      <Handle type="source" position={Position.Right} className={styles.handle} id={`${id}-source-right`} />
     </div>
   );
 };

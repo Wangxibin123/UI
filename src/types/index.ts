@@ -43,6 +43,12 @@ export interface DagNodeRfData {
   isFocusPath?: boolean; // True if the node is part of the current focus path
   isFocusSource?: boolean; // True if this node is the source of the current focus analysis
   // --- End C1 ---
+  // --- T_FIX_1: Add isMainPathNode to DagNodeRfData ---
+  isMainPathNode?: boolean; // True if the node is part of the main path
+  // --- End T_FIX_1 ---
+  // +++ NP_FEAT_1: Add isNewPathStart to DagNodeRfData +++
+  isNewPathStart?: boolean; // True if this node is the starting point of a new path being created
+  // +++ End NP_FEAT_1 +++
   // Add any other custom data your nodes might need
   [key: string]: any; // Allows for other arbitrary data
 }
@@ -83,8 +89,18 @@ export interface DagEdge {
     // --- C1: Add field for Focus Analysis to Edge Data ---
     isFocusPath?: boolean; // True if the edge is part of the current focus path
     // --- End C1 ---
+    // --- T_FIX_1: Add isMainPathEdge to DagEdge data ---
+    isMainPathEdge?: boolean; // True if the edge is part of the main path
+    // --- End T_FIX_1 ---
+    // +++ EDGE_SELECTION: Add edge selection state +++
+    isSelected?: boolean; // True if the edge is currently selected
+    pathGroupId?: string; // ID of the path group this edge belongs to
+    // +++ End EDGE_SELECTION +++
     [key: string]: any; // Allows for other arbitrary data
   };
+  // --- T_FIX_LINTER_ZINDEX: Add zIndex to DagEdge ---
+  zIndex?: number; // For React Flow edge rendering order
+  // --- End T_FIX_LINTER_ZINDEX ---
   // Potentially add a deleted flag for edges too if they need special styling
   // isDeleted?: boolean;
 }
@@ -122,4 +138,44 @@ export enum LayoutMode {
 
 // --- C1: Define FocusAnalysisType ---
 export type FocusAnalysisType = 'forward' | 'backward' | 'full' | null;
-// --- End C1 --- 
+// --- End C1 ---
+
+// +++ PATH_GROUPS: Define path group types +++
+export interface PathGroup {
+  id: string;
+  nodeIds: string[]; // Nodes in this path group
+  edgeIds: string[]; // Edges in this path group
+  isMainPath: boolean; // Whether this is the main path group
+  startNodeId: string; // Starting node of this path
+  endNodeId: string; // Ending node of this path
+  layoutPosition?: { x: number; y: number }; // Position for group layout
+}
+
+export interface PathGroupState {
+  groups: PathGroup[];
+  mainPathGroupId: string | null;
+  selectedEdgeId: string | null;
+}
+
+// +++ DAG_PAGES: Add DAG page management types +++
+export interface DagPage {
+  id: string;
+  name: string;
+  nodes: DagNode[];
+  edges: DagEdge[];
+  pathGroups: PathGroup[];
+  mainPathGroupId: string | null;
+  createdAt: Date;
+  isActive: boolean;
+  // 🔥 每个页面独立的解题步骤（从全局solutionSteps中筛选出的）
+  solutionSteps: SolutionStepData[]; // 每个页面独立的解题步骤
+  // 注意：题目数据（problemData）应该是全局共享的，不存储在单个页面中
+  highlightColor?: string | null; // 🔥 页面高亮颜色
+}
+
+export interface DagPageState {
+  pages: DagPage[];
+  activePageId: string | null;
+  maxPages: number; // 限制最大页面数量
+}
+// +++ End DAG_PAGES +++ 

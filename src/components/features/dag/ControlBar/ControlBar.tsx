@@ -1,5 +1,5 @@
 import React from 'react';
-import { useReactFlow, Panel } from '@reactflow/core';
+import { useReactFlow } from '@reactflow/core';
 import styles from './ControlBar.module.css';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2, Bot, Sparkles, MessageSquare } from 'lucide-react';
 import { LayoutMode } from '../../../../types';
@@ -40,7 +40,7 @@ const ControlBar: React.FC<ControlBarProps> = ({
   const panelClassName = `${styles.controlBarContainer} ${!showDetailedControls ? styles.compactMode : ''}`.trim();
 
   return (
-    <Panel position="top-left" className={panelClassName}>
+    <div className={panelClassName}>
       <button 
         onClick={onToggleCollapse} 
         className={styles.iconButton} 
@@ -90,7 +90,7 @@ const ControlBar: React.FC<ControlBarProps> = ({
           </button>
         </div>
       )}
-    </Panel>
+    </div>
   );
 };
 
