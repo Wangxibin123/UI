@@ -6,6 +6,13 @@
   transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
 }
 
+.contentArea {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .dagRegion {
   /* flex-basis is now controlled by inline style */
   /* min-width is now controlled by JS logic */
@@ -14,7 +21,7 @@
   height: 100%; /* Fill parent height */
   overflow-y: hidden; /* Let child (DagVisualizationArea) handle its own scroll */
   display: flex; /* Add flex display */
-  flex-direction: column; /* Stack ControlBar and VizArea vertically */
+  flex-direction: column; /* Stack DagPageTabs and DagVisualizationArea vertically */
   transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out; /* Smooth transition */
   border-right: 1px solid #e0e0e0;
 }
@@ -151,10 +158,244 @@
 }
 
 .similarProblemsSection h4,
-.aiHintsSection h4,
-.summarySection h4 {
+.similarProblemsSection p {
+  margin-bottom: 10px;
+}
+
+.similarProblemsSection h4 {
   margin-top: 0;
   margin-bottom: 8px;
-  font-size: 1em;
-  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
+
+/* +++ CSS for StepDetailEditorPanel +++ */
+.stepDetailEditorPanel {
+  background-color: #f8f9fa; /* 更轻的背景色 */
+  border-left: 1px solid #dee2e6; /* 左边框，用于和主内容区隔 */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* 各部分之间的间距 */
+  box-shadow: -2px 0 5px rgba(0,0,0,0.05); /* 左侧阴影 */
+  height: 100%; /* 确保填满父容器高度 */
+  box-sizing: border-box;
+}
+
+.stepDetailEditorPanel h4 {
+  font-size: 1.2em;
+  color: #343a40;
+  margin-top: 0;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.stepDetailEditorPanel h5 {
+  font-size: 1em;
+  color: #495057;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.stepDetailPreviewSection,
+.stepDetailEditSection {
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.latexPreviewContent {
+  padding: 10px;
+  border: 1px dashed #ced4da;
+  border-radius: 4px;
+  min-height: 60px;
+  background-color: #f8f9fa;
+  overflow-x: auto; /* LaTeX 内容可能很宽 */
+  line-height: 1.6;
+  white-space: pre-wrap; /* 保持文本格式 */
+}
+
+.stepDetailPreviewContent {
+  margin-top: 8px;
+  padding: 12px;
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 60px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.stepDetailPreviewContent .katex {
+  font-size: 1em !important;
+}
+
+.stepDetailPreviewContent .katex-display {
+  margin: 0.5em 0 !important;
+}
+
+.stepDetailTextarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.95em;
+  min-height: 120px; /* 调整最小高度 */
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.stepDetailActions {
+  display: flex;
+  gap: 10px; /* 按钮之间的间距 */
+  margin-top: auto; /* 将按钮推到底部 */
+  padding-top: 15px; /* 与上方元素的间距 */
+  border-top: 1px solid #e9ecef; /* 按钮组上方的分隔线 */
+}
+
+.stepDetailButtonSave,
+.stepDetailButtonCancel {
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.stepDetailButtonSave {
+  background-color: #28a745; /* 绿色 */
+  color: white;
+  border: 1px solid #28a745;
+}
+
+.stepDetailButtonSave:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+.stepDetailButtonCancel {
+  background-color: #6c757d; /* 灰色 */
+  color: white;
+  border: 1px solid #6c757d;
+}
+
+.stepDetailButtonCancel:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+/* +++ End CSS for StepDetailEditorPanel +++ */
+
+/* --- Styles for New Path Creation Hint Bar --- */
+.newPathCreationHintBar {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--color-info-light-bg, #e3f2fd);
+  border-bottom: 1px solid var(--color-info-border, #bbdefb);
+  color: var(--color-info-text, #0d47a1);
+  font-size: 0.9em;
+  justify-content: space-between; /* To push button to the right */
+}
+
+.hintIcon {
+  margin-right: 8px;
+  color: var(--color-info-icon, #1976d2);
+}
+
+.hintCancelButton {
+  background-color: transparent;
+  border: 1px solid var(--color-info-action-border, #1976d2);
+  color: var(--color-info-action-text, #1976d2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.hintCancelButton:hover {
+  background-color: var(--color-info-action-hover-bg, rgba(25, 118, 210, 0.1));
+}
+
+.hintCancelButton svg {
+  margin-right: 4px;
+}
+
+/* 新增：右侧模式面板样式 */
+.rightSideModePanel {
+  display: flex;
+  flex-direction: column;
+  background-color: #fcfdff;
+  height: 100%;
+  overflow: hidden;
+}
+
+.modeCardsToggleBar {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  flex-shrink: 0;
+}
+
+.modeCardsPanelToggleButton {
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.modeCardsPanelToggleButton:hover {
+  background-color: #f0f0f0;
+  border-color: #ccc;
+}
+
+.modeCardsPanelPlaceholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+/* +++ DAG_PAGES: Add styles for DAG page management +++ */
+.dagPageTabsArea {
+  flex: 0 0 auto; /* Don't grow or shrink, maintain auto height */
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  z-index: 10; /* Ensure tabs stay above the visualization */
+}
+
+/* +++ CONTROL_BAR: Add specific area for ControlBar +++ */
+.dagControlBarArea {
+  flex: 0 0 auto; /* Fixed height, no growing or shrinking */
+  border-bottom: 1px solid #e9ecef;
+  background-color: #ffffff;
+  z-index: 5; /* Below tabs but above visualization */
+}
+/* +++ End CONTROL_BAR +++ */
+
+.dagVisualizationArea {
+  flex: 1 1 auto; /* Fill remaining space */
+  min-height: 0; /* Allow shrinking below content size */
+  overflow: hidden; /* DagVisualizationArea will handle its own overflow */
+}
+/* +++ End DAG_PAGES +++*/

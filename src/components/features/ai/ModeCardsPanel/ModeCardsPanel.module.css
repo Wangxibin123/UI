@@ -1,0 +1,108 @@
+.modeCardsPanelContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Space between cards */
+  padding: 20px; /* Padding around the container */
+  background-color: #f8f9fa; /* Light background for the panel area */
+  height: 100%; /* Fill available height */
+  box-sizing: border-box;
+}
+
+.modeCard {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.modeCard:hover {
+  border-color: #007bff; /* Blue border on hover */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modeCard.activeCard {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.1); /* Blue outline and stronger shadow */
+  background-color: #f0f8ff; /* Very light blue background for active card */
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cardIcon {
+  margin-right: 12px;
+  color: #007bff; /* Blue icon color */
+}
+
+.activeCard .cardIcon {
+  color: #0056b3; /* Darker blue for active card icon */
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.1em; /* Slightly larger title */
+  font-weight: 600;
+  color: #343a40;
+}
+
+.activeCard .cardTitle {
+  color: #0056b3;
+}
+
+.cardDescription {
+  margin: 0;
+  font-size: 0.9em;
+  color: #6c757d; /* Grey for description */
+  line-height: 1.5;
+}
+
+/* Placeholder for the top toggle buttons (Sigma, Brain, AlignLeft) if needed within this panel */
+.topToggleButtonsContainer {
+  display: flex;
+  justify-content: center; /* Or flex-start / flex-end as per design */
+  gap: 10px;
+  margin-bottom: 20px; /* Space below the toggles before cards */
+  padding: 10px;
+  background-color: #e9ecef; /* Slightly different background for the toggle bar */
+  border-radius: 6px;
+}
+
+.topToggleButton {
+  background-color: #ffffff;
+  border: 1px solid #ced4da;
+  border-radius: 50%; /* Circular buttons */
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  color: #495057;
+}
+
+.topToggleButton:hover {
+  background-color: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.topToggleButton.activeToggle {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: #ffffff;
+}
+
+.topToggleButton.activeToggle:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.topToggleButton svg {
+  width: 20px; /* Adjust icon size as needed */
+  height: 20px;
+} 

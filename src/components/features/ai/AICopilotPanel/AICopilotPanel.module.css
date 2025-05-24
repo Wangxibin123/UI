@@ -3,462 +3,413 @@
 .aiCopilotPanel {
   display: flex;
   flex-direction: column;
-  height: 100%; /* Fill parent's height */
-  max-height: 100vh; /* Fallback or specific use case, ensure it doesn't exceed viewport if not constrained by parent */
-  background-color: #f0f2f5; /* Light grey background for the whole panel */
-  border-left: 1px solid #e0e0e0; /* Separator line from the main content */
+  height: 100%;
+  background-color: #ffffff; /* 改为纯白背景，更现代 */
+  border-left: 1px solid #e1e5e9; /* 更淡的边框 */
   box-sizing: border-box;
-  padding: 10px; /* Add some padding around the panel content */
-  overflow: hidden; /* CRITICAL: Prevents children from expanding panel, forces internal scroll */
+  padding: 0; /* 移除外层padding，让组件更紧凑 */
+  overflow: hidden;
 }
 
-/* Ensure panel is visible when open */
 .aiCopilotPanel.open {
   /* display: flex; /* Already set above */
-  /* Potentially add transition for open/close animation if needed */
 }
 
 .aiCopilotPanel.closed {
-  display: none; /* Or transition to width: 0, opacity: 0 etc. */
+  display: none;
 }
 
 .panelHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px; /* Space below header */
-  padding-bottom: 8px; /* Padding for the bottom border effect */
-  border-bottom: 1px solid #e0e0e0; /* Separator line */
-  flex-shrink: 0; /* CRITICAL: Prevent header from shrinking */
+  padding: 12px 16px; /* 减小padding */
+  border-bottom: 1px solid #e1e5e9; /* 更淡的分隔线 */
+  background-color: #fafbfc; /* 轻微的背景色区分 */
+  flex-shrink: 0;
+  min-height: 48px; /* 设置最小高度 */
 }
 
 .panelHeader h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px; /* 稍微减小字体 */
   font-weight: 600;
-  color: #333;
+  color: #24292f; /* 更深的文字颜色 */
 }
 
-/* NEW STYLES FOR HEADER ACTION BUTTONS CONTAINER */
 .headerActionButtons {
   display: flex;
   align-items: center;
-  gap: 8px; /* Spacing between buttons, adjust as needed */
-  margin-left: auto; /* Pushes the button group to the right within .panelHeader */
+  gap: 6px; /* 减小间距 */
+  margin-left: auto;
 }
-
-/* Ensure .headerActions is either removed or updated if it was the old name for .headerActionButtons */
-/* For now, assuming .headerActions might be deprecated or for a different purpose. */
-/* If .headerActions was indeed the old wrapper, this new .headerActionButtons should replace its usage in JSX. */
 
 .iconButton {
   background: none;
   border: none;
-  padding: 6px; /* Adjusted padding for better click area */
+  padding: 6px;
   cursor: pointer;
-  color: #555; /* Base color for icons */
+  color: #656d76; /* 更现代的图标颜色 */
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease; /* Smooth transition for hover */
+  border-radius: 6px; /* 更圆润的圆角 */
+  transition: all 0.15s ease; /* 更快的过渡 */
 }
 
 .iconButton:hover {
-  background-color: #e0e0e0; /* Slightly darker/more visible hover background */
-  color: #111; /* Darker icon color on hover */
+  background-color: #f3f4f6;
+  color: #24292f;
 }
 
-.clearButton {
-  /* Specific styles for clear button if needed, e.g., color */
-  /* This class is kept for potential future specific styling not covered by :hover svg */
+.clearChatButton:hover svg {
+  color: #dc3545 !important;
 }
-
-.clearChatButton:hover svg { /* Targeting the SVG inside .clearChatButton for color change */
-  color: red !important; /* Important to ensure override if icon color is set elsewhere */
-}
-
-/* Optional: subtle background for the clear button itself on hover */
-/*
-.clearChatButton:hover {
-  background-color: rgba(255, 0, 0, 0.05);
-}
-*/
 
 .contextDisplay {
-  padding: 8px 10px;
-  background-color: #e6f7ff; /* Light blue background for context */
-  border: 1px solid #91d5ff; /* Blue border */
-  border-radius: 4px;
-  margin-bottom: 10px; /* Space below context display */
-  font-size: 0.85em;
-  color: #333;
-  flex-shrink: 0; /* CRITICAL: Prevent context display from shrinking */
+  padding: 8px 12px; /* 减小padding */
+  background-color: #f0f8ff;
+  border: 1px solid #b6d7ff;
+  border-radius: 6px;
+  margin: 8px 12px; /* 侧边margin */
+  font-size: 13px; /* 稍微减小字体 */
+  color: #0969da;
+  flex-shrink: 0;
 }
 
 .messagesArea {
-  flex-grow: 1; /* CRITICAL: Takes up remaining vertical space */
-  overflow-y: auto; /* CRITICAL: Enables vertical scrolling for messages */
-  min-height: 0; /* CRITICAL: Helps flex-grow calculate height correctly for scrolling */
-  padding: 10px; /* Padding inside the messages area */
-  background-color: #ffffff; /* White background for messages area */
-  border-radius: 4px;
-  /* margin-bottom: 10px; /* Removed margin from here, inputArea will be directly below */
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px; /* 减小padding */
+  background-color: #ffffff;
+  margin: 0; /* 移除margin */
 }
 
 .noMessagesText {
   text-align: center;
-  color: #888;
-  padding-top: 20px;
+  color: #656d76;
+  padding-top: 40px;
   font-style: italic;
+  font-size: 14px;
 }
 
 .message {
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  border-radius: 12px; /* More rounded bubbles */
-  max-width: 85%; /* Messages don't take full width */
-  word-wrap: break-word; /* Break long words */
-  display: flex; /* Use flex to position timestamp */
-  flex-direction: column; /* Stack text and timestamp */
+  margin-bottom: 12px; /* 减小间距 */
+  padding: 10px 14px; /* 调整padding */
+  border-radius: 12px;
+  max-width: 85%;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px; /* 统一字体大小 */
+  line-height: 1.5;
 }
 
 .message.user {
-  background-color: #007bff; /* Blue for user messages */
+  background-color: #0969da; /* 更现代的蓝色 */
   color: white;
-  margin-left: auto; /* Align user messages to the right */
-  border-bottom-right-radius: 2px; /* Flatter corner for "speech bubble" tail effect */
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
 }
 
 .message.ai {
-  background-color: #e9ecef; /* Light grey for AI messages */
-  color: #333;
-  margin-right: auto; /* Align AI messages to the left */
-  border-bottom-left-radius: 2px; /* Flatter corner for "speech bubble" tail effect */
+  background-color: #f6f8fa; /* 更淡的背景 */
+  color: #24292f;
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
+  border: 1px solid #d1d9e0; /* 添加淡边框 */
 }
 
 .messageText {
-  margin: 0 0 4px 0; /* Space between text and timestamp */
-  white-space: pre-wrap; /* Preserve line breaks from input/AI */
+  margin: 0 0 4px 0;
+  white-space: pre-wrap;
 }
 
 .timestamp {
-  font-size: 0.75em;
-  color: inherit; /* Inherit color from message bubble (darker for AI, lighter for user) */
+  font-size: 11px; /* 更小的时间戳 */
   opacity: 0.7;
-  text-align: right; /* Align timestamp to the right of its little space */
+  text-align: right;
 }
 
 .message.ai .timestamp {
-  /* color: #6c757d; /* Slightly darker timestamp for AI messages */
-  align-self: flex-start; /* Align timestamp to left for AI */
+  align-self: flex-start;
 }
 
 .message.user .timestamp {
-  /* color: #f0f0f0; /* Lighter timestamp for user messages */
-  align-self: flex-end; /* Align timestamp to right for user */
+  align-self: flex-end;
 }
 
-/* Replace .inputArea with .inputSection if .inputArea was the form, or style .inputSection as the new main input container */
 .inputSection {
   display: flex;
   flex-direction: column;
-  /* border-top: 1px solid #e0e0e0; /* Separator from messagesArea if needed */
-  /* background-color: #f0f2f5; /* Or keep it consistent with panel background */
   flex-shrink: 0;
-  /* padding: 0; /* Remove padding if children handle it */
+  border-top: 1px solid #e1e5e9;
+  background-color: #ffffff;
 }
 
 .contextBar {
   display: flex;
   align-items: center;
-  height: 30px; 
-  padding: 0 10px;
-  background-color: #f8f9fa; /* Very light grey, or transparent to blend with inputSection bg */
-  border-bottom: 1px solid #e9ecef;
-  width: 100%;
-  box-sizing: border-box;
-  flex-shrink: 0; /* Prevent shrinking */
+  height: 32px; /* 减小高度 */
+  padding: 0 12px;
+  background-color: #fafbfc;
+  border-bottom: 1px solid #e1e5e9;
+  flex-shrink: 0;
 }
 
 .contextBarIcon {
   margin-right: 6px;
-  color: #6c757d; /* Icon color */
-  display: flex; /* For better icon alignment */
+  color: #656d76;
+  display: flex;
   align-items: center;
 }
 
 .contextBarText {
-  font-size: 0.875em; /* 14px if base is 16px */
-  color: #495057;
+  font-size: 13px; /* 减小字体 */
+  color: #656d76;
   line-height: 1;
 }
 
-/* This wrapper is crucial for positioning suggestionsPanel relative to the textarea */
 .textAreaWrapper {
-  position: relative; 
-  display: flex; /* Take up available space */
-  flex-direction: column; /* Stack textarea and suggestions(abs pos) */
-  flex-grow: 1; /* Allow this area to grow and push bottomActionBar down */
-  /* border: 1px dashed blue; /* For debugging layout */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+/* 文件上传相关样式 */
+.uploadedFilesContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #e1e5e9;
+  margin-bottom: 2px;
+}
+
+.uploadedFileItem {
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #24292f;
+}
+
+.fileName {
+  margin-right: 6px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removeFileButton {
+  background: none;
+  border: none;
+  color: #656d76;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.removeFileButton:hover {
+  color: #d1242f;
 }
 
 .inputTextArea {
-  flex-grow: 1; /* Allow textarea to grow within textAreaWrapper if its height is not fixed */
-  padding: 10px;
-  border: none; /* Remove default border, rely on textAreaWrapper or inputSection for borders if any */
-  /* border-top: 1px solid #e9ecef; /* Optional: line between contextBar and textarea if contextBar has no border-bottom */
-  border-radius: 0; /* Remove border-radius if it's part of a larger input group look */
-  resize: none; 
-  font-size: 1em;
+  flex-grow: 1;
+  padding: 12px; /* 调整padding */
+  border: none;
+  border-radius: 0;
+  resize: none;
+  font-size: 14px;
   line-height: 1.5;
-  /* margin-right: 0; /* Remove if not needed due to parent flex structure */
-  min-height: calc(1.5em * 2 + 20px); /* Approx 2 rows initial height + padding */
-  max-height: 200px; /* Max height before textarea itself scrolls */
-  overflow-y: auto; 
-  width: 100%; /* Ensure it takes full width of textAreaWrapper */
+  min-height: 44px; /* 减小最小高度 */
+  max-height: 120px; /* 减小最大高度 */
+  overflow-y: auto;
+  width: 100%;
   box-sizing: border-box;
-  background-color: #fff; /* Or transparent to inherit from parent */
+  background-color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
 }
 
 .inputTextArea:focus {
-  /* border-color: #007bff; */ /* Remove focus border or make it subtle */
-  /* box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); */ /* Remove default shadow */
   outline: none;
-  /* background-color: #fff; /* Ensure bg color on focus */
+  background-color: #ffffff;
 }
 
-/* Suggestions Panel needs to be relative to textAreaWrapper */
+.inputTextArea::placeholder {
+  color: #8c959f; /* 更现代的占位符颜色 */
+}
+
 .suggestionsPanel {
   position: absolute;
-  bottom: 100%; /* Position above the textarea (its direct non-static parent is textAreaWrapper) */
-  left: 0; 
-  right: 0; 
-  background-color: #ffffff; 
-  border: 1px solid #dee2e6; 
-  border-bottom: none; 
-  border-radius: 6px 6px 0 0; 
-  z-index: 1000; 
-  max-height: 220px; 
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  z-index: 1000;
+  max-height: 200px; /* 减小高度 */
   overflow-y: auto;
-  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.07); 
-  /* ... scrollbar styles from previous step ... */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent; 
-    border-radius: 3px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background-color: #ced4da; 
-    border-radius: 3px;
-    border: 1px solid #ffffff; 
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: #adb5bd; 
-  }
+  box-shadow: 0 -4px 16px rgba(31, 35, 40, 0.15); /* 更现代的阴影 */
 }
 
-/* Styles for the new Bottom Action Bar (replaces .bottomActionBarPlaceholder) */
+.suggestionsPanel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.suggestionsPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.suggestionsPanel::-webkit-scrollbar-thumb {
+  background-color: #d1d9e0;
+  border-radius: 2px;
+}
+
+.suggestionsPanel::-webkit-scrollbar-thumb:hover {
+  background-color: #8c959f;
+}
+
 .bottomActionBar {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Pushes left and right groups to ends */
-  height: 38px; /* Slightly taller to accommodate elements comfortably */
-  padding: 0 6px; /* Slightly reduced padding for a tighter bar like Cursor */
-  border-top: 1px solid #e0e4e8; /* Subtle top border */
-  background-color: #f8f9fa; /* Slightly different from main panel for definition */
-  width: 100%;
-  box-sizing: border-box;
-  flex-shrink: 0; /* Prevent shrinking */
-  gap: 6px; /* Gap between left and right sections if they are close */
+  justify-content: space-between;
+  height: 44px; /* 减小高度 */
+  padding: 0 8px; /* 调整padding */
+  border-top: 1px solid #e1e5e9;
+  background-color: #fafbfc;
+  flex-shrink: 0;
+  gap: 8px;
 }
 
 .actionBarLeft {
   display: flex;
   align-items: center;
-  gap: 4px; /* Reduced gap between model selector and any future left items */
+  gap: 6px;
 }
 
 .actionBarRight {
   display: flex;
   align-items: center;
-  gap: 6px; /* Gap between paperclip and send button */
+  gap: 8px;
 }
 
 .actionButton {
   background: transparent;
   border: none;
-  padding: 5px; /* Slightly more padding for better click area */
+  padding: 6px; /* 调整padding */
   cursor: pointer;
-  color: #586069; /* Icon color */
+  color: #656d76;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  line-height: 1; /* Ensure icon is vertically centered if text was next to it */
+  border-radius: 6px;
+  line-height: 1;
+  transition: all 0.15s ease;
 }
 
 .actionButton:hover {
-  background-color: #f1f3f5; /* Subtle hover effect */
-  color: #2f363d;
+  background-color: #f3f4f6;
+  color: #24292f;
 }
 
 .actionButton:disabled {
-  color: #adb5bd;
+  color: #8c959f;
   cursor: not-allowed;
   background-color: transparent;
 }
 
-/* Specific adjustments for the send button if needed when in the action bar */
-.actionBarSendButton {
-  /* Retain most of .sendButton styles, but can override padding or margins if needed */
-  padding: 5px 10px; /* Adjust padding to match other action buttons a bit more */
-  /* height: 28px; /* Example of fixed height if desired */ 
-  font-size: 0.875em; /* Slightly smaller font if desired */
-}
-
-/* Ensure general .sendButton styles are still appropriate or make .actionBarSendButton more distinct */
 .sendButton {
-  /* ... existing .sendButton styles ... */
-  /* Example: if .sendButton had large padding, .actionBarSendButton would override it */
-  background-color: #007bff;
+  background-color: #0969da;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* padding: 6px 12px; /* Original padding, overridden by .actionBarSendButton if more specific */
-  /* font-size: 0.9em; /* Original font size */
+  padding: 8px 12px; /* 调整padding */
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
 .sendButton:hover {
-  background-color: #0056b3;
+  background-color: #0860ca;
 }
 
 .sendButton:disabled {
-  background-color: #cccccc;
+  background-color: #8c959f;
   cursor: not-allowed;
 }
 
-/* Remove or comment out .bottomActionBarPlaceholder as it's replaced by .bottomActionBar */
-/*
-.bottomActionBarPlaceholder {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end; 
-  height: 40px;
-  padding: 0 8px; 
-  border-top: 1px solid #e9ecef;
-  background-color: #f8f9fa; 
-  width: 100%;
-  box-sizing: border-box;
-  flex-shrink: 0; 
-}
-*/
-
-/* Ensure good contrast and focus states for accessibility if not already covered */
-
-/* Placeholder for drag handle style if you were to implement one within the panel header for modes */
-.dragHandle {
-  /* Styles for a drag handle icon or area */
+.actionBarSendButton {
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
-/* Styles for the suggestions panel itself, positioned above the inputArea */
-.suggestionsPanel {
-  position: absolute;
-  bottom: calc(100% + 2px); /* Position above the input area with a small gap */
-  left: 0; /* Align with the left edge of inputArea */
-  right: 0; /* Align with the right edge of inputArea - makes it full width of inputArea */
-  /* Consider a max-width if inputArea can become very wide, e.g., max-width: 400px; */
-  /* If max-width is set, and you want it centered relative to inputArea if inputArea is wider: */
-  /* margin-left: auto; */
-  /* margin-right: auto; */ 
-  /* However, simpler is to let it be full width of inputArea or match textarea width. */
-
-  background-color: #ffffff; /* Clean white background */
-  border: 1px solid #dee2e6; /* Lighter, more subtle border */
-  border-bottom: none; 
-  border-radius: 6px 6px 0 0; /* Slightly larger, softer top corners */
-  z-index: 1000; 
-  max-height: 220px; /* Slightly increased max-height */
-  overflow-y: auto;
-  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.07); /* Softer, more diffused shadow */
-
-  /* Custom scrollbar for webkit browsers (optional, for aesthetics) */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent; /* Or a very light grey like #f8f9fa */
-    border-radius: 3px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background-color: #ced4da; /* Scrollbar thumb color */
-    border-radius: 3px;
-    border: 1px solid #ffffff; /* Creates a little space around thumb */
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: #adb5bd; /* Darker on hover */
-  }
-}
-
-/* Styles for Main Mode Selector in Panel Header */
-.panelHeader {
-  /* ... existing styles ... */
-  display: flex; /* Ensure flex for alignment of title, mode selector, and toggle button */
-  align-items: center;
-  justify-content: space-between; /* Push toggle button to the right */
-}
-
+/* 模式选择器样式 */
 .panelTitle {
-  font-size: 1em; /* Adjust as needed */
+  font-size: 15px;
   font-weight: 600;
-  color: #333;
-  margin-right: 10px; /* Space between title and mode selector */
+  color: #24292f;
+  margin-right: 12px;
 }
 
 .mainModeSelectorWrapper {
-  position: relative; /* For absolute positioning of the dropdown */
+  position: relative;
   display: flex;
   align-items: center;
-  /* Removed flex-grow, let panelTitle and toggleButton define space, selector takes what it needs */
 }
 
 .mainModeButton {
   display: flex;
   align-items: center;
-  background-color: #f0f2f5; /* Subtle background */
-  border: 1px solid #d9dce0;
+  background-color: #f6f8fa;
+  border: 1px solid #d1d9e0;
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 6px 10px; /* 调整padding */
   cursor: pointer;
-  font-size: 0.875em;
-  color: #333;
-  transition: background-color 0.2s ease;
+  font-size: 13px; /* 减小字体 */
+  color: #24292f;
+  transition: all 0.15s ease;
 }
 
 .mainModeButton:hover {
-  background-color: #e4e7eb;
+  background-color: #f3f4f6;
+  border-color: #bdc6cf;
 }
 
 .currentModeIcon {
   margin-right: 6px;
-  color: #586069;
+  color: #656d76;
 }
 
 .currentModeText {
-  margin-right: 4px;
+  margin-right: 6px;
   white-space: nowrap;
 }
 
 .modeSelectorChevron {
-  margin-left: auto; /* Pushes chevron to the right if button has extra space */
-  color: #586069;
-  transition: transform 0.2s ease;
+  margin-left: auto;
+  color: #656d76;
+  transition: transform 0.15s ease;
 }
 
 .modeSelectorChevron.chevronUp {
@@ -467,18 +418,18 @@
 
 .mainModeDropdownList {
   position: absolute;
-  top: calc(100% + 4px); /* Position below the button with a small gap */
+  top: calc(100% + 4px);
   left: 0;
-  min-width: 200px; /* Ensure enough width for mode names */
-  background-color: #fff;
-  border: 1px solid #d9dce0;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 180px; /* 减小宽度 */
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.2);
   list-style: none;
-  padding: 4px 0;
+  padding: 6px 0;
   margin: 0;
-  z-index: 1100; /* Ensure it's above other elements like suggestionsPanel */
-  max-height: 300px; /* In case of many modes in future */
+  z-index: 1100;
+  max-height: 240px;
   overflow-y: auto;
 }
 
@@ -487,149 +438,359 @@
   align-items: center;
   padding: 8px 12px;
   cursor: pointer;
-  font-size: 0.875em;
-  color: #333;
+  font-size: 13px;
+  color: #24292f;
   white-space: nowrap;
+  transition: background-color 0.15s ease;
 }
 
 .mainModeDropdownList li:hover {
-  background-color: #f0f2f5;
+  background-color: #f6f8fa;
 }
 
 .mainModeDropdownList li.activeModeOption {
-  background-color: #e6f7ff; /* Light blue for active selection */
+  background-color: #ddf4ff;
+  color: #0969da;
   font-weight: 500;
-  color: #007bff;
 }
 
 .dropdownModeIcon {
   margin-right: 8px;
-  color: #586069;
+  color: #656d76;
 }
 
 .mainModeDropdownList li.activeModeOption .dropdownModeIcon {
-  color: #007bff;
+  color: #0969da;
 }
 
 .selectedModeCheckmark {
-  margin-left: auto; /* Push checkmark to the right */
-  color: #007bff;
+  margin-left: auto;
+  color: #0969da;
 }
 
-/* Adjust toggleButton if needed to coexist with mode selector */
 .toggleButton {
-  /* ... existing styles or add new ones ... */
-  margin-left: 10px; /* Space it from the mode selector */
-  padding: 4px; /* Consistent padding */
+  margin-left: 8px;
+  padding: 6px;
 }
 
-/* --- Styles for Model Selector --- */
+/* 模型选择器样式 */
 .modelSelectorWrapper {
-  position: relative; /* For dropdown positioning */
+  position: relative;
   display: flex;
   align-items: center;
 }
 
 .modelSelectorButton {
-  /* Inherits from .actionButton, but can have specific overrides */
-  /* display: flex; align-items: center; (from .actionButton) */
-  padding: 5px 8px; /* Specific padding for model button */
-  background-color: transparent; /* Usually transparent in action bars */
-  /* border: 1px solid transparent; Optional: border for definition */
-  /* border-radius: 5px; (from .actionButton) */
-  min-width: 150px; /* Give it some base width */
-  justify-content: flex-start; /* Align content to the left */
+  padding: 6px 10px;
+  background-color: transparent;
+  min-width: 140px; /* 减小宽度 */
+  justify-content: flex-start;
+  font-size: 13px; /* 减小字体 */
 }
 
 .modelSelectorButton:hover {
-  background-color: #e9ecef; /* Subtle hover, same as other action buttons */
+  background-color: #f3f4f6;
 }
 
 .selectedModelPrefixIcon {
   margin-right: 6px;
-  color: #495057; /* Icon color, can be themed */
+  color: #656d76;
 }
 
 .selectedModelName {
-  font-size: 0.875em; /* 14px */
-  color: #343a40;
-  font-weight: 500; /* Slightly bolder */
+  font-size: 13px;
+  color: #24292f;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-grow: 1; /* Allow name to take space */
+  flex-grow: 1;
   text-align: left;
   margin-right: 4px;
 }
 
 .modelSelectorChevronIcon {
-  /* Similar to .modeSelectorChevron */
-  margin-left: auto; /* Pushes to the end */
-  color: #586069;
-  transition: transform 0.2s ease;
+  margin-left: auto;
+  color: #656d76;
+  transition: transform 0.15s ease;
 }
 
-.modelSelectorChevronIcon.chevronUp { /* Re-use if styles are identical */
+.modelSelectorChevronIcon.chevronUp {
   transform: rotate(180deg);
 }
 
 .modelSelectorDropdownList {
   position: absolute;
-  bottom: calc(100% + 4px); /* Position ABOVE the button */
+  bottom: calc(100% + 4px);
   left: 0;
-  right: auto; /* Let width be determined by content or min-width */
-  min-width: 280px; /* Wider dropdown for model names */
-  max-width: 350px;
-  background-color: #fff; /* Cursor uses a dark theme for dropdown, adapt if needed */
-  border: 1px solid #d9dce0; /* Match panel header dropdowns */
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 260px; /* 减小宽度 */
+  max-width: 320px;
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.2);
   list-style: none;
-  padding: 6px 0; /* Padding for top/bottom of list */
+  padding: 6px 0;
   margin: 0;
-  z-index: 1200; /* Higher than mode selector and suggestions panel */
-  max-height: 350px;
+  z-index: 1200;
+  max-height: 300px;
   overflow-y: auto;
 }
 
-.modelSelectorDropdownList li { /* Can use a more specific class like .modelSelectorDropdownItem */
+.modelSelectorDropdownList li {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Push checkmark to the right */
+  justify-content: space-between;
   padding: 8px 12px;
   cursor: pointer;
-  font-size: 0.875em;
-  color: #333;
+  font-size: 13px;
+  color: #24292f;
   white-space: nowrap;
-  /* border-bottom: 1px solid #f0f2f5; /* Subtle separator if desired */
+  transition: background-color 0.15s ease;
 }
-/* Remove last-child border if using above border */
-/* .modelSelectorDropdownList li:last-child {
-  border-bottom: none;
-} */
 
 .modelSelectorDropdownList li:hover {
-  background-color: #f0f2f5;
+  background-color: #f6f8fa;
 }
 
-/* Use .activeModelOption if it shares styles with mode selector, or define new if different */
-.modelSelectorDropdownList li.activeModelOption { 
-  background-color: #e6f7ff; 
-  color: #007bff;
+.modelSelectorDropdownList li.activeModelOption {
+  background-color: #ddf4ff;
+  color: #0969da;
   font-weight: 500;
 }
 
 .selectedModelCheckmarkIcon {
-  /* margin-left: auto; /* Already handled by justify-content: space-between on li */
-  color: #007bff; 
-  flex-shrink: 0; /* Prevent checkmark from shrinking */
+  color: #0969da;
+  flex-shrink: 0;
 }
 
-/* Adjust existing .actionButton and .sendButton if global changes are needed for spacing */
-.actionButton {
-  /* padding: 5px; /* Review if this general padding is fine or if specific buttons override */
+.aiCopilotPanelExternal {
+  /* Styles for when panel is used outside normal layout, if any */
+  /* For now, similar to default, but could be customized */
+  display: flex;
+  flex-direction: column;
+  height: 100%; 
+  background-color: #ffffff; /* Explicit background for external use */
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.actionBarSendButton {
-  /* padding: 5px 10px; /* Ensure this is still good */
+.dropdownMenu {
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 180px; 
+  padding: 4px 0;
+}
+
+/* For dropdowns attached to header selectors */
+.headerDropdownMenu {
+  top: calc(100% + 4px); /* Position below the header button */
+  left: 0;
+  /* Potentially adjust right: 0 / left: auto for right-aligned dropdowns if needed */
+}
+
+/* .bottomDropdownMenu is likely no longer needed as selectors are in header */
+/* .bottomDropdownMenu { 
+  bottom: calc(100% + 4px); 
+} */
+
+.dropdownItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.dropdownItem:hover {
+  background-color: #f0f0f0;
+}
+
+.checkMark {
+  color: #007bff;
+}
+
+.emptyChatPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #888;
+    flex-grow: 1;
+    padding: 20px;
+}
+
+.emptyChatPlaceholder svg {
+    margin-bottom: 12px;
+    color: #aaa;
+}
+
+.emptyChatPlaceholder p {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.emptyChatPlaceholder span {
+    font-size: 0.85rem;
+}
+
+.loadingMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center; 
+  padding: 12px; 
+}
+
+.dotFlashing {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: var(--color-chat-ai-text, #333);
+  color: var(--color-chat-ai-text, #333);
+  animation: dotFlashing 1s infinite linear alternate;
+  animation-delay: .5s;
+  margin: auto; 
+}
+
+.dotFlashing::before, .dotFlashing::after {
+  content: '';
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: var(--color-chat-ai-text, #333);
+  color: var(--color-chat-ai-text, #333);
+  animation: dotFlashing 1s infinite alternate;
+}
+
+.dotFlashing::before {
+  left: -15px;
+  animation-delay: 0s;
+}
+
+.dotFlashing::after {
+  left: 15px;
+  animation-delay: 1s;
+}
+
+@keyframes dotFlashing {
+  0% {
+    background-color: var(--color-chat-ai-text, #333);
+  }
+  50%, 100% {
+    background-color: rgba(150, 150, 150, 0.3);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.light { /* Theme variables */
+  --color-background-secondary: #f9f9f9;
+  --color-border: #e0e0e0;
+  --color-background-tertiary: #f0f0f0;
+  --color-text-primary: #333;
+  --color-icon-primary: #555;
+  --color-background-hover: #e0e0e0;
+  --color-icon-hover: #111;
+  --color-background-context: #e7f3ff;
+  --color-border-context: #cce0ff;
+  --color-text-context: #00529B;
+  --color-chat-user-bg: #007bff;
+  --color-chat-user-text: white;
+  --color-chat-ai-bg: #e9ecef;
+  --color-chat-ai-text: #333;
+  --color-timestamp-text: #777;
+  --color-timestamp-user-text: #f0f0f0;
+  --color-border-input: #ccc;
+  --color-border-input-focus: #007bff;
+  --color-focus-ring: rgba(0, 123, 255, 0.25);
+  --color-button-secondary-bg: #e9ecef;
+  --color-button-secondary-text: #333;
+  --color-border-button: #ced4da;
+  --color-button-secondary-hover-bg: #d6dce1;
+  --color-button-primary-bg: #007bff;
+  --color-button-primary-text: white;
+  --color-button-disabled-bg: #cccccc;
+  --color-button-primary-hover-bg: #0056b3;
+}
+
+/* Styles for NodeMentionSuggestions (can be in its own module or here) */
+.nodeSuggestionsList { /* This targets the <ul> in NodeMentionSuggestions.tsx */
+  position: absolute;
+  bottom: 100%; /* Position above the parent (.textAreaWrapper) */
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 990; /* Lower than header dropdownMenu (1000) */
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.suggestionItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  font-size: 0.85rem;
+}
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.suggestionItem.activeSuggestion {
+  background-color: var(--color-background-hover, #e0e0e0);
+  color: var(--color-text-primary, #333);
+}
+
+.nodePrimaryDisplay {
+  font-weight: 500;
+}
+
+.nodeIdSecondary {
+  font-size: 0.9em;
+  color: #777;
+  margin-left: 6px;
+}
+
+.nodeContentPreview {
+  font-size: 0.9em;
+  color: #555;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%; /* Ensure it doesn't overflow the list item */
+}
+.nodeContentPreview .katex-display {
+  margin: 0 !important; /* Override KaTeX default margins for compact preview */
+  padding: 0 !important;
+}
+.nodeContentPreview .katex {
+  font-size: 0.9em !important; /* Slightly smaller KaTeX for preview */
+  text-align: left !important;
 } 

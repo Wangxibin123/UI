@@ -1,51 +1,79 @@
-.suggestionsContainer {
+.suggestionsPanel {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   position: absolute;
   bottom: 100%; /* Position above the input area */
   left: 0;
   right: 0;
   background-color: #fff;
   border: 1px solid #ccc;
-  border-bottom: none; /* As it sits on top of the input */
-  border-radius: 4px 4px 0 0; /* Rounded top corners */
-  z-index: 1000; /* Ensure it's above other elements */
-  max-height: 200px; /* Limit height and make it scrollable if many items */
+  border-bottom: none; /* No bottom border as it sits on top of input area */
+  max-height: 250px; /* Limit height and enable scrolling */
   overflow-y: auto;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.suggestionsList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  z-index: 1000; /* Ensure it's above other elements */
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
 }
 
 .suggestionItem {
-  padding: 8px 12px;
+  padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #eee; /* Separator for items */
-  display: flex; /* Using flex for alignment, though primarily for one child now */
-  align-items: center; /* Vertically center content if item height is more than line height */
-  /* justify-content: space-between; */ /* Not needed if only one main child span */
-  white-space: nowrap; /* Ensure the suggestion item text stays on one line */
-  overflow: hidden;    /* Hide overflow if text is too long */
-  text-overflow: ellipsis; /* Show ellipsis for very long text */
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.15s ease-in-out;
 }
 
 .suggestionItem:last-child {
   border-bottom: none;
 }
 
-.suggestionItem:hover {
-  background-color: #f0f0f0;
+.suggestionItem.activeSuggestion {
+  background-color: #e9ecef; /* Light grey for active/hovered item */
 }
 
-.suggestionItem.activeSuggestion {
-  background-color: #e0e0e0; /* Highlight for active suggestion (keyboard nav) */
+.suggestionItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.nodeIdLabel {
+  font-size: 0.8em;
+  color: #6c757d; /* Grey color for ID */
   font-weight: bold;
+}
+
+.nodeLabelText {
+  font-size: 0.95em;
+  color: #333;
+  font-weight: 500;
+  margin-left: 8px; /* If both ID and Label are shown in header */
+}
+
+.nodeContentPreview {
+  font-size: 0.85em;
+  color: #555;
+  padding-top: 4px;
+  border-top: 1px dashed #f0f0f0; /* Subtle separator if header and content exist */
+  margin-top: 6px;
+}
+
+/* KaTeX specific styling within suggestions */
+.nodeContentPreview .katex {
+  font-size: 0.95em !important; /* Adjust KaTeX font size for preview */
+  text-align: left !important;
+}
+
+.nodeContentPreview .katex-display {
+  margin: 0 !important; /* Remove extra margins */
+  padding: 0 !important;
 }
 
 .nodeLabel {
   font-size: 0.9em; /* Slightly smaller than main input, adjust as needed */
+  font-weight: 500;
   color: #333;
   /* No specific width or white-space needed here if parent handles it */
   /* Ensure label doesn't push other elements if any were present */
