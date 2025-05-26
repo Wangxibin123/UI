@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './InterpretationModal.module.css';
-import Latex from 'react-latex-next'; // Assuming you might want to render LaTeX
+import Latex from 'react-latex-next';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface InterpretationModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ const InterpretationModal: React.FC<InterpretationModalProps> = ({
   initialIdea = '',
 }) => {
   const [userIdea, setUserIdea] = useState<string>(initialIdea);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,14 +63,50 @@ const InterpretationModal: React.FC<InterpretationModalProps> = ({
         )}
 
         <div className={styles.ideaSection}>
-          <h3 className={styles.sectionTitle}>你的思路/想法:</h3>
-          <textarea
-            className={styles.ideaTextarea}
-            value={userIdea}
-            onChange={(e) => setUserIdea(e.target.value)}
-            placeholder="请输入你对这个步骤的理解、解题思路、可能的疑问或改进建议..."
-            rows={6}
-          />
+          <div className={styles.ideaSectionHeader}>
+            <h3 className={styles.sectionTitle}>你的思路/想法:</h3>
+            <button 
+              onClick={() => setShowPreview(!showPreview)}
+              className={styles.previewToggleButton}
+              title={showPreview ? "隐藏预览" : "显示LaTeX预览"}
+            >
+              {showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPreview ? "隐藏预览" : "LaTeX预览"}
+            </button>
+          </div>
+          
+          {showPreview ? (
+            <div className={styles.latexPreviewContainer}>
+              <div className={styles.latexPreview}>
+                {userIdea.trim() ? (
+                  <Latex delimiters={[
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                  ]}>
+                    {userIdea}
+                  </Latex>
+                ) : (
+                  <div className={styles.emptyPreviewPlaceholder}>
+                    在左侧输入内容以查看LaTeX渲染效果...
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <textarea
+              className={styles.ideaTextarea}
+              value={userIdea}
+              onChange={(e) => setUserIdea(e.target.value)}
+              placeholder="请输入你对这个步骤的理解、解题思路、可能的疑问或改进建议... 支持LaTeX语法，使用 $ 包围行内公式，$$ 包围块级公式。"
+              rows={6}
+            />
+          )}
+          
+          <div className={styles.latexHint}>
+            💡 提示：支持LaTeX数学公式。使用 $公式$ 表示行内公式，$$公式$$ 表示块级公式。
+          </div>
         </div>
 
         <div className={styles.modalActions}>

@@ -1,0 +1,474 @@
+/* 右侧面板内容组件样式 */
+.rightPanelContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-left: 1px solid #e9ecef;
+  overflow: hidden;
+}
+
+/* 通用模式头部样式 */
+.modeHeader {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.modeHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+  flex: 1;
+}
+
+/* 分析模式样式 */
+.analysisMode {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysisActions {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.analyzeButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.analyzeButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.analyzeButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.analysisResult {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  line-height: 1.6;
+  background-color: #ffffff;
+}
+
+.analysisResult .katex {
+  font-size: 14px;
+}
+
+.analysisResult .katex-display {
+  margin: 16px 0;
+}
+
+/* LaTeX模式样式 */
+.latexMode {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.latexActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.toggleButton,
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6c757d;
+}
+
+.toggleButton:hover,
+.actionButton:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+  border-color: #adb5bd;
+}
+
+.latexEditor {
+  flex: 1;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+.latexTextarea {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.latexTextarea:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.latexPreview {
+  border-top: 1px solid #e9ecef;
+  padding: 16px 20px;
+  background-color: #f8f9fa;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.latexPreview h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.previewContent {
+  background-color: white;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.previewPlaceholder {
+  color: #6c757d;
+  font-style: italic;
+  margin: 0;
+  text-align: center;
+}
+
+/* 总结模式样式 */
+.summaryMode {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.summaryStats {
+  display: flex;
+  gap: 12px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.statCard {
+  flex: 1;
+  background-color: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.statNumber {
+  font-size: 24px;
+  font-weight: 700;
+  color: #495057;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summarySection {
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.summarySection:last-child {
+  border-bottom: none;
+}
+
+.summarySection h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #343a40;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+  transition: width 0.3s ease;
+}
+
+.summaryList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.summaryList li {
+  padding: 8px 0;
+  font-size: 14px;
+  color: #495057;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.summaryList li:last-child {
+  border-bottom: none;
+}
+
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+  font-size: 14px;
+  color: #495057;
+}
+
+.suggestionIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* 占位符样式 */
+.placeholder {
+  flex: 1;
+  padding: 40px 20px;
+  text-align: center;
+  color: #6c757d;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.placeholder p {
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+
+.placeholder ul {
+  text-align: left;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.placeholder li {
+  margin: 4px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .summaryStats {
+    flex-direction: column;
+  }
+  
+  .statCard {
+    margin-bottom: 8px;
+  }
+  
+  .modeHeader {
+    padding: 12px 16px;
+  }
+  
+  .latexEditor,
+  .summarySection {
+    padding: 16px;
+  }
+}
+
+/* 聊天容器样式 */
+.chatContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.chatHistory {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chatMessage {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.userMessage {
+  align-self: flex-end;
+}
+
+.userMessage .messageContent {
+  background-color: #007bff;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 18px 18px 4px 18px;
+}
+
+.aiMessage {
+  align-self: flex-start;
+}
+
+.aiMessage .messageContent {
+  background-color: white;
+  color: #333;
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
+  border: 1px solid #e9ecef;
+}
+
+.messageContent {
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.messageContent .katex {
+  font-size: 13px;
+}
+
+.messageContent .katex-display {
+  margin: 8px 0;
+}
+
+.messageTime {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.userMessage .messageTime {
+  text-align: right;
+}
+
+.aiMessage .messageTime {
+  text-align: left;
+}
+
+.emptyChatState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #6c757d;
+  font-style: italic;
+  gap: 8px;
+}
+
+.emptyChatState p {
+  margin: 0;
+}
+
+/* 滚动条样式 */
+.analysisResult::-webkit-scrollbar,
+.latexPreview::-webkit-scrollbar,
+.summaryMode::-webkit-scrollbar,
+.chatHistory::-webkit-scrollbar {
+  width: 6px;
+}
+
+.analysisResult::-webkit-scrollbar-track,
+.latexPreview::-webkit-scrollbar-track,
+.summaryMode::-webkit-scrollbar-track,
+.chatHistory::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.analysisResult::-webkit-scrollbar-thumb,
+.latexPreview::-webkit-scrollbar-thumb,
+.summaryMode::-webkit-scrollbar-thumb,
+.chatHistory::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.analysisResult::-webkit-scrollbar-thumb:hover,
+.latexPreview::-webkit-scrollbar-thumb:hover,
+.summaryMode::-webkit-scrollbar-thumb:hover,
+.chatHistory::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+} 

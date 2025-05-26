@@ -1,7 +1,7 @@
 import React from 'react';
 import { useReactFlow } from '@reactflow/core';
 import styles from './ControlBar.module.css';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2, Bot, Sparkles, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Expand, Minimize2, Bot, Sparkles, MessageSquare, Lightbulb } from 'lucide-react';
 import { LayoutMode } from '../../../../types';
 
 interface ControlBarProps {
@@ -12,6 +12,7 @@ interface ControlBarProps {
   onActivateAiPanel: () => void;
   isAiCopilotPanelOpen?: boolean;
   onToggleAiCopilotPanel?: () => void;
+  onOpenInterpretationManagement?: () => void;
 }
 
 const ControlBar: React.FC<ControlBarProps> = ({
@@ -22,6 +23,7 @@ const ControlBar: React.FC<ControlBarProps> = ({
   onActivateAiPanel,
   isAiCopilotPanelOpen,
   onToggleAiCopilotPanel,
+  onOpenInterpretationManagement,
 }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
@@ -74,6 +76,16 @@ const ControlBar: React.FC<ControlBarProps> = ({
           title={isAiCopilotPanelOpen ? "关闭 AI Copilot" : "打开 AI Copilot"}
         >
           <Bot size={18} className={isAiCopilotPanelOpen ? styles.activeIcon : ''}/>
+        </button>
+      )}
+
+      {onOpenInterpretationManagement && (
+        <button
+          onClick={onOpenInterpretationManagement}
+          className={styles.iconButton}
+          title="思路解读管理"
+        >
+          <Lightbulb size={18} />
         </button>
       )}
 

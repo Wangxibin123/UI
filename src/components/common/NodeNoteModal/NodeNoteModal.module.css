@@ -107,4 +107,132 @@
 }
 .saveButton:hover {
   background-color: #0056b3;
+}
+
+/* 新增样式：头部操作按钮 */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionButton {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background-color: #f8f9fa;
+  border-color: #aaa;
+  color: #333;
+}
+
+/* 编辑模式样式 */
+.editingContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.editingLabel {
+  font-size: 0.9em;
+  color: #666;
+  font-weight: 500;
+}
+
+.previewToggleButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  color: #495057;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.previewToggleButton:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* LaTeX预览容器 */
+.latexPreviewContainer {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.previewLabel {
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.latexPreview {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.emptyPreviewPlaceholder {
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* 渲染模式样式 */
+.renderedContainer {
+  min-height: 200px;
+}
+
+.renderedContent {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 15px;
+  min-height: 150px;
+  line-height: 1.6;
+}
+
+.emptyNote {
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+/* LaTeX样式优化 */
+.latexPreview .katex,
+.renderedContent .katex {
+  font-size: 1em;
+}
+
+.latexPreview .katex-display,
+.renderedContent .katex-display {
+  margin: 0.5em 0;
+  text-align: center;
 } 

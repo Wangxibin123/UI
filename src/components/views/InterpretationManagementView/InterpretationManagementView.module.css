@@ -1,0 +1,387 @@
+.managementContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f9fa;
+}
+
+/* 头部导航 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background-color: #fff;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backButton:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #212529;
+  font-weight: 600;
+}
+
+.stats {
+  display: flex;
+  gap: 16px;
+}
+
+.statItem {
+  padding: 6px 12px;
+  background-color: #e3f2fd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+/* 内容区域 */
+.contentArea {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 左侧条目列表 */
+.entryList {
+  width: 320px;
+  background-color: #fff;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 16px 20px;
+  font-size: 1.1rem;
+  color: #495057;
+  font-weight: 600;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #6c757d;
+  flex: 1;
+}
+
+.emptyIcon {
+  color: #adb5bd;
+  margin-bottom: 12px;
+}
+
+.entries {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.entryCard {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f8f9fa;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.entryCard:hover {
+  background-color: #f8f9fa;
+}
+
+.entryCard.selected {
+  background-color: #e3f2fd;
+  border-right: 3px solid #1976d2;
+}
+
+.entryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.stepNumber {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.statusBadge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.statusBadge.reviewed {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.statusBadge.replied {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.entrySnippet {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  max-height: 2.8em;
+  overflow: hidden;
+}
+
+.entryMeta {
+  font-size: 0.75rem;
+  color: #adb5bd;
+}
+
+/* 右侧详情区域 */
+.detailArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.noSelection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #6c757d;
+}
+
+.noSelectionIcon {
+  color: #adb5bd;
+  margin-bottom: 12px;
+}
+
+/* 步骤详情 */
+.stepDetail {
+  padding: 24px;
+  background-color: #fff;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.stepContent,
+.userIdea {
+  margin: 16px 0;
+}
+
+.contentLabel {
+  font-size: 0.9rem;
+  color: #495057;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.latexContent {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px;
+  line-height: 1.6;
+}
+
+.submissionTime {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 12px;
+}
+
+/* 反馈区域 */
+.feedbackArea {
+  flex: 1;
+  padding: 24px;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.existingFeedback {
+  margin: 16px 0;
+}
+
+.feedbackContent {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.feedbackTime {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.noFeedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  color: #6c757d;
+  margin: 16px 0;
+}
+
+.noFeedbackIcon {
+  color: #adb5bd;
+  margin-bottom: 8px;
+}
+
+/* 聊天区域 */
+.chatArea {
+  margin-top: auto;
+  border-top: 1px solid #e9ecef;
+  padding-top: 16px;
+}
+
+.chatHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.chatLabel {
+  font-size: 0.9rem;
+  color: #495057;
+  font-weight: 600;
+}
+
+.previewToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  color: #495057;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.previewToggle:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.chatTextarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.chatTextarea:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.25);
+}
+
+.chatPreview {
+  margin-bottom: 12px;
+}
+
+.previewLabel {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.previewContent {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 10px;
+  min-height: 40px;
+  line-height: 1.5;
+}
+
+.emptyPreview {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+.sendButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  align-self: flex-end;
+}
+
+.sendButton:hover:not(:disabled) {
+  background-color: #1565c0;
+}
+
+.sendButton:disabled {
+  background-color: #e9ecef;
+  color: #adb5bd;
+  cursor: not-allowed;
+}
+
+/* LaTeX样式优化 */
+.latexContent .katex,
+.feedbackContent .katex,
+.previewContent .katex {
+  font-size: 1em;
+}
+
+.latexContent .katex-display,
+.feedbackContent .katex-display,
+.previewContent .katex-display {
+  margin: 0.5em 0;
+  text-align: center;
+} 

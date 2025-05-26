@@ -5,7 +5,8 @@ import styles from './SolutionStep.module.css';
 import { 
   Pencil, Save, Undo2, Trash2, /* SearchCode, */ Scissors, 
   CheckCircle2, XCircle, RefreshCw, Check, X, // Check for confirm split, X for cancel split
-  ArrowRightCircle, ArrowLeftCircle, Wand2 // <<< ADDED: Wand2 for AI Analysis
+  ArrowRightCircle, ArrowLeftCircle, Wand2, // <<< ADDED: Wand2 for AI Analysis
+  FileText // <<< ADDED: FileText for LaTeX formatting
 } from 'lucide-react';
 
 // Placeholder icons
@@ -24,6 +25,7 @@ interface SolutionStepProps {
   onSplit: (originalStepId: string, part1Content: string, part2Content: string) => void;
   onCheckForwardDerivation?: (stepId: string) => void;
   onCheckBackwardDerivation?: (stepId: string) => void;
+  onOpenLatexFormat?: (stepId: string, content: string) => void;
 }
 
 const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDelete, onInitiateAiAnalysisWithChecks, onSplit, onCheckForwardDerivation, onCheckBackwardDerivation }) => {

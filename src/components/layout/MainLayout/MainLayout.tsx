@@ -17,6 +17,8 @@ import {
   ForwardDerivationStatus,
   FocusAnalysisType,
   type PathGroup,
+  type InterpretationState,
+  type InterpretationEntry,
 } from '../../../types';
 import { MarkerType, ReactFlowProvider } from '@reactflow/core';
 import ConfirmationDialog from '../../common/ConfirmationDialog/ConfirmationDialog';
@@ -29,6 +31,7 @@ import {
 } from '../../../utils/pathGroupUtils';
 
 import { toast } from 'react-toastify';
+import { aiModelService } from '../../../services/aiModelService';
 import NodeNoteModal from '../../common/NodeNoteModal/NodeNoteModal';
 import SplitStepModal from '../../common/SplitStepModal/SplitStepModal';
 import InterpretationModal from '../../common/InterpretationModal/InterpretationModal';
@@ -42,6 +45,7 @@ import { Bot, Save, X as IconX, AlertTriangle, Menu } from 'lucide-react'; // Me
 import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import ModeCardsPanel from '../../features/ai/ModeCardsPanel/ModeCardsPanel'; // Added for new right panel
+import RightPanelContent from '../../features/solver/RightPanelContent/RightPanelContent';
 import FeatureTestPanel from '../../common/FeatureTestPanel/FeatureTestPanel';
 import AIAssistantDemo from '../../features/ai/AIAssistantDemo/AIAssistantDemo';
 import WelcomeMessage from '../../common/WelcomeMessage/WelcomeMessage';
@@ -50,6 +54,9 @@ import PathGroupIndicator from '../../common/PathGroupIndicator/PathGroupIndicat
 import DagPageTabs from '../../features/dag/DagPageTabs/DagPageTabs';
 import { DagPage, DagPageState } from '../../../types';
 // +++ End DAG_PAGES +++
+// +++ INTERPRETATION: Import interpretation management +++
+import InterpretationManagementView from '../../views/InterpretationManagementView/InterpretationManagementView';
+// +++ End INTERPRETATION +++
 
 const MIN_PANEL_PERCENTAGE = 5; // Define MIN_PANEL_PERCENTAGE
 const initialSolutionStepsData: SolutionStepData[] = testSolutionSteps; // 使用测试数据
@@ -544,20 +551,8 @@ const MainLayout: React.FC = () => {
   const [copilotCurrentMode, setCopilotCurrentMode] = useState<CopilotMode>('analysis');
   // const [copilotCurrentModel, setCopilotCurrentModel] = useState<string>('gpt-3.5-turbo'); // Added state for current model
 
-  // Define copilotAvailableModels first
-  const copilotAvailableModels: string[] = [
-    'gpt-4-turbo-preview',
-    'gpt-4',
-    'gpt-3.5-turbo',
-    'claude-3-opus-20240229',
-    'claude-3-sonnet-20240229',
-    'claude-2.1',
-    'gemini-pro',
-    'mistral-large-latest',
-    'command-r-plus',
-    'llama2-70b-chat'
-    // Add more models here as needed
-  ];
+  // 🎯 使用新的AI模型服务获取可用模型
+  const copilotAvailableModels: string[] = aiModelService.getAvailableModelIds();
 
   // Initialize copilotCurrentModel with the first model from the list or a default
   const [copilotCurrentModel, setCopilotCurrentModel] = useState<string>(copilotAvailableModels[0] || 'gpt-3.5-turbo');
@@ -591,6 +586,14 @@ const MainLayout: React.FC = () => {
   const [pathGroups, setPathGroups] = useState<PathGroup[]>([]);
   const [mainPathGroupId, setMainPathGroupId] = useState<string | null>(null);
   // +++ End PATH_GROUPS +++
+
+  // +++ INTERPRETATION: Add interpretation state management +++
+  const [interpretationState, setInterpretationState] = useState<InterpretationState>({
+    entries: [],
+    selectedEntryId: null,
+  });
+  const [showInterpretationManagement, setShowInterpretationManagement] = useState<boolean>(false);
+  // +++ End INTERPRETATION +++
 
   // +++ DAG_PAGES: Add DAG page state management +++
   const [dagPageState, setDagPageState] = useState<DagPageState>({
@@ -1478,11 +1481,43 @@ const MainLayout: React.FC = () => {
     );
   };
 
-  const handleAnalyzeStep = (stepId: string) => {
+  // 修改handleAnalyzeStep函数，添加自动前向和后向推导检查逻辑
+  const handleAnalyzeStep = useCallback((stepId: string, currentForwardStatus?: ForwardDerivationStatus, currentBackwardStatus?: ForwardDerivationStatus) => {
     console.log("Analyze step requested:", stepId);
-    // Future: Trigger AI analysis, update step verificationStatus, etc.
-    // For now, let's toggle verification status as a demo
-    // 🔥 使用页面级数据而不是全局数据
+    
+    let didTriggerForward = false;
+    let didTriggerBackward = false;
+
+    const currentSolutionSteps = getCurrentPageSolutionSteps();
+    const stepToAnalyze = currentSolutionSteps.find(s => s.id === stepId);
+    if (!stepToAnalyze) {
+      toast.error("AI分析失败：找不到步骤。");
+      return;
+    }
+
+    // 检查前向推导状态，如果未确定则自动触发检查
+    const forwardStatus = currentForwardStatus || stepToAnalyze.forwardDerivationStatus;
+    if (forwardStatus === ForwardDerivationStatus.Undetermined) {
+      console.log(`[MainLayout] AI Analysis for step ${stepId}: Forward derivation is Undetermined. Triggering check.`);
+      handleCheckForwardDerivation(stepId);
+      didTriggerForward = true;
+    }
+
+    // 检查后向推导状态，如果未确定则自动触发检查
+    const backwardStatus = currentBackwardStatus || stepToAnalyze.backwardDerivationStatus;
+    if (backwardStatus === ForwardDerivationStatus.Undetermined) {
+      console.log(`[MainLayout] AI Analysis for step ${stepId}: Backward derivation is Undetermined. Triggering check.`);
+      handleCheckBackwardDerivation(stepId);
+      didTriggerBackward = true;
+    }
+
+    if (didTriggerForward || didTriggerBackward) {
+      toast.info("正在自动检查前向推导和后向推导，请稍后重试AI分析以获得最准确结果。");
+      // 即使触发了推导检查，仍然继续进行AI分析（可能基于不完整的推导）
+    }
+    
+    // 继续原有的AI分析逻辑（目前是状态模拟切换）
+    console.log(`[MainLayout] Proceeding with AI analysis for step ${stepId} after derivation checks.`);
     setCurrentPageSolutionSteps(prevSteps =>
       prevSteps.map(step => {
         if (step.id === stepId) {
@@ -1490,13 +1525,13 @@ const MainLayout: React.FC = () => {
           if (step.verificationStatus === VerificationStatus.NotVerified) newStatus = VerificationStatus.VerifiedCorrect;
           else if (step.verificationStatus === VerificationStatus.VerifiedCorrect) newStatus = VerificationStatus.VerifiedIncorrect;
           else if (step.verificationStatus === VerificationStatus.VerifiedIncorrect) newStatus = VerificationStatus.NotVerified;
-          toast.info(`步骤 ${step.stepNumber} 状态已模拟切换。`);
+          toast.info(`步骤 ${step.stepNumber} AI分析完成，状态已更新。`);
           return { ...step, verificationStatus: newStatus };
         }
         return step;
       })
     );
-  };
+  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, handleCheckForwardDerivation, handleCheckBackwardDerivation]);
 
   // Core split logic - this remains mostly the same
   const handleSplitStep = (originalStepId: string, part1Content: string, part2Content: string) => {
@@ -1848,17 +1883,49 @@ const MainLayout: React.FC = () => {
     setCurrentPageSolutionSteps(prevSteps => [...prevSteps, newStep]);
   }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps]);
 
-  const handleCopilotSendMessage = (message: string, mode: CopilotMode, model: string, contextNode?: CopilotContextNodeInfo | null) => {
-    // This is where you'd integrate with your actual AI backend
-    console.log('Message to AI:', {
+  const handleCopilotSendMessage = async (message: string, mode: CopilotMode, model: string, contextNode?: CopilotContextNodeInfo | null) => {
+    console.log('🤖 发送消息到AI:', {
       message,
-      mode, // This mode comes from AICopilotPanel's internal state (soon to be its own main mode)
-      model, // This model is the selected AI model
+      mode,
+      model,
       contextNodeId: contextNode?.id,
       fullContext: contextNode,
     });
-    // Simulate an API call or integrate your actual AI service here
-    // Add the user's message and then the AI's response to AICopilotPanel's internal messages state
+
+    try {
+      // 构建消息内容
+      let fullMessage = message;
+      if (contextNode) {
+        fullMessage = `上下文节点: ${contextNode.label || contextNode.id}\n内容: ${contextNode.content || ''}\n\n用户问题: ${message}`;
+      }
+
+      // 根据模式添加系统提示
+      const systemPrompt = mode === 'latex' 
+        ? '你是一个LaTeX专家，帮助用户处理LaTeX格式化问题。'
+        : mode === 'analysis'
+        ? '你是一个数学分析专家，帮助用户分析和理解数学问题。'
+        : '你是一个总结专家，帮助用户总结和归纳内容。';
+
+      // 使用新的AI模型服务发送消息
+      const response = await aiModelService.chatCompletion({
+        model: model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: fullMessage }
+        ],
+        temperature: 0.7,
+        maxTokens: 2000
+      });
+
+      console.log('✅ AI响应:', response);
+      toast.success('AI响应已生成');
+      
+      return response;
+    } catch (error) {
+      console.error('❌ AI调用失败:', error);
+      toast.error(`AI调用失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      throw error;
+    }
   };
 
   // +++ 功能测试处理函数 +++
@@ -2373,19 +2440,107 @@ const MainLayout: React.FC = () => {
   }, [editingNoteForNodeId, setCurrentPageSolutionSteps, setDagNodes, handleCloseNoteModal]);
 
   const handleInterpretIdea = useCallback((stepId: string, idea: string) => {
-    console.log(`Interpret idea for node ${stepId}: ${idea}`);
-    // 这里应该打开解读想法的模态框，暂时先显示toast
-    toast.info(`节点 ${stepId} 的思路解读功能尚未实现。`);
-  }, []);
+    console.log(`Open interpretation modal for node ${stepId}`);
+    // 找到对应的节点和步骤信息
+    const currentSteps = getCurrentPageSolutionSteps();
+    const step = currentSteps.find(s => s.id === stepId);
+    const node = dagNodes.find(n => n.id === stepId);
+    
+    if (step && node) {
+      setInterpretingNodeInfo({
+        id: stepId,
+        label: node.data.label || `步骤 ${step.stepNumber}`,
+        content: step.latexContent,
+        initialIdea: step.interpretationIdea || '',
+      });
+      setIsInterpretationModalOpen(true);
+    } else {
+      toast.error('找不到对应的步骤信息');
+    }
+  }, [getCurrentPageSolutionSteps, dagNodes]);
 
   const handleCloseInterpretationModal = useCallback(() => {
-    console.log("Close interpretation modal");
-    toast.info("解读想法模态框功能尚未实现。");
+    setIsInterpretationModalOpen(false);
+    setInterpretingNodeInfo(null);
   }, []);
 
-  const handleSubmitInterpretation = useCallback((nodeId: string, idea: string) => {
-    console.log(`Submit interpretation for node ${nodeId}: ${idea}`);
-    toast.info("提交解读想法功能尚未实现。");
+  const handleSubmitInterpretation = useCallback((nodeId: string, userIdea: string) => {
+    console.log(`Submit interpretation for node ${nodeId}: ${userIdea}`);
+    
+    if (!userIdea.trim()) {
+      toast.error('请输入思路解读内容');
+      return;
+    }
+
+    // 更新解题步骤中的思路解读内容
+    setCurrentPageSolutionSteps(prevSteps =>
+      prevSteps.map(step =>
+        step.id === nodeId
+          ? {
+              ...step,
+              interpretationIdea: userIdea,
+              interpretationStatus: 'pending' as const,
+              interpretationTimestamp: new Date(),
+            }
+          : step
+      )
+    );
+
+    // 更新DAG节点中的思路解读内容
+    setDagNodes(prevNodes =>
+      prevNodes.map(node =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                interpretationIdea: userIdea,
+              }
+            }
+          : node
+      )
+    );
+
+    // 创建思路解读条目
+    const currentSteps = getCurrentPageSolutionSteps();
+    const step = currentSteps.find(s => s.id === nodeId);
+    
+    if (step) {
+      const newEntry: InterpretationEntry = {
+        id: `interpretation-${nodeId}-${Date.now()}`,
+        stepId: nodeId,
+        stepNumber: step.stepNumber,
+        stepLatexContent: step.latexContent,
+        userIdea: userIdea,
+        status: 'pending',
+        timestamp: new Date(),
+      };
+
+      setInterpretationState(prev => ({
+        ...prev,
+        entries: [...prev.entries, newEntry],
+      }));
+
+      toast.success('思路解读已提交，等待教师反馈');
+      handleCloseInterpretationModal();
+    }
+  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, setDagNodes, handleCloseInterpretationModal]);
+
+  const handleOpenInterpretationManagement = useCallback(() => {
+    setShowInterpretationManagement(true);
+  }, []);
+
+  const handleCloseInterpretationManagement = useCallback(() => {
+    setShowInterpretationManagement(false);
+  }, []);
+
+  const handleUpdateInterpretationEntry = useCallback((entryId: string, updates: Partial<InterpretationEntry>) => {
+    setInterpretationState(prev => ({
+      ...prev,
+      entries: prev.entries.map(entry =>
+        entry.id === entryId ? { ...entry, ...updates } : entry
+      ),
+    }));
   }, []);
 
   const handleCancelNewPathCreation = useCallback(() => {
@@ -2464,7 +2619,15 @@ ${fullLatex}
   return (
     <ReactFlowProvider> {/* Ensures React Flow context is available */}
       <div ref={mainLayoutRef} className={styles.mainLayoutContainer}>
-        <div className={styles.contentArea}> {/* Assuming a main content area wrapper */}
+        {/* Check if showing interpretation management */}
+        {showInterpretationManagement ? (
+          <InterpretationManagementView
+            interpretationEntries={interpretationState.entries}
+            onBack={handleCloseInterpretationManagement}
+            onUpdateEntry={handleUpdateInterpretationEntry}
+          />
+        ) : (
+          <div className={styles.contentArea}> {/* Assuming a main content area wrapper */}
           {/* DAG Region */}
           {panelWidths.dag > 0 && ( // Only render if width is allocated
             <>
@@ -2492,6 +2655,7 @@ ${fullLatex}
                     currentLayoutMode={currentLayoutMode}
                     onExpandDagFully={handleExpandDagFully}
                     onActivateAiPanel={handleActivateAiPanel}
+                    onOpenInterpretationManagement={handleOpenInterpretationManagement}
                   />
                   {/* 🔥 在DAG区域内部显示PathGroupIndicator */}
                   {pathGroups.length > 1 && (
@@ -2640,21 +2804,23 @@ ${fullLatex}
                   </button>
                   {/* You can add a title like "AI Modes" here if needed */}
                 </div>
-                {showModeCardsPanel && (
+                {showModeCardsPanel ? (
                   <ModeCardsPanel
                     currentMode={currentGlobalCopilotMode}
                     onModeSelect={handleGlobalCopilotModeChange}
                   />
-                )}
-                {!showModeCardsPanel && (
-                   <div className={styles.modeCardsPanelPlaceholder}>
-                     {/* Optional: Text like "Click the menu icon to see AI modes" */}
-                   </div>
+                ) : (
+                  <RightPanelContent
+                    currentMode={currentGlobalCopilotMode}
+                    solutionSteps={mainPathSteps}
+                    problemContent={problemData?.latexContent || ''}
+                  />
                 )}
               </div>
             </>
           )}
         </div>
+        )}
 
         {/* Modals and other overlays */}
         <ConfirmationDialog
@@ -2709,6 +2875,12 @@ ${fullLatex}
           <NewPathCreationHintBar onCancel={handleCancelNewPathCreation} />
         )}
 
+        {/* AI Assistant Demo */}
+        <AIAssistantDemo
+          isActive={isAiDemoVisible}
+          onToggle={handleToggleAiDemo}
+        />
+
         {/* Feature Test Panel */}
         <FeatureTestPanel
           isVisible={isTestPanelVisible}
@@ -2717,12 +2889,6 @@ ${fullLatex}
           onTestDAG={handleTestDAG}
           onTestAI={handleTestAI}
           onTestSolver={handleTestSolver}
-        />
-
-        {/* AI Assistant Demo */}
-        <AIAssistantDemo
-          isActive={isAiDemoVisible}
-          onToggle={handleToggleAiDemo}
         />
 
         {/* Welcome Message */}

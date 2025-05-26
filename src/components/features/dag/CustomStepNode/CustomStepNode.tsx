@@ -12,7 +12,8 @@ import {
   HelpCircle,
   StickyNote,
   ArrowRightCircle,
-  ArrowLeftCircle
+  ArrowLeftCircle,
+  Lightbulb
 } from 'lucide-react';
 
 // TEMPORARY basic classNames utility - UPDATED TYPE SIGNATURE
@@ -74,6 +75,7 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
   const isActuallyDeleted = !!data.isDeleted;
 
   const hasNotes = data.notes && data.notes.trim() !== '';
+  const hasInterpretation = data.interpretationIdea && data.interpretationIdea.trim() !== '';
 
   // Build up className string for the node
   const nodeClasses = classNames(
@@ -104,6 +106,14 @@ const CustomStepNode: React.FC<NodeProps<DagNodeRfData>> = ({ data, selected, id
               <StickyNote 
                 size={14} 
                 className={styles.noteIndicatorIcon} 
+              />
+            </span>
+          )}
+          {hasInterpretation && ( 
+            <span title="已提交思路解读">
+              <Lightbulb 
+                size={14} 
+                className={styles.interpretationIndicatorIcon} 
               />
             </span>
           )}

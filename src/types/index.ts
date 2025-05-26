@@ -118,6 +118,9 @@ export interface SolutionStepData {
   notes?: string;
   forwardDerivationStatus?: ForwardDerivationStatus; // New field for forward derivation status
   backwardDerivationStatus?: ForwardDerivationStatus; // <<< ADDED LINE: New field for backward derivation status
+  interpretationIdea?: string; // 思路解读内容，支持LaTeX
+  interpretationStatus?: 'pending' | 'reviewed' | 'replied'; // 思路解读状态
+  interpretationTimestamp?: Date; // 思路解读提交时间
 }
 
 /**
@@ -178,4 +181,23 @@ export interface DagPageState {
   activePageId: string | null;
   maxPages: number; // 限制最大页面数量
 }
-// +++ End DAG_PAGES +++ 
+// +++ End DAG_PAGES +++
+
+// +++ INTERPRETATION: Add interpretation-related types +++
+export interface InterpretationEntry {
+  id: string;
+  stepId: string; // 关联的解题步骤ID
+  stepNumber: number; // 步骤编号（用于显示）
+  stepLatexContent: string; // 步骤内容（快照，防止原步骤被修改）
+  userIdea: string; // 用户输入的思路解读内容，支持LaTeX
+  status: 'pending' | 'reviewed' | 'replied'; // 状态：待反馈、已查看、已回复
+  timestamp: Date; // 提交时间
+  teacherFeedback?: string; // 教师反馈内容
+  teacherReplyTimestamp?: Date; // 教师回复时间
+}
+
+export interface InterpretationState {
+  entries: InterpretationEntry[]; // 所有思路解读条目
+  selectedEntryId: string | null; // 当前选中的条目ID
+}
+// +++ End INTERPRETATION +++ 

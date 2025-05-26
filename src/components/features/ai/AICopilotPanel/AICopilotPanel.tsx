@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styles from './AICopilotPanel.module.css';
-import { Send, ChevronDown, ChevronUp, Trash2, PlusCircle, Settings, Wand2, Paperclip, Sigma, Brain, AlignLeft, Check } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2, PlusCircle, Settings, Wand2, Paperclip, Sigma, Brain, AlignLeft, Check, FileText } from 'lucide-react';
+import { aiModelService, type AIModel } from '../../../../services/aiModelService';
 import NodeMentionSuggestions from './NodeMentionSuggestions';
+import LaTeXFormatPanel from '../LaTeXFormatPanel/LaTeXFormatPanel';
 
 export interface Message {
   id: string;
@@ -43,18 +45,14 @@ const modeIcons: Record<CopilotMode, React.ElementType> = {
   summary: AlignLeft,
 };
 
-const availableModels: string[] = [
-  'openai/o3',
-  'openai/gpt-4.5-preview',
-  'google/gemini-2.5-flash-preview:thinking',
-  'deepseek/deepseek-prover-v2 (671 B)',
-  'deepseek/deepseek-chat-v3-0324',
-  'deepseek/deepseek-r1',
-  'qwen/qwen3-30b-a3b',
-  'qwen/qwen3-235b-a22b',
-  'anthropic/claude-3.7-sonnet',
-  'anthropic/claude-3.7-sonnet:thinking',
-];
+// 🎯 从新的AI模型服务获取可用模型
+const getAvailableModels = (): AIModel[] => {
+  return aiModelService.getAvailableModels();
+};
+
+const getAvailableModelIds = (): string[] => {
+  return getAvailableModels().map(model => model.id);
+};
 
 const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   isOpen,
@@ -69,12 +67,20 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   onChatStateChange,
 }) => {
   console.log('Received dagNodes:', dagNodes);
-  const [messages, setMessages] = useState<Message[]>([]);
+  // 为每种模式创建独立的聊天状态
+  const [modeMessages, setModeMessages] = useState<Record<CopilotMode, Message[]>>({
+    analysis: [],
+    latex: [],
+    summary: [],
+  });
   const [currentInput, setCurrentInput] = useState<string>('');
   const [isInputUserModified, setIsInputUserModified] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showModeDropdown, setShowModeDropdown] = useState<boolean>(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 获取当前模式的聊天记录
+  const messages = modeMessages[currentMode] || [];
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -86,7 +92,10 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(0);
   const suggestionsRef = useRef<HTMLUListElement>(null);
 
-  const [selectedModel, setSelectedModel] = useState<string>(availableModels[3]);
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    const models = getAvailableModelIds();
+    return models.length > 3 ? models[3] : (models[0] || 'deepseek-prover-v2');
+  });
   const [showModelSelectorDropdown, setShowModelSelectorDropdown] = useState<boolean>(false);
   const modelSelectorDropdownRef = useRef<HTMLDivElement>(null);
   
@@ -94,6 +103,15 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // LaTeX格式化面板状态
+  const [showLatexFormatPanel, setShowLatexFormatPanel] = useState<boolean>(false);
+  const [latexPanelInitialContent, setLatexPanelInitialContent] = useState<string>('');
+  const [latexPanelContextStep, setLatexPanelContextStep] = useState<{
+    id: string;
+    content: string;
+    stepNumber: number;
+  } | null>(null);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;
@@ -302,6 +320,23 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
         return;
     }
 
+    // 🎯 LaTeX模式特殊处理：打开LaTeX格式化面板
+    if (currentMode === 'latex') {
+      // 如果有上下文节点信息，传递给LaTeX面板
+      if (contextNodeInfo && contextNodeInfo.content) {
+        setLatexPanelContextStep({
+          id: contextNodeInfo.id,
+          content: contextNodeInfo.content,
+          stepNumber: parseInt(contextNodeInfo.label?.match(/\d+/)?.[0] || '0')
+        });
+        setLatexPanelInitialContent(contextNodeInfo.content);
+      } else {
+        setLatexPanelInitialContent(currentInput.trim());
+      }
+      setShowLatexFormatPanel(true);
+      return;
+    }
+
     // 处理文件上传（如果有文件的话）
     let uploadResults: string[] = [];
     if (uploadedFiles.length > 0) {
@@ -326,7 +361,11 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
       timestamp: new Date(),
     };
 
-    setMessages(prevMessages => [...prevMessages, userMessage]);
+          // 向当前模式添加用户消息
+      setModeMessages(prev => ({
+        ...prev,
+        [currentMode]: [...prev[currentMode], userMessage],
+      }));
     setIsLoading(true);
     const userInput = currentInput.trim();
     
@@ -344,7 +383,11 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
       sender: 'ai',
       timestamp: new Date(),
     };
-    setMessages(prevMessages => [...prevMessages, aiResponse]);
+          // 向当前模式添加AI响应
+      setModeMessages(prev => ({
+        ...prev,
+        [currentMode]: [...prev[currentMode], aiResponse],
+      }));
     setIsLoading(false);
 
     setTimeout(() => {
@@ -359,7 +402,11 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     if (messages.length === 0) return;
 
     if (window.confirm("您确定要清空所有对话记录吗？此操作无法撤销。")) {
-      setMessages([]);
+      // 清空当前模式的聊天记录
+    setModeMessages(prev => ({
+      ...prev,
+      [currentMode]: [],
+    }));
     }
   }, [messages]);
 
@@ -418,14 +465,8 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
 
   const formatDisplayModelName = (modelId: string): string => {
     if (!modelId) return 'Select Model';
-    let name = modelId.substring(modelId.indexOf('/') + 1);
-    name = name.replace(/:thinking/g, '').replace(/ \(.*\)/g, '');
-    name = name.replace(/-/g, ' ').replace(/preview/g, 'Preview');
-    return name.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').trim();
-  };
-  
-  const formatModelListItem = (modelId: string): React.ReactNode => {
-    return modelId;
+    const model = getAvailableModels().find(m => m.id === modelId);
+    return model ? model.name : modelId;
   };
 
   const getPlaceholderText = () => {
@@ -600,15 +641,19 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
               </button>
               {showModelSelectorDropdown && (
                 <ul className={styles.modelSelectorDropdownList}>
-                  {availableModels.map(modelId => (
+                  {getAvailableModels().map((model: AIModel) => (
                     <li 
-                      key={modelId}
-                      className={selectedModel === modelId ? styles.activeModelOption : ''}
-                      onClick={() => { setSelectedModel(modelId); setShowModelSelectorDropdown(false); }}
-                      title={modelId}
+                      key={model.id}
+                      className={selectedModel === model.id ? styles.activeModelOption : ''}
+                      onClick={() => { setSelectedModel(model.id); setShowModelSelectorDropdown(false); }}
+                      title={`${model.name} - ${model.description || ''}`}
                     >
-                      {formatModelListItem(modelId)}
-                      {selectedModel === modelId && <Check size={16} className={styles.selectedModelCheckmarkIcon} />}
+                      <div className={styles.modelItemContent}>
+                        <span className={styles.modelName}>{model.name}</span>
+                        <span className={styles.modelProvider}>{model.provider.toUpperCase()}</span>
+                        {model.supportsImages && <span className={styles.imageSupport}>📷</span>}
+                      </div>
+                      {selectedModel === model.id && <Check size={16} className={styles.selectedModelCheckmarkIcon} />}
                     </li>
                   ))}
                 </ul>
@@ -644,6 +689,17 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
         </div>
       </form>
 
+      {/* 🎨 LaTeX格式化面板 */}
+      <LaTeXFormatPanel
+        isOpen={showLatexFormatPanel}
+        onClose={() => {
+          setShowLatexFormatPanel(false);
+          setLatexPanelInitialContent('');
+          setLatexPanelContextStep(null);
+        }}
+        initialContent={latexPanelInitialContent}
+        contextStepInfo={latexPanelContextStep}
+      />
     </div>
   );
 };

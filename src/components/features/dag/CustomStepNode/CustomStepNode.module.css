@@ -185,6 +185,14 @@
 
 .noteIndicatorIcon:hover {
   color: #000;
+}
+
+.interpretationIndicatorIcon {
+  color: #ff9800; /* 橙色，表示思路解读 */
+}
+
+.interpretationIndicatorIcon:hover {
+  color: #f57c00; /* 悬停时更深的橙色 */
 } 
 
 /* CustomStepNode.module.css */

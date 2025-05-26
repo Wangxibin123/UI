@@ -564,6 +564,64 @@
   flex-shrink: 0;
 }
 
+/* 🎯 新增：模型项目内容布局样式 */
+.modelItemContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex-grow: 1;
+  min-width: 0; /* 允许内容缩小 */
+}
+
+.modelName {
+  font-weight: 500;
+  color: #24292f;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.activeModelOption .modelName {
+  color: #0969da;
+}
+
+.modelProvider {
+  font-size: 11px;
+  color: #656d76;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.activeModelOption .modelProvider {
+  color: #0969da;
+  opacity: 0.9;
+}
+
+.imageSupport {
+  font-size: 12px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+/* 更新列表项样式以支持新布局 */
+.modelSelectorDropdownList li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #24292f;
+  white-space: normal; /* 改为normal以支持多行 */
+  transition: background-color 0.15s ease;
+  min-height: 44px; /* 确保足够高度显示两行内容 */
+}
+
 .aiCopilotPanelExternal {
   /* Styles for when panel is used outside normal layout, if any */
   /* For now, similar to default, but could be customized */
