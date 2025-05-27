@@ -1,0 +1,889 @@
+/* 🎨 ModernLaTeXPanel 重构后的样式 */
+
+/* 🎯 全局色彩变量 */
+:root {
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-gradient: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  --accent-gradient: linear-gradient(135deg, #10b981 0%, #16a085 100%);
+  --background-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --surface-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  --primary-color: #667eea;
+  --secondary-color: #764ba2;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border-light: rgba(229, 231, 235, 0.3);
+  --border-medium: rgba(229, 231, 235, 0.5);
+  --border-strong: rgba(229, 231, 235, 0.8);
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-strong: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* 🎯 现代LaTeX面板样式 - 简化版 */
+.modernLaTeXPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* 🎯 头部区域 */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+/* 🎯 面板主体 */
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 🎯 选择器区域 */
+.selectorArea {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.selectorGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selectorLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dropdownWrapper {
+  position: relative;
+}
+
+.dropdownButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownButton:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.dropdownItem {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: #f8fafc;
+}
+
+.dropdownItem.active {
+  background: #ede9fe;
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+/* 🎯 内容编辑区域 */
+.contentEditArea {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.editToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #fafafa;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+}
+
+.contentLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6366f1;
+  background: #ede9fe;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolButton:hover {
+  background: #f1f5f9;
+  color: #334155;
+  transform: translateY(-1px);
+}
+
+.toolButton.saveButton {
+  background: #10b981;
+  color: white;
+}
+
+.toolButton.saveButton:hover {
+  background: #059669;
+}
+
+.toolButton.cancelButton {
+  background: #ef4444;
+  color: white;
+}
+
+.toolButton.cancelButton:hover {
+  background: #dc2626;
+}
+
+/* 🎯 内容容器 */
+.contentContainer {
+  padding: 20px;
+  min-height: 150px;
+}
+
+.latexDisplay {
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  min-height: 120px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.editMode {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.previewContainer {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow: hidden;
+}
+
+.previewHeader {
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 6px 6px 0 0;
+}
+
+.previewLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.editTextarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  background: #fafafa;
+}
+
+.editTextarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.editHint {
+  font-size: 12px;
+  color: #64748b;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #6366f1;
+}
+
+/* 🎯 AI聊天区域 */
+.aiChatArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  overflow: hidden;
+}
+
+.chatHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fafafa;
+}
+
+.chatTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin: 0;
+}
+
+.chatMessages {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emptyChatState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #64748b;
+  text-align: center;
+}
+
+.chatIcon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.chatMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chatMessage.user {
+  align-items: flex-end;
+}
+
+.chatMessage.assistant {
+  align-items: flex-start;
+}
+
+.messageContent {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.chatMessage.user .messageContent {
+  background: #6366f1;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chatMessage.assistant .messageContent {
+  background: #f1f5f9;
+  color: #334155;
+  border-bottom-left-radius: 4px;
+}
+
+.messageTime {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 0 8px;
+}
+
+.loadingMessage {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.loadingDots {
+  display: flex;
+  gap: 4px;
+}
+
+.loadingDots span {
+  width: 6px;
+  height: 6px;
+  background: #6366f1;
+  border-radius: 50%;
+  animation: loading-bounce 1.4s ease-in-out infinite both;
+}
+
+.loadingDots span:nth-child(1) { animation-delay: -0.32s; }
+.loadingDots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes loading-bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  } 40% {
+    transform: scale(1);
+  }
+}
+
+/* 🎯 上下文提示 */
+.contextPrompt {
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.contextLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.contextInfo {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 🎯 聊天输入区域 */
+.chatInputArea {
+  border-top: 1px solid #e2e8f0;
+  background: white;
+}
+
+.chatTextarea {
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+  background: transparent;
+}
+
+.chatTextarea:focus {
+  outline: none;
+}
+
+.chatTextarea::placeholder {
+  color: #94a3b8;
+}
+
+.inputFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #fafafa;
+  border-top: 1px solid #e2e8f0;
+}
+
+.inputFooterLeft {
+  display: flex;
+  align-items: center;
+}
+
+.modelSelector {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  background: white;
+  color: #64748b;
+}
+
+.inputFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sendButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sendButton:hover:not(:disabled) {
+  background: #5b5bd6;
+  transform: translateY(-1px);
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 🎯 通知消息 */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease;
+}
+
+.notification.success {
+  background: #10b981;
+  color: white;
+}
+
+.notification.error {
+  background: #ef4444;
+  color: white;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 🎯 响应式设计 */
+@media (max-width: 768px) {
+  .selectorArea {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .contentContainer {
+    padding: 16px;
+  }
+  
+  .chatMessages {
+    padding: 12px 16px;
+  }
+  
+  .messageContent {
+    max-width: 90%;
+  }
+}
+
+/* 🎯 滚动条样式 */
+.chatMessages::-webkit-scrollbar,
+.dropdownMenu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chatMessages::-webkit-scrollbar-track,
+.dropdownMenu::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.chatMessages::-webkit-scrollbar-thumb,
+.dropdownMenu::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.chatMessages::-webkit-scrollbar-thumb:hover,
+.dropdownMenu::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 🎯 LaTeX渲染优化 */
+.latexDisplay .katex {
+  font-size: inherit;
+}
+
+.latexDisplay .katex-display {
+  margin: 0.5em 0;
+}
+
+/* 🎯 动画效果 */
+.dropdownMenu {
+  animation: fadeInDown 0.2s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🎯 文件上传区域样式 */
+.uploadedFiles {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.uploadedFilesHeader {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.filesList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.fileName {
+  font-size: 12px;
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removeFileButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #ef4444;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.removeFileButton:hover {
+  background: #dc2626;
+}
+
+/* 🎯 输入容器样式 */
+.inputContainer {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.inputActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.uploadButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #6366f1;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.uploadButton:hover:not(:disabled) {
+  background: #5b5bd6;
+  transform: translateY(-1px);
+}
+
+.uploadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #e2e8f0;
+}
+
+/* 🎯 LaTeX块样式 */
+.latexBlock {
+  margin: 12px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.latexBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.latexBlockLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.copyLatexButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copyLatexButton:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.latexBlockContent {
+  padding: 16px;
+  background: white;
+  border-radius: 0 0 8px 8px;
+}
+
+.latexBlockContent .katex {
+  font-size: 1.1em;
+}
+
+.latexBlockContent .katex-display {
+  margin: 0;
+  text-align: center;
+}
+
+.textContent {
+  line-height: 1.6;
+}
+
+/* 🎯 文件上传折叠样式增强 */
+.uploadedFilesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.uploadedFilesHeader:hover {
+  background: #e2e8f0;
+}
+
+.filesList {
+  padding: 8px;
+  background: #f8fafc;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 🔧 新增：LaTeX显示区域滚动条样式 */
+.latexDisplay::-webkit-scrollbar {
+  width: 8px;
+}
+
+.latexDisplay::-webkit-scrollbar-track {
+  background: rgba(229, 231, 235, 0.3);
+  border-radius: 4px;
+}
+
+.latexDisplay::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+.latexDisplay::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* 🔧 新增：空内容提示样式 */
+.emptyContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: #64748b;
+  font-style: italic;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.emptyContent p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* 🔧 改善LaTeX显示区域的滚动条样式 */
+.latexDisplay::-webkit-scrollbar {
+  width: 6px;
+}
+
+.latexDisplay::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.latexDisplay::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.latexDisplay::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+} 

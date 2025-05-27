@@ -1,0 +1,1233 @@
+/* 🎯 右侧抽屉系统样式 */
+
+/* 🔘 右侧边缘的触发按钮 */
+.drawerToggle {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 1000;
+  
+  /* 🎨 视觉设计 */
+  width: 40px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px 0 0 8px;
+  color: white;
+  cursor: pointer;
+  
+  /* 🎯 动画效果 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -4px 0 20px rgba(102, 126, 234, 0.3);
+  
+  /* 🎪 悬停效果预设 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawerToggle:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  transform: translateY(-50%) translateX(-4px);
+  box-shadow: -8px 0 30px rgba(102, 126, 234, 0.5);
+  width: 44px;
+}
+
+.drawerToggle:active {
+  transform: translateY(-50%) translateX(-2px) scale(0.98);
+}
+
+/* 🌫️ 背景遮罩 */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1001;
+  
+  /* 🎭 入场动画 */
+  animation: overlayFadeIn 0.3s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+/* 🏗️ 抽屉主体 */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1002;
+  
+  /* 🎨 视觉设计 */
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
+  border-left: 1px solid rgba(229, 231, 235, 0.3);
+  
+  /* 🎯 滑动动画 */
+  animation: drawerSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  
+  /* 🏗️ 布局 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 📏 调整大小手柄 */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  background: transparent;
+  cursor: ew-resize;
+  z-index: 10;
+  
+  /* 🎯 悬停指示 */
+  transition: all 0.2s ease;
+}
+
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 40px;
+  background: rgba(102, 126, 234, 0.3);
+  border-radius: 1px;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.resizeHandle:hover::before {
+  opacity: 1;
+  background: rgba(102, 126, 234, 0.6);
+  width: 4px;
+  height: 60px;
+}
+
+.resizeHandle:active::before {
+  background: #667eea;
+  width: 6px;
+  height: 80px;
+}
+
+/* 🎯 抽屉头部 */
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  
+  /* 🎨 视觉设计 */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+  
+  /* 🏗️ 固定头部 */
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 🚪 关闭按钮 */
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  
+  /* 🎨 视觉设计 */
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  
+  /* 🎯 交互效果 */
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.closeButton:active {
+  transform: scale(0.95);
+}
+
+/* 📦 抽屉内容区域 */
+.drawerContent {
+  flex: 1;
+  overflow: hidden;
+  
+  /* 🎯 确保内容区域填满剩余空间 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 📱 响应式设计 */
+@media (max-width: 768px) {
+  .drawer {
+    width: 100% !important;
+    animation: drawerSlideInMobile 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .drawerToggle {
+    width: 36px;
+    height: 60px;
+  }
+  
+  .drawerToggle:hover {
+    width: 40px;
+  }
+  
+  .resizeHandle {
+    display: none; /* 移动设备上隐藏调整手柄 */
+  }
+}
+
+@keyframes drawerSlideInMobile {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* 🎨 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .drawer {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-left: 1px solid rgba(55, 65, 81, 0.5);
+  }
+  
+  .drawerHeader {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  }
+  
+  .overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* 🎯 性能优化 */
+.drawer {
+  will-change: transform;
+}
+
+.overlay {
+  will-change: opacity, backdrop-filter;
+}
+
+.drawerToggle {
+  will-change: transform, background;
+}
+
+/* 🎪 无障碍性增强 */
+.drawerToggle:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.closeButton:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* 🎭 减少动画偏好支持 */
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: none;
+    transition: none;
+  }
+  
+  .overlay {
+    animation: none;
+    transition: none;
+  }
+  
+  .drawerToggle {
+    transition: none;
+  }
+}
+
+/* 右侧触发器组 */
+.triggerGroup {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  transition: all 0.3s ease;
+}
+
+.trigger {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: 12px 0 0 12px;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: -2px 2px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(0);
+}
+
+.trigger:hover {
+  transform: translateX(-4px);
+  box-shadow: -4px 4px 20px rgba(99, 102, 241, 0.3);
+  background: linear-gradient(135deg, #5b5bd6 0%, #7c3aed 100%);
+}
+
+.trigger.triggerActive {
+  transform: translateX(-8px);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c2d12 100%);
+  box-shadow: -6px 6px 25px rgba(99, 102, 241, 0.4);
+}
+
+/* 抽屉遮罩 */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: overlayFadeIn 0.3s ease;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+/* 抽屉主体 */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  background: white;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  animation: drawerSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 调整大小手柄 */
+.resizeHandle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1002;
+  transition: background 0.2s ease;
+}
+
+.resizeHandle:hover {
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+}
+
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 40px;
+  background: rgba(99, 102, 241, 0.6);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.resizeHandle:hover::after {
+  opacity: 1;
+}
+
+/* 抽屉头部 */
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 70px;
+}
+
+.drawerTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.closeButton {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+/* 抽屉内容 */
+.drawerContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* 版本历史内容 */
+.historyContent {
+  padding: 20px 24px;
+}
+
+.historyHeader {
+  margin-bottom: 20px;
+}
+
+.historyHeader h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+}
+
+/* 选择器区域 */
+.selectorSection {
+  margin-bottom: 16px;
+}
+
+.selectorLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.pageSelector,
+.stepSelector {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pageSelector:hover,
+.stepSelector:hover {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.pageSelector:focus,
+.stepSelector:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* 历史时间线 */
+.historyTimeline {
+  margin: 20px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.timelineIcon {
+  font-size: 16px;
+}
+
+/* 🎯 版本导航样式 */
+.versionNavigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.versionNavButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.versionNavButton:hover:not(:disabled) {
+  background: #f0f9ff;
+  border-color: #3b82f6;
+  transform: scale(1.05);
+}
+
+.versionNavButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.versionInfo {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  min-width: 40px;
+  text-align: center;
+}
+
+.historyItem {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  background: white;
+  transition: background 0.2s ease;
+}
+
+.historyItem:last-child {
+  border-bottom: none;
+}
+
+.historyItem:hover {
+  background: #f8fafc;
+}
+
+.historyStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 40px;
+}
+
+.historyStep span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.historyDetails {
+  flex: 1;
+}
+
+.historyTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.historyTitleRow h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.historyActions {
+  display: flex;
+  gap: 6px;
+}
+
+.editButton,
+.copyButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.editButton:hover {
+  background: #ede9fe;
+  border-color: #6366f1;
+}
+
+.copyButton:hover {
+  background: #ecfdf5;
+  border-color: #10b981;
+}
+
+.historyTimestamp {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.historyLatex {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 13px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid #6366f1;
+  overflow-x: auto;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* 编辑功能区域 */
+.editingSection {
+  margin-top: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.editingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.editingHeader h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.editingControls {
+  display: flex;
+  gap: 6px;
+}
+
+.editControl {
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editControl:hover {
+  background: #6366f1;
+  color: white;
+  border-color: #6366f1;
+}
+
+.editingContent {
+  padding: 16px;
+  background: white;
+}
+
+.latexPreview {
+  min-height: 80px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 🎯 编辑区域样式 */
+.editingArea {
+  width: 100%;
+}
+
+.editTextarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+  background: white;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.editTextarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.editTextarea::placeholder {
+  color: #94a3b8;
+}
+
+/* 功能选择内容 */
+.featuresContent {
+  padding: 20px 24px;
+}
+
+.featuresHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.featuresTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.addFeatureButton {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addFeatureButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.featureCard {
+  padding: 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.featureCard:hover {
+  border-color: #6366f1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+}
+
+.customFeatureCard {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%);
+}
+
+.customFeatureCard:hover {
+  border-color: #10b981;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+}
+
+.featureIcon {
+  font-size: 24px;
+  text-align: center;
+}
+
+.featureName {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  text-align: center;
+}
+
+.featureDescription {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.featureButton {
+  margin-top: auto;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.featureButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* 🎯 功能操作区域 */
+.featureActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: auto;
+}
+
+.deleteFeatureButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.deleteFeatureButton:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  transform: scale(1.05);
+}
+
+/* 🎯 添加功能表单 */
+.addFeatureForm {
+  margin-bottom: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.formHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.formHeader h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cancelButton {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.cancelButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.formFields {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.featureNameInput,
+.featureDescInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #334155;
+  background: white;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.featureNameInput:focus,
+.featureDescInput:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.featureDescInput {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.saveFeatureButton {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.saveFeatureButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.saveFeatureButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 🎯 提示词输入模态框 */
+.promptInputOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.promptInputModal {
+  width: 90%;
+  max-width: 500px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.promptHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+}
+
+.promptHeader h5 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.closePromptButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.closePromptButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.promptContent {
+  padding: 20px;
+}
+
+.promptContent p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.promptTextarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #334155;
+  background: white;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.promptTextarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.promptActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.submitPromptButton {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submitPromptButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .drawer {
+    width: 100vw !important;
+  }
+
+  .drawerHeader {
+    padding: 16px 20px;
+  }
+
+  .historyContent,
+  .featuresContent {
+    padding: 16px 20px;
+  }
+
+  .featuresGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .editingControls {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .editControl {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+}
+
+/* 滚动条样式 */
+.drawerContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.drawerContent::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.drawerContent::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.drawerContent::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 动画优化 */
+.trigger,
+.featureCard,
+.historyItem {
+  will-change: transform;
+}
+
+/* 深色模式支持（可选） */
+@media (prefers-color-scheme: dark) {
+  .drawer {
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  .drawerContent {
+    background: #1e293b;
+  }
+
+  .historyItem {
+    background: #334155;
+    border-color: #475569;
+  }
+
+  .historyItem:hover {
+    background: #475569;
+  }
+
+  .historyLatex {
+    background: #334155;
+    color: #cbd5e1;
+  }
+
+  .featureCard {
+    background: #334155;
+    border-color: #475569;
+  }
+
+  .featureCard:hover {
+    background: #475569;
+  }
+} 

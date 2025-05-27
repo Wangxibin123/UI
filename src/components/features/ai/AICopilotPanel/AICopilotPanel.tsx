@@ -3,6 +3,7 @@ import styles from './AICopilotPanel.module.css';
 import { Send, ChevronDown, ChevronUp, Trash2, PlusCircle, Settings, Wand2, Paperclip, Sigma, Brain, AlignLeft, Check, FileText } from 'lucide-react';
 import { aiModelService, type AIModel } from '../../../../services/aiModelService';
 import NodeMentionSuggestions from './NodeMentionSuggestions';
+import EnhancedMentionSuggestions from './EnhancedMentionSuggestions';
 import LaTeXFormatPanel from '../LaTeXFormatPanel/LaTeXFormatPanel';
 
 export interface Message {
@@ -20,11 +21,18 @@ export interface DagNodeInfo {
 
 export type CopilotMode = 'latex' | 'analysis' | 'summary';
 
+export interface ProblemInfo {
+  id: string;
+  title: string;
+  content: string;
+}
+
 export interface AICopilotPanelProps {
   isOpen: boolean;
   onToggle?: () => void;
   dagNodes?: DagNodeInfo[];
   contextNodeInfo?: DagNodeInfo | null;
+  problemInfo?: ProblemInfo | null;  // 新增题目信息支持
   onSendMessage: (message: string, mode: CopilotMode, model: string, contextNode?: DagNodeInfo | null) => void;
   currentMode: CopilotMode;
   onModeChange: (mode: CopilotMode) => void;
@@ -59,6 +67,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   onToggle,
   dagNodes,
   contextNodeInfo,
+  problemInfo,
   onSendMessage,
   currentMode,
   onModeChange,
@@ -91,6 +100,9 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
   const [filteredDagNodes, setFilteredDagNodes] = useState<DagNodeInfo[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(0);
   const suggestionsRef = useRef<HTMLUListElement>(null);
+  
+  // 增强@逻辑功能状态
+  const [useEnhancedMentions, setUseEnhancedMentions] = useState<boolean>(true);
 
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     const models = getAvailableModelIds();
@@ -166,8 +178,10 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
     }
   };
 
-  const handleNodeSelect = (node: DagNodeInfo) => {
-    const mentionText = `@[${node.label || node.id}]`;
+  const handleNodeSelect = (node: DagNodeInfo | import('./EnhancedMentionSuggestions').ProblemInfo) => {
+    const mentionText = 'title' in node 
+      ? `@[题目: ${node.title}]` 
+      : `@[${node.label || node.id}]`;
     
     const currentVal = currentInput;
     const cursorPos = inputRef.current?.selectionStart ?? currentVal.length;
@@ -604,15 +618,26 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({
         )}
 
         <div className={styles.textAreaWrapper}>
-           {showNodeSuggestions && filteredDagNodes.length > 0 && (
+           {showNodeSuggestions && (filteredDagNodes.length > 0 || problemInfo) && (
              <div className={styles.suggestionsPanel}>
-               <NodeMentionSuggestions
-                 ref={suggestionsRef}
-                 suggestions={filteredDagNodes}
-                 activeSuggestionIndex={activeSuggestionIndex}
-                 onSelectNode={handleNodeSelect}
-                 suggestionsRef={suggestionsRef}
-               />
+               {useEnhancedMentions ? (
+                 <EnhancedMentionSuggestions
+                   suggestions={filteredDagNodes}
+                   problemInfo={problemInfo}
+                   activeSuggestionIndex={activeSuggestionIndex}
+                   onSelectNode={handleNodeSelect}
+                   query={nodeSuggestionQuery}
+                   mode={currentMode}
+                 />
+               ) : (
+                 <NodeMentionSuggestions
+                   ref={suggestionsRef}
+                   suggestions={filteredDagNodes}
+                   activeSuggestionIndex={activeSuggestionIndex}
+                   onSelectNode={handleNodeSelect}
+                   suggestionsRef={suggestionsRef}
+                 />
+               )}
              </div>
            )}
           <textarea

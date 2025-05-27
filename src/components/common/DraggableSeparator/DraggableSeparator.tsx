@@ -100,7 +100,7 @@ const DraggableSeparator: React.FC<DraggableSeparatorProps> = ({
   }, [isDragging, handleDocumentMouseMove, handleDocumentMouseUp]);
 
   // 组合基础样式和外部传入的 className
-  const separatorClasses = `${styles.separatorVertical} ${className || ''}`.trim();
+  const separatorClasses = `${styles.separatorVertical} ${isDragging ? styles.dragging : ''} ${className || ''}`.trim();
 
   return (
     <div

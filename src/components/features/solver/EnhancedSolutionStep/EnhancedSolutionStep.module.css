@@ -1,0 +1,396 @@
+/* 解答步骤容器 */
+.solutionStep {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.solutionStep:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 验证状态样式 */
+.verified {
+  border-left: 4px solid #10b981;
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.05), white);
+}
+
+.incorrect {
+  border-left: 4px solid #ef4444;
+  background: linear-gradient(to right, rgba(239, 68, 68, 0.05), white);
+}
+
+.verifying {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(to right, rgba(245, 158, 11, 0.05), white);
+}
+
+.notVerified {
+  border-left: 4px solid #6b7280;
+}
+
+/* 头部工具栏 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stepInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepNumber {
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(10px);
+}
+
+.verificationIcon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.toolButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.toolButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.toolButton:active {
+  transform: scale(0.95);
+}
+
+.saveButton {
+  background: rgba(34, 197, 94, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+}
+
+.saveButton:hover {
+  background: rgba(34, 197, 94, 0.4);
+}
+
+.cancelButton {
+  background: rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.cancelButton:hover {
+  background: rgba(239, 68, 68, 0.4);
+}
+
+.deleteButton {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.deleteButton:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* 内容区域 */
+.content {
+  padding: 16px;
+  min-height: 60px;
+}
+
+.latexDisplay {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.latexDisplay .katex {
+  font-size: 1.05em;
+}
+
+.latexDisplay .katex-display {
+  margin: 10px 0;
+}
+
+/* 编辑模式 */
+.editMode {
+  width: 100%;
+}
+
+.previewMode {
+  border: 2px dashed #d1d5db;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f9fafb;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.previewLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editArea {
+  width: 100%;
+}
+
+.editTextarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+  background: #fafafa;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.editTextarea:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  background: white;
+}
+
+.editTextarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.editHint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #6b7280;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  border-left: 3px solid #10b981;
+}
+
+/* 推导状态指示器 */
+.derivationStatus {
+  padding: 8px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.derivationIndicators {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.derivationButton {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.derivationButton:hover {
+  background: #e5e7eb;
+  transform: scale(1.05);
+}
+
+.derivationCorrect {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #059669;
+}
+
+.derivationIncorrect {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.derivationPending {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #f59e0b;
+  color: #d97706;
+}
+
+.derivationUndetermined {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #6b7280;
+}
+
+/* 备注区域 */
+.notes {
+  padding: 8px 16px;
+  background: #fffbeb;
+  border-top: 1px solid #fde68a;
+  font-size: 12px;
+  color: #92400e;
+}
+
+.notesLabel {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.notesContent {
+  font-style: italic;
+}
+
+/* 动画效果 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editMode {
+  animation: slideIn 0.3s ease-out;
+}
+
+.previewMode {
+  animation: slideIn 0.2s ease-out;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header {
+    padding: 10px 12px;
+  }
+  
+  .stepNumber {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+  
+  .toolButton {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  
+  .content {
+    padding: 12px;
+  }
+  
+  .editTextarea {
+    min-height: 80px;
+    font-size: 12px;
+  }
+  
+  .derivationButton {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .solutionStep {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .content {
+    color: #f9fafb;
+  }
+  
+  .latexDisplay {
+    color: #f9fafb;
+  }
+  
+  .editTextarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+  
+  .editTextarea:focus {
+    background: #4b5563;
+    border-color: #10b981;
+  }
+  
+  .previewMode {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .editHint {
+    background: #374151;
+    color: #d1d5db;
+  }
+  
+  .derivationStatus {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .notes {
+    background: #451a03;
+    border-color: #92400e;
+    color: #fbbf24;
+  }
+} 

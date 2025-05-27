@@ -200,4 +200,26 @@ export interface InterpretationState {
   entries: InterpretationEntry[]; // 所有思路解读条目
   selectedEntryId: string | null; // 当前选中的条目ID
 }
-// +++ End INTERPRETATION +++ 
+// +++ End INTERPRETATION +++
+
+// +++ VERSION_HISTORY: Add version history types +++
+export interface StepVersion {
+  id: string; // 版本唯一ID
+  stepId: string; // 关联的解题步骤ID
+  content: string; // 版本的LaTeX内容
+  timestamp: Date; // 版本创建时间
+  description: string; // 版本描述（如："添加因式分解"、"修正错误"等）
+  isOriginal: boolean; // 是否为原始版本（步骤创建时的第一个版本）
+  versionNumber: number; // 版本号，从1开始
+}
+
+export interface StepVersionHistory {
+  stepId: string; // 步骤ID
+  versions: StepVersion[]; // 该步骤的所有版本
+  currentVersionIndex: number; // 当前显示的版本索引
+}
+
+export interface VersionHistoryState {
+  stepVersions: { [stepId: string]: StepVersionHistory }; // 按步骤ID索引的版本历史
+}
+// +++ End VERSION_HISTORY +++ 

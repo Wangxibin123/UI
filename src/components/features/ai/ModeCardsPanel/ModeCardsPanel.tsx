@@ -27,7 +27,7 @@ export const modeCardDetails: Record<CopilotMode, { name: string; description: s
 };
 
 interface ModeCardsPanelProps {
-  currentMode: CopilotMode;
+  currentMode: CopilotMode | null;
   onModeSelect: (mode: CopilotMode) => void;
   // isVisible might not be needed if MainLayout controls rendering directly
 }

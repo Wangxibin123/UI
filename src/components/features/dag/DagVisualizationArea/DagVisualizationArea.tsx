@@ -42,6 +42,7 @@ interface DagVisualizationAreaProps {
   onUpdateStepVerificationStatus: (stepId: string, newStatus: VerificationStatus) => void;
   onInitiateSplitStep: (stepId: string) => void;
   onViewEditStepDetails: (stepId: string) => void;
+  onRenameStep: (stepId: string, newName: string) => void;
   onInterpretIdea: (stepId: string, idea: string) => void;
   onHighlightNode: (stepId: string, color: string | null) => void;
   onAddOrUpdateNote: (stepId: string) => void;
@@ -113,6 +114,7 @@ const generateContextMenuItems = (
     | 'onCopyNodeInfo'
     | 'onCopyPathInfo'
     | 'onViewEditStepDetails'
+    | 'onRenameStep'
     | 'onInitiateSplitStep'
     | 'onInterpretIdea'
     | 'onSoftDeleteStep'
@@ -134,6 +136,21 @@ const generateContextMenuItems = (
   const nodeData = getNodeRfData(node);
 
   if (!nodeData) return menuItems;
+
+  menuItems.push({
+    id: 'rename-step',
+    label: '重命名',
+    icon: <Edit3 size={16} />,
+    onClick: () => { 
+      const currentLabel = nodeData.label || `步骤 ${nodeData.stepNumber}`;
+      const newName = prompt('请输入新的步骤名称:', currentLabel);
+      if (newName && newName.trim() && newName.trim() !== currentLabel) {
+        actions.onRenameStep(nodeId, newName.trim());
+      }
+      contextMenuRef.current?.close(); 
+    },
+    disabled: nodeData.isDeleted,
+  });
 
   menuItems.push({
     id: 'view-edit-details',
@@ -344,6 +361,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
   onUpdateStepVerificationStatus,
   onInitiateSplitStep,
   onViewEditStepDetails,
+  onRenameStep,
   onInterpretIdea,
   onHighlightNode,
   onAddOrUpdateNote,
@@ -390,6 +408,7 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     onCopyNodeInfo,
     onCopyPathInfo,
     onViewEditStepDetails,
+    onRenameStep,
     onInitiateSplitStep,
     onInterpretIdea,
     onSoftDeleteStep,
@@ -400,10 +419,22 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
     onSetAsMainPath,
     onCancelMainPath,
   }), [
-    onHighlightNode, onAddOrUpdateNote, onNewPathFromNode, onCopyNodeInfo, onCopyPathInfo,
-    onViewEditStepDetails, onInitiateSplitStep, onInterpretIdea,
-    onSoftDeleteStep, onUndoSoftDeleteStep, onUpdateStepVerificationStatus,
-    onInitiateFocusAnalysis, onCancelFocusAnalysis, onSetAsMainPath, onCancelMainPath
+    onHighlightNode,
+    onAddOrUpdateNote,
+    onNewPathFromNode,
+    onCopyNodeInfo,
+    onCopyPathInfo,
+    onViewEditStepDetails,
+    onRenameStep,
+    onInitiateSplitStep,
+    onInterpretIdea,
+    onSoftDeleteStep,
+    onUndoSoftDeleteStep,
+    onUpdateStepVerificationStatus,
+    onInitiateFocusAnalysis,
+    onCancelFocusAnalysis,
+    onSetAsMainPath,
+    onCancelMainPath,
   ]);
 
   useEffect(() => {

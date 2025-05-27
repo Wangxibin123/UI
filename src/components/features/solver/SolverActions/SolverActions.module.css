@@ -2,66 +2,346 @@
 .solverActions {
   display: flex;
   align-items: center;
-  padding: 10px 15px;
+  padding: 12px 16px;
   background-color: #f9f9f9;
   border-top: 1px solid #e0e0e0;
-  /* height: 60px; Fixed height, or remove for dynamic height based on content */
+  gap: 12px;
   box-sizing: border-box;
+  min-height: 64px;
 }
 
+/* 左侧区域 - 书本按键 */
+.leftActions {
+  display: flex;
+  align-items: center;
+}
+
+.bookButton {
+  background-color: #e8f4fd;
+  border: 1px solid #2196F3;
+  color: #2196F3;
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bookButton:hover {
+  background-color: #d1e7fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+}
+
+/* 输入区域 */
 .inputArea {
   flex-grow: 1;
-  margin-right: 15px;
+  min-width: 0; /* 确保可以缩小 */
+  position: relative; /* 为输入提示定位 */
 }
 
 .stepInput {
   width: 100%;
-  padding: 10px 12px; /* Increased padding for better touch/click */
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 0.95em;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
   box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: white;
 }
 
-.buttonGroup {
+.stepInput:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.stepInput::placeholder {
+  color: #999;
+}
+
+/* 输入提示 */
+.inputHint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #6c757d;
+  z-index: 10;
+  animation: slideDownFade 0.2s ease;
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 右侧区域 - 思考选择器和提交按键 */
+.rightActions {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
-.actionButton {
-  background-color: #e0e0e0;
-  border: none;
-  border-radius: 4px;
-  padding: 10px 12px; /* Consistent padding with input */
-  margin-left: 8px;
+/* 思考方向选择器 */
+.thinkingSelector {
+  position: relative;
+}
+
+.thinkingButton {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 12px;
   cursor: pointer;
-  font-size: 0.9em;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.thinkingButton:hover {
+  border-color: #2196F3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.thinkingButton.open {
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.thinkingContent {
   display: flex;
   align-items: center;
-  white-space: nowrap; /* Prevent button text from wrapping */
+  gap: 6px;
+  font-size: 14px;
+}
+
+.thinkingText {
+  flex-grow: 1;
+  text-align: left;
+  color: #333;
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+  color: #666;
+}
+
+.chevronUp {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单 */
+.thinkingDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdownItem:last-child {
+  border-bottom: none;
+}
+
+.dropdownItem:hover {
+  background-color: #f8f9fa;
+}
+
+.dropdownItem.active {
+  background-color: #e8f4fd;
+  color: #2196F3;
+}
+
+.itemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itemTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.itemDesc {
+  font-size: 12px;
+  color: #666;
+  opacity: 0.8;
+}
+
+.dropdownItem.active .itemDesc {
+  color: #2196F3;
+  opacity: 0.7;
+}
+
+/* 快捷键显示 */
+.itemShortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: #999;
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.dropdownItem.active .itemShortcut {
+  background-color: rgba(33, 150, 243, 0.1);
+  color: #2196F3;
+}
+
+/* 基础按键样式 */
+.actionButton {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  background-color: #f5f5f5;
+  color: #666;
 }
 
 .actionButton:hover {
-  background-color: #d5d5d5;
+  background-color: #e8e8e8;
+  transform: translateY(-1px);
 }
 
-.actionButton > svg, /* If using SVG icons */
-.actionButton > span { /* If using text/emoji icons */
-  margin-right: 5px;
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.actionButton:first-child {
-  margin-left: 0;
+.actionButton:disabled:hover {
+  background-color: #f5f5f5;
+  transform: none;
 }
 
+/* 提交按键 */
 .submitButton {
   background-color: #2196F3;
   color: white;
-  font-weight: bold;
+  font-weight: 500;
+  padding: 8px 16px;
 }
 
-.submitButton:hover {
+.submitButton:hover:not(:disabled) {
   background-color: #1976D2;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+}
+
+.submitButton:disabled {
+  background-color: #ccc;
+  color: #999;
+}
+
+/* 其他功能按键 */
+.otherActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  padding-left: 8px;
+  border-left: 1px solid #e0e0e0;
+}
+
+.otherActions .actionButton {
+  padding: 6px 8px;
+  font-size: 16px;
+  background-color: transparent;
+  border: 1px solid transparent;
+}
+
+.otherActions .actionButton:hover {
+  background-color: #f0f0f0;
+  border-color: #ddd;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .solverActions {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  
+  .thinkingButton {
+    min-width: 100px;
+    padding: 6px 8px;
+  }
+  
+  .thinkingContent {
+    font-size: 13px;
+  }
+  
+  .otherActions {
+    display: none; /* 在小屏幕上隐藏其他功能按键 */
+  }
+  
+  .actionButton {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rightActions {
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+  }
+  
+  .thinkingSelector {
+    width: 100%;
+  }
+  
+  .thinkingButton {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+/* Legacy styles - keeping for compatibility */
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .actionsContainer {
@@ -70,7 +350,7 @@
   align-items: center;
   padding: 0 20px;
   border-top: 1px solid var(--color-light-gray);
-  background-color: var(--color-white); /* Or a very light grey like control bar */
+  background-color: var(--color-white);
   gap: 10px;
 }
 
@@ -78,9 +358,9 @@
   flex-grow: 1;
   height: 40px;
   padding: 0 15px;
-  border-radius: 8px; /* More rounded */
+  border-radius: 8px;
   border: 1px solid var(--color-light-gray);
-  background-color: var(--color-background-control-bar); /* #F5F5F5 */
+  background-color: var(--color-background-control-bar);
   font-size: var(--font-size-normal);
 }
 
@@ -90,43 +370,22 @@
   box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
 }
 
-/* Reusing iconButton style for consistency for most buttons */
 .iconButton {
   background-color: transparent;
   border: 1px solid var(--color-light-gray);
   border-radius: 4px;
-  width: 30px; /* As per spec */
-  height: 30px; /* As per spec */
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 18px; /* Slightly larger for these specific icons */
+  font-size: 18px;
   color: var(--color-dark-gray);
 }
+
 .iconButton:hover {
   background-color: #f0f0f0;
   border-color: var(--color-primary-blue);
   color: var(--color-primary-blue);
-}
-
-.submitButton {
-  width: 80px;
-  height: 30px;
-  background-color: var(--color-primary-blue);
-  color: var(--color-white);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: var(--font-size-normal);
-  font-weight: 500;
-}
-.submitButton:hover {
-  opacity: 0.9;
-}
-
-.buttonGroup {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* Spacing between buttons in the group */
 } 

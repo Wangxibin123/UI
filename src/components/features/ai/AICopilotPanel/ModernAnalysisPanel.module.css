@@ -1,0 +1,1150 @@
+/* 🎯 ModernAnalysisPanel 现代化解析分析面板样式 */
+
+/* === 基础布局 === */
+/* 🎯 右侧面板模式：移除浮窗定位 */
+.overlay {
+  display: none; /* 不再使用浮窗overlay */
+}
+
+.container {
+  /* 🎯 适配右侧面板：100%宽高，无最大限制 */
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(229, 231, 235, 0.3);
+  /* 移除动画，因为不再是弹出窗口 */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* === 顶部控制栏 === */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerIcon {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+.headerCenter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepNavButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stepNavButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.stepNavButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.multiCompareButton {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.multiCompareButton:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+/* === 标签页区域 === */
+.tabsArea {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.tabsList {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 12px 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+}
+
+.activeTab {
+  background: white;
+  color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tabIcon {
+  flex-shrink: 0;
+}
+
+.tabName {
+  font-weight: 500;
+}
+
+.addTabButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(100, 116, 139, 0.1);
+  border: none;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.addTabButton:hover {
+  background: rgba(100, 116, 139, 0.2);
+  color: #475569;
+}
+
+.tabIndicator {
+  height: 2px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+/* === 主内容区域 === */
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.topPanel {
+  height: 200px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.bottomPanel {
+  flex: 1;
+  background: white;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* 🎯 DAG页面选择器样式 */
+.dagPageSelector {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.selectorButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 180px;
+}
+
+.selectorButton:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.dropdownItem:hover {
+  background: #f1f5f9;
+}
+
+.dropdownItem.active {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.pageName {
+  font-weight: 500;
+}
+
+.activeIndicator {
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* === 小型画布区域 === */
+.miniCanvasArea {
+  height: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvasHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.canvasHeader h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.canvasInfo {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* 🎯 改进的DAG画布样式 */
+.miniCanvas {
+  flex: 1;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  overflow: hidden; /* 防止上下滚动 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 🎯 步骤块容器：支持横向滚动 */
+.stepBlocksContainer {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+  min-height: 80px;
+  align-items: flex-start;
+}
+
+.stepBlocksContainer::-webkit-scrollbar {
+  height: 6px;
+}
+
+.stepBlocksContainer::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.stepBlocksContainer::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.stepBlocksContainer::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 🎯 步骤块样式 */
+.stepBlock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 64px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 4px;
+}
+
+.stepBlock:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.15);
+}
+
+.selectedBlock {
+  border-color: #3b82f6 !important;
+  background: #dbeafe !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.focusedBlock {
+  border-color: #007ACC !important;
+  border-width: 2px !important;
+  background: #e6f3ff !important;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+.blockNumber {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.statusIndicators {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.statusRow {
+  display: flex;
+  gap: 1px;
+  align-items: center;
+}
+
+.forwardCorrect,
+.backwardCorrect,
+.hasInterpretation,
+.hasNotes,
+.highlighted {
+  font-size: 8px;
+}
+
+.forwardIncorrect,
+.backwardIncorrect {
+  font-size: 8px;
+}
+
+.verificationBorder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.verified {
+  background: #10b981;
+}
+
+.verificationError {
+  background: #ef4444;
+}
+
+.unverified {
+  background: #94a3b8;
+}
+
+.emptySteps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 64px;
+  color: #9ca3af;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.scrollHint {
+  text-align: center;
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+
+
+.dagNode.selected {
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: white;
+}
+
+.stepSelectionTags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selectionLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.stepTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stepTag {
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stepTag:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.stepTag.selected {
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: white;
+}
+
+.addStepButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #f3f4f6;
+  border: 1px dashed #9ca3af;
+  border-radius: 14px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addStepButton:hover {
+  background: #e5e7eb;
+  border-color: #6b7280;
+}
+
+/* === 内容卡片样式 === */
+.contentCard {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cardIcon {
+  color: #3b82f6;
+}
+
+.cardHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.cardContent {
+  padding: 24px;
+}
+
+/* === 问题解析内容 === */
+.problemAnalysisContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.questionSection {
+  margin-bottom: 20px;
+}
+
+.questionSection h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.questionInput {
+  position: relative;
+}
+
+.questionTextarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.questionTextarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.analysisSection {
+  margin-bottom: 20px;
+}
+
+.analysisSection h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.analysisContent {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.analysisContent p {
+  margin: 0 0 12px 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.analysisContent ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #475569;
+}
+
+.analysisContent li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.memoryTipsSection {
+  margin-bottom: 20px;
+}
+
+.memoryTipsSection h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.tipsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tip {
+  background: #fef3c7;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+  font-size: 14px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.cardActions {
+  display: flex;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+/* === 要点归纳内容 === */
+.summaryContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.keyPoint {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.keyPoint h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.pointContent ul {
+  margin: 0 0 12px 0;
+  padding-left: 20px;
+  color: #475569;
+}
+
+.pointContent li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.pointActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.saveButton,
+.pinButton,
+.shareButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.saveButton:hover,
+.pinButton:hover,
+.shareButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* === 深度探索内容 === */
+.exploreContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.deepThinking {
+  margin-bottom: 24px;
+}
+
+.deepThinking h4 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.thinkingContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #8b5cf6;
+}
+
+.section h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.section p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.formula {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  font-family: 'KaTeX_Main', serif;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.sectionActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.expandButton,
+.addThinkingButton,
+.linkConceptsButton {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover,
+.addThinkingButton:hover,
+.linkConceptsButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.conceptMap {
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.conceptMap h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.mapContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.conceptNode {
+  background: #3b82f6;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.conceptBranches {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.branch > span {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.subBranches {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.subBranches span {
+  background: white;
+  color: #6b7280;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+}
+
+.editMapButton {
+  padding: 8px 16px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editMapButton:hover {
+  background: #2563eb;
+}
+
+/* === 知识关联内容 === */
+.knowledgeContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.knowledgeFilters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.filterButton {
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filterButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-left: auto;
+}
+
+.searchBox input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #374151;
+  background: transparent;
+}
+
+.searchBox input::placeholder {
+  color: #9ca3af;
+}
+
+.knowledgePoints {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.knowledgePoint {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.knowledgePoint h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.knowledgePoint ul {
+  margin: 0 0 12px 0;
+  padding-left: 20px;
+  color: #475569;
+}
+
+.knowledgePoint li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.learnButton,
+.practiceButton,
+.exampleButton {
+  padding: 6px 12px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.learnButton:hover,
+.practiceButton:hover,
+.exampleButton:hover {
+  background: #2563eb;
+}
+
+/* === 底部操作区域 === */
+.bottomActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.secondaryButton {
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondaryButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* === 响应式设计 === */
+@media (max-width: 1024px) {
+  .container {
+    width: 98vw;
+    height: 95vh;
+  }
+  
+  .leftPanel {
+    width: 280px;
+  }
+  
+  .rightPanel {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    flex-direction: column;
+  }
+  
+  .leftPanel {
+    width: 100%;
+    height: 200px;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .rightPanel {
+    padding: 12px;
+  }
+  
+  .header {
+    padding: 12px 16px;
+  }
+  
+  .headerCenter {
+    display: none;
+  }
+  
+  .title {
+    font-size: 16px;
+  }
+} 

@@ -1,24 +1,53 @@
 /* src/components/layout/MainLayout/MainLayout.module.css */
-.mainLayoutContainer {
-  display: flex;
-  height: 100vh;
-  overflow: hidden; /* Prevent scrollbars on the main container */
-  transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
+
+/* 🎯 第5阶段：高度一致性系统 - 简化的全局变量设置 */
+:root {
+  /* 🎯 简化的高度系统变量 */
+  --main-layout-height: 100vh;
+  --content-area-height: 100vh;
+  --panel-min-height: 300px; /* 降低最小高度 */
+  
+  /* 🎯 响应式断点变量 */
+  --breakpoint-xs: 576px;
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 1024px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1400px;
 }
 
+/* 🎯 主布局容器 - 简化的高度设置 */
+.mainLayoutContainer {
+  display: flex;
+  height: var(--main-layout-height);
+  overflow: hidden; /* Prevent scrollbars on the main container */
+  transition: flex-basis 0.3s ease-in-out; /* Smooth transition for width changes */
+  
+  /* 🎯 确保所有子区域等高 */
+  align-items: stretch; /* 确保所有flex子项拉伸到相同高度 */
+}
+
+/* 🎯 内容区域 - 简化的高度设置 */
 .contentArea {
   display: flex;
   flex: 1;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
+  
+  /* 🎯 确保子区域等高分布 */
+  align-items: stretch;
 }
 
+/* 🎯 DAG区域 - 简化的高度设置 */
 .dagRegion {
   /* flex-basis is now controlled by inline style */
   /* min-width is now controlled by JS logic */
   background-color: #f7f9fc; /* 轻微的背景色以区分 */
   flex-shrink: 0;
+  position: relative; /* 🎯 添加相对定位以支持绝对定位的按钮 */
+  
+  /* 🎯 简化的高度设置 */
   height: 100%; /* Fill parent height */
+  
   overflow-y: hidden; /* Let child (DagVisualizationArea) handle its own scroll */
   display: flex; /* Add flex display */
   flex-direction: column; /* Stack DagPageTabs and DagVisualizationArea vertically */
@@ -26,19 +55,27 @@
   border-right: 1px solid #e0e0e0;
 }
 
+/* 🎯 DAG区域折叠状态 */
 .dagRegionCollapsed {
   flex-basis: 50px !important; /* Collapsed width, ensure this overrides inline style */
   min-width: 50px;
   overflow: hidden; /* Hide content that doesn't fit */
   border-right: 1px solid #e0e0e0;
+  
+  /* 🎯 折叠状态也保持高度 */
+  height: 100%;
 }
 
+/* 🎯 Solver区域 - 简化的高度设置 */
 .solverRegion {
   overflow-y: auto; /* ENSURE this is present for unified scrolling */
   /* flex-basis is now controlled by inline style */
   flex-shrink: 0;
   background-color: #ffffff;
+  
+  /* 🎯 简化的高度设置 */
   height: 100%;
+  
   /* border-left and border-right will be implicitly handled by separators */
   display: flex; /* Add flex display */
   flex-direction: column; /* Stack ProblemBlock, StepsContainer, SolverActions vertically */
@@ -102,16 +139,22 @@
   box-sizing: border-box; 
 }
 
-/* Styles for the main AI Panel Region (the third column) - THIS IS THE CURRENT/CORRECT ONE */
+/* 🎯 AI面板区域 - 简化的高度设置 */
 .aiPanelRegion {
   background-color: #fcfdff; /* Slightly different background */
   /* This is the main third column for AI related components */
   display: flex; /* Ensures it behaves as a flex item in the main layout */
   flex-direction: column; /* Stack AICopilotPanel and RightSidePanel vertically */
   overflow: hidden; /* Prevent its children from breaking the main layout */
-  /* height: 100%; Is implicitly handled by flex container (mainLayoutContainer) */
+  
+  /* 🎯 简化的高度设置 */
+  height: 100%;
+  
   /* Removed border-left: 1px solid #cccccc; as separators handle borders now */
 }
+
+
+/* +++ End DAG_BOTTOM_BUTTONS +++ */
 
 /* Optional: if you used .aiPanelRegionCustom for specific overrides */
 .aiPanelRegionCustom {
@@ -340,41 +383,17 @@
   overflow: hidden;
 }
 
-.modeCardsToggleBar {
+/* 🎯 新架构：右侧区域面板样式 */
+.rightSideAreaPanel {
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  height: 100%;
+  overflow: hidden;
   display: flex;
-  align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #ffffff;
-  flex-shrink: 0;
+  flex-direction: column;
 }
 
-.modeCardsPanelToggleButton {
-  background: none;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s ease;
-}
-
-.modeCardsPanelToggleButton:hover {
-  background-color: #f0f0f0;
-  border-color: #ccc;
-}
-
-.modeCardsPanelPlaceholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #888;
-  font-size: 14px;
-  text-align: center;
-  padding: 20px;
-}
+/* 🎯 移除Hide Modes相关样式 - 不再需要 */
 
 /* +++ DAG_PAGES: Add styles for DAG page management +++ */
 .dagPageTabsArea {
@@ -399,3 +418,210 @@
   overflow: hidden; /* DagVisualizationArea will handle its own overflow */
 }
 /* +++ End DAG_PAGES +++*/
+
+/* 🎯 第5阶段：响应式高度管理系统 */
+
+/* 🎯 超大屏幕 (1400px+) - 最佳显示体验 */
+@media (min-width: 1400px) {
+  :root {
+    --main-header-height: 70px;
+    --toolbar-height: 60px;
+    --panel-min-height: 500px;
+  }
+  
+  .mainLayoutContainer {
+    min-height: calc(100vh - 150px);
+  }
+  
+  .dagRegion,
+  .solverRegion,
+  .aiPanelRegion {
+    min-height: 500px;
+  }
+}
+
+/* 🎯 大屏幕 (1200px - 1399px) - 标准显示 */
+@media (min-width: 1200px) and (max-width: 1399px) {
+  :root {
+    --main-header-height: 65px;
+    --toolbar-height: 55px;
+    --panel-min-height: 450px;
+  }
+  
+  .mainLayoutContainer {
+    min-height: calc(100vh - 170px);
+  }
+}
+
+/* 🎯 中等屏幕 (1024px - 1199px) - 紧凑显示 */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  :root {
+    --main-header-height: 60px;
+    --toolbar-height: 50px;
+    --panel-min-height: 400px;
+  }
+  
+  .mainLayoutContainer {
+    min-height: calc(100vh - 180px);
+  }
+  
+  .dagRegion,
+  .solverRegion,
+  .aiPanelRegion {
+    min-height: 400px;
+  }
+}
+
+/* 🎯 小屏幕 (768px - 1023px) - 适配显示 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --main-header-height: 55px;
+    --toolbar-height: 45px;
+    --panel-min-height: 350px;
+    --available-content-height: calc(100vh - 120px);
+  }
+  
+  .mainLayoutContainer {
+    min-height: calc(100vh - 200px);
+    flex-direction: column; /* 小屏幕垂直堆叠 */
+  }
+  
+  .contentArea {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .dagRegion,
+  .solverRegion,
+  .aiPanelRegion {
+    min-height: 350px;
+    max-height: 60vh; /* 限制单个面板高度 */
+    flex-basis: auto;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+}
+
+/* 🎯 移动设备 (最大768px) - 移动优化 */
+@media (max-width: 767px) {
+  :root {
+    --main-header-height: 50px;
+    --toolbar-height: 40px;
+    --panel-min-height: 300px;
+    --available-content-height: calc(100vh - 100px);
+  }
+  
+  .mainLayoutContainer {
+    min-height: calc(100vh - 220px);
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .contentArea {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+  
+  .dagRegion,
+  .solverRegion,
+  .aiPanelRegion {
+    min-height: 300px;
+    max-height: 50vh;
+    flex-basis: auto;
+    flex-shrink: 1;
+    border-right: none;
+    border-bottom: 2px solid #e0e0e0;
+    overflow-y: auto;
+  }
+  
+  /* 🎯 移动设备上的特殊调整 */
+  .dagRegionCollapsed {
+    min-height: 80px; /* 移动设备上折叠状态最小高度 */
+  }
+}
+
+/* 🎯 超小设备 (最大576px) - 极简模式 */
+@media (max-width: 575px) {
+  :root {
+    --main-header-height: 45px;
+    --toolbar-height: 35px;
+    --panel-min-height: 250px;
+  }
+  
+  .mainLayoutContainer {
+    min-height: calc(100vh - 240px);
+    padding: 5px;
+  }
+  
+  .dagRegion,
+  .solverRegion,
+  .aiPanelRegion {
+    min-height: 250px;
+    max-height: 45vh;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+}
+
+/* 🎯 高度自适应增强 */
+@media (max-height: 600px) {
+  :root {
+    --panel-min-height: 200px;
+    --min-content-height: calc(100vh - 100px);
+  }
+  
+  .mainLayoutContainer {
+    min-height: 400px;
+  }
+}
+
+/* 🎯 超高屏幕优化 */
+@media (min-height: 1200px) {
+  :root {
+    --panel-min-height: 600px;
+    --max-content-height: calc(100vh - 50px);
+  }
+  
+  .dagRegion,
+  .solverRegion,
+  .aiPanelRegion {
+    min-height: 600px;
+  }
+}
+
+/* 🎯 高度一致性增强样式 */
+.mainLayoutContainer > * {
+  /* 确保所有直接子元素都拉伸到相同高度 */
+  align-self: stretch;
+}
+
+.contentArea > * {
+  /* 确保内容区域的所有子元素都拉伸到相同高度 */
+  align-self: stretch;
+}
+
+/* 🎯 性能优化和平滑过渡 */
+.dagRegion,
+.solverRegion,
+.aiPanelRegion {
+  /* 添加硬件加速和过渡效果 */
+  will-change: height, min-height, max-height;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 🎯 调试辅助 - 开发环境可启用 */
+/*
+.debugHeight .dagRegion {
+  border: 2px solid red !important;
+}
+
+.debugHeight .solverRegion {
+  border: 2px solid green !important;
+}
+
+.debugHeight .aiPanelRegion {
+  border: 2px solid blue !important;
+}
+*/

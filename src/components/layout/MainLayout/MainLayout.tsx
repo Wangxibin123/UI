@@ -19,6 +19,9 @@ import {
   type PathGroup,
   type InterpretationState,
   type InterpretationEntry,
+  type StepVersion,
+  type StepVersionHistory,
+  type VersionHistoryState
 } from '../../../types';
 import { MarkerType, ReactFlowProvider } from '@reactflow/core';
 import ConfirmationDialog from '../../common/ConfirmationDialog/ConfirmationDialog';
@@ -49,14 +52,21 @@ import RightPanelContent from '../../features/solver/RightPanelContent/RightPane
 import FeatureTestPanel from '../../common/FeatureTestPanel/FeatureTestPanel';
 import AIAssistantDemo from '../../features/ai/AIAssistantDemo/AIAssistantDemo';
 import WelcomeMessage from '../../common/WelcomeMessage/WelcomeMessage';
+import EnhancedMentionDemo from '../../features/ai/AICopilotPanel/EnhancedMentionDemo';
+import ModernLaTeXPanel from '../../features/ai/AICopilotPanel/ModernLaTeXPanel';
+import ModernAnalysisPanel from '../../features/ai/AICopilotPanel/ModernAnalysisPanel';
+import ModernSummaryPanel from '../../features/ai/AICopilotPanel/ModernSummaryPanel';
 import PathGroupIndicator from '../../common/PathGroupIndicator/PathGroupIndicator';
 // +++ DAG_PAGES: Import DAG page management +++
 import DagPageTabs from '../../features/dag/DagPageTabs/DagPageTabs';
 import { DagPage, DagPageState } from '../../../types';
 // +++ End DAG_PAGES +++
 // +++ INTERPRETATION: Import interpretation management +++
-import InterpretationManagementView from '../../views/InterpretationManagementView/InterpretationManagementView';
+import ModernInterpretationView from '../../views/InterpretationManagementView/ModernInterpretationView';
 // +++ End INTERPRETATION +++
+// +++ RIGHT_DRAWER: Import right drawer component +++
+import RightDrawer, { DrawerType } from './RightDrawer';
+// +++ End RIGHT_DRAWER +++
 
 const MIN_PANEL_PERCENTAGE = 5; // Define MIN_PANEL_PERCENTAGE
 const initialSolutionStepsData: SolutionStepData[] = testSolutionSteps; // 使用测试数据
@@ -552,7 +562,7 @@ const MainLayout: React.FC = () => {
   // const [copilotCurrentModel, setCopilotCurrentModel] = useState<string>('gpt-3.5-turbo'); // Added state for current model
 
   // 🎯 使用新的AI模型服务获取可用模型
-  const copilotAvailableModels: string[] = aiModelService.getAvailableModelIds();
+  const copilotAvailableModels: string[] = aiModelService.getAvailableModels().map(model => model.id);
 
   // Initialize copilotCurrentModel with the first model from the list or a default
   const [copilotCurrentModel, setCopilotCurrentModel] = useState<string>(copilotAvailableModels[0] || 'gpt-3.5-turbo');
@@ -577,6 +587,37 @@ const MainLayout: React.FC = () => {
   const [isTestPanelVisible, setIsTestPanelVisible] = useState<boolean>(false);
   const [isAiDemoVisible, setIsAiDemoVisible] = useState<boolean>(false);
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
+  const [showEnhancedMentionDemo, setShowEnhancedMentionDemo] = useState<boolean>(false);
+  
+  // +++ LaTeX格式化面板状态 +++
+  const [isLaTeXPanelVisible, setIsLaTeXPanelVisible] = useState<boolean>(false);
+  const [selectedStepForLaTeX, setSelectedStepForLaTeX] = useState<{
+    id: string;
+    content: string;
+    stepNumber: number;
+  } | null>(null);
+
+  // +++ 解析分析面板状态 +++
+  const [isAnalysisPanelVisible, setIsAnalysisPanelVisible] = useState<boolean>(false);
+  const [selectedStepForAnalysis, setSelectedStepForAnalysis] = useState<{
+    id: string;
+    content: string;
+    stepNumber: number;
+  } | null>(null);
+
+  // +++ 总结面板状态 +++
+  const [selectedStepForSummary, setSelectedStepForSummary] = useState<string>('problem-content');
+
+  // +++ 右侧抽屉状态 +++
+  const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
+  const [rightDrawerType, setRightDrawerType] = useState<DrawerType>(null);
+  const [drawerContextStepInfo, setDrawerContextStepInfo] = useState<{
+    id: string;
+    stepNumber: number;
+    title: string;
+    content: string;
+    preview: string;
+  } | null>(null);
   
   // +++ EDGE_SELECTION: Add edge selection state +++
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -653,8 +694,109 @@ const MainLayout: React.FC = () => {
     }
   }, [dagPageState.pages.length]); // 🔥 简化依赖
   
-  // 🔥 更新：使用页面级数据的 handleStepContentChange
+  // 🔧 新增：版本历史状态管理
+  const [versionHistoryState, setVersionHistoryState] = useState<VersionHistoryState>({
+    stepVersions: {}
+  });
+
+  // 🔧 新增：为步骤创建初始版本
+  const createInitialVersionForStep = useCallback((step: SolutionStepData) => {
+    const initialVersion: StepVersion = {
+      id: `${step.id}-v1`,
+      stepId: step.id,
+      content: step.latexContent,
+      timestamp: new Date(),
+      description: '初始版本',
+      isOriginal: true,
+      versionNumber: 1
+    };
+
+    const stepVersionHistory: StepVersionHistory = {
+      stepId: step.id,
+      versions: [initialVersion],
+      currentVersionIndex: 0
+    };
+
+    setVersionHistoryState(prev => ({
+      ...prev,
+      stepVersions: {
+        ...prev.stepVersions,
+        [step.id]: stepVersionHistory
+      }
+    }));
+  }, []);
+
+  // 🔧 新增：为步骤添加新版本
+  const addVersionToStep = useCallback((stepId: string, newContent: string, description?: string) => {
+    setVersionHistoryState(prev => {
+      const existingHistory = prev.stepVersions[stepId];
+      if (!existingHistory) return prev;
+
+      const newVersionNumber = existingHistory.versions.length + 1;
+      const newVersion: StepVersion = {
+        id: `${stepId}-v${newVersionNumber}`,
+        stepId,
+        content: newContent,
+        timestamp: new Date(),
+        description: description || `版本 ${newVersionNumber}`,
+        isOriginal: false,
+        versionNumber: newVersionNumber
+      };
+
+      const updatedHistory: StepVersionHistory = {
+        ...existingHistory,
+        versions: [...existingHistory.versions, newVersion],
+        currentVersionIndex: existingHistory.versions.length // 切换到新版本
+      };
+
+      return {
+        ...prev,
+        stepVersions: {
+          ...prev.stepVersions,
+          [stepId]: updatedHistory
+        }
+      };
+    });
+  }, []);
+
+  // 🔧 新增：获取步骤的版本历史
+  const getStepVersionHistory = useCallback((stepId: string): StepVersionHistory | null => {
+    return versionHistoryState.stepVersions[stepId] || null;
+  }, [versionHistoryState]);
+
+  // 🔧 新增：切换步骤版本
+  const switchStepVersion = useCallback((stepId: string, versionIndex: number) => {
+    setVersionHistoryState(prev => {
+      const existingHistory = prev.stepVersions[stepId];
+      if (!existingHistory || versionIndex < 0 || versionIndex >= existingHistory.versions.length) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        stepVersions: {
+          ...prev.stepVersions,
+          [stepId]: {
+            ...existingHistory,
+            currentVersionIndex: versionIndex
+          }
+        }
+      };
+    });
+  }, []);
+  
+  // 🔥 更新：使用页面级数据的 handleStepContentChange (移动到版本历史函数之后)
   const handleStepContentChange = useCallback((stepId: string, newLatexContent: string) => {
+    // 📝 首先检查内容是否真的改变了
+    const currentSolutionSteps = getCurrentPageSolutionSteps();
+    const existingStep = currentSolutionSteps.find(step => step.id === stepId);
+    
+    if (existingStep && existingStep.latexContent === newLatexContent) {
+      // 内容没有改变，不需要创建新版本
+      return;
+    }
+
+    // 📝 更新步骤内容
     setCurrentPageSolutionSteps(prevSteps => {
       const editedStepIndex = prevSteps.findIndex(step => step.id === stepId);
       if (editedStepIndex === -1) return prevSteps;
@@ -681,7 +823,12 @@ const MainLayout: React.FC = () => {
         }
       });
     });
-  }, [setCurrentPageSolutionSteps]);
+
+    // 📝 为这次保存创建新版本
+    if (existingStep) {
+      addVersionToStep(stepId, newLatexContent, `内容修改`);
+    }
+  }, [setCurrentPageSolutionSteps, getCurrentPageSolutionSteps, addVersionToStep]);
 
   // --- C4: Core handlers for Focus Analysis (Refactored) ---
   const handleInitiateFocusAnalysis = useCallback((nodeId: string, type: FocusAnalysisType) => {
@@ -754,8 +901,21 @@ const MainLayout: React.FC = () => {
   // +++ 新增回调：设置为主路径 +++
   const handleSetAsMainPath = useCallback((nodeId: string) => {
     setMainPathNodeId(nodeId);
-    toast.info(`节点 ${nodeId} 已被设置为新主路径的起始点。中间解答步骤区域将更新。`);
-  }, []);
+    
+    // 更新DAG节点，标记主路径
+    const mainPathElements = getMainPathElements(nodeId, dagNodes, dagEdges);
+    setDagNodes(prevNodes => 
+      prevNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          isMainPathNode: mainPathElements.nodes.includes(node.id)
+        }
+      }))
+    );
+    
+    toast.success(`节点 ${nodeId} 已被设置为主路径起始点。主路径包含 ${mainPathElements.nodes.length} 个节点。`);
+  }, [dagNodes, dagEdges]);
 
   // +++ T2.4: 新增回调，用于取消主路径设置 +++
   const handleCancelMainPath = useCallback(() => {
@@ -777,7 +937,7 @@ const MainLayout: React.FC = () => {
     } else {
       toast.error("无法查看详情：未找到步骤数据。");
     }
-  }, [getCurrentPageSolutionSteps, currentLayoutMode]);
+  }, [getCurrentPageSolutionSteps]);
 
   // +++ 回调：关闭步骤详情编辑器 +++
   const handleCloseStepDetailEditor = useCallback(() => {
@@ -800,6 +960,29 @@ const MainLayout: React.FC = () => {
   const handleViewEditStepDetails = useCallback((stepId: string) => {
     handleOpenViewEditStepDetails(stepId);
   }, [handleOpenViewEditStepDetails]);
+
+  // 🔧 新增：处理步骤重命名功能
+  const handleRenameStep = useCallback((stepId: string, newName: string) => {
+    if (!newName.trim()) return;
+    
+    // 更新当前页面的解题步骤数据 - 这里主要更新步骤的标签/名称
+    setCurrentPageSolutionSteps(prevSteps =>
+      prevSteps.map(step =>
+        step.id === stepId ? { ...step, /* 这里暂时没有直接的name字段，可能需要扩展 */ } : step
+      )
+    );
+
+    // 更新DAG节点数据中的label
+    setDagNodes(prevNodes =>
+      prevNodes.map(node =>
+        node.id === stepId 
+          ? { ...node, data: { ...node.data, label: newName } }
+          : node
+      )
+    );
+
+    toast.success(`步骤 "${newName}" 重命名成功`);
+  }, [setCurrentPageSolutionSteps, setDagNodes]);
 
   const copilotDagNodes: CopilotDagNodeInfo[] = useMemo(() => {
     if (!dagNodes) return [];
@@ -1001,7 +1184,10 @@ const MainLayout: React.FC = () => {
     
     console.log('🔥 Adding new step to current page:', newStep);
     setCurrentPageSolutionSteps(prevSteps => [...prevSteps, newStep]);
-  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps]);
+    
+    // 📝 为新创建的步骤创建初始版本历史
+    createInitialVersionForStep(newStep);
+  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, createInitialVersionForStep]);
 
   const timeoutRefs = useRef<{ [key: string]: NodeJS.Timeout }>({}); // Ref to store timeout IDs
   const prevSolutionStepsForToastRef = useRef<SolutionStepData[]>(); // Dedicated ref for toast comparison
@@ -1750,8 +1936,7 @@ const MainLayout: React.FC = () => {
   };
 
   // +++ NEW STATE FOR RIGHT SIDE MODE CARDS PANEL AND GLOBAL COPILOT MODE +++
-  const [currentGlobalCopilotMode, setCurrentGlobalCopilotMode] = useState<CopilotMode>('analysis');
-  const [showModeCardsPanel, setShowModeCardsPanel] = useState<boolean>(true); // Default to true so it shows when chat is closed
+  const [currentGlobalCopilotMode, setCurrentGlobalCopilotMode] = useState<CopilotMode | null>(null);
 
   // +++ MODEL MANAGEMENT STATE (MOVED FROM AICopilotPanel) +++
   // Removed duplicate: const copilotAvailableModels: string[] = [ ... ]; at line 2103
@@ -1805,16 +1990,35 @@ const MainLayout: React.FC = () => {
   // --- Callback to set context for AI Copilot ---
   const handleNodeSelectedForCopilot = (nodeId: string, nodeData: DagNodeRfData) => {
     console.log("MainLayout: Node selected for Copilot context:", nodeId, nodeData);
+    
+    // 🎯 设置上下文信息
     setCopilotContextNodeInfo({
       id: nodeId,
       label: nodeData.label,
       content: nodeData.fullLatexContent || '', // Or some other relevant content
     });
-    if (!isAiCopilotPanelOpen) {
-      setIsAiCopilotPanelOpen(true); // Open AI panel if a node context is set
-      // When opening AI panel, ensure ModeCardsPanel is hidden
-      setShowModeCardsPanel(false);
+    
+    // 🎯 如果当前是LaTeX模式，自动设置选中的步骤信息
+    if (currentGlobalCopilotMode === 'latex') {
+      setSelectedStepForLaTeX({
+        id: nodeId,
+        content: nodeData.fullLatexContent || '',
+        stepNumber: nodeData.stepNumber || 1
+      });
     }
+    
+    // 🎯 如果当前是分析模式，自动设置选中的步骤信息
+    if (currentGlobalCopilotMode === 'analysis') {
+      setSelectedStepForAnalysis({
+        id: nodeId,
+        content: nodeData.fullLatexContent || '',
+        stepNumber: nodeData.stepNumber || 1
+      });
+    }
+    
+    // 🎯 如果没有选择模式，不自动打开旧的AI面板
+    // 用户需要通过模式卡片来选择具体的功能
+    console.log('🎯 DAG节点已选择，等待用户选择AI模式');
   };
   
   // ... existing handlers like handleSaveProblem, handleAddSolutionStep ...
@@ -1822,29 +2026,49 @@ const MainLayout: React.FC = () => {
   const handleToggleAiCopilotPanel = () => {
     const newOpenState = !isAiCopilotPanelOpen;
     setIsAiCopilotPanelOpen(newOpenState);
-    if (newOpenState) {
-      // If AI Copilot is opening, hide the ModeCardsPanel
-      setShowModeCardsPanel(false);
-    } else {
-      // If AI Copilot is closing, show the ModeCardsPanel by default
-      // (user can then hide it with the 'three-lines' button if they want)
-      setShowModeCardsPanel(true);
-    }
+    // 🎯 移除Hide Modes相关逻辑，模式卡片现在始终显示
   };
 
   // +++ HANDLERS FOR NEW FUNCTIONALITY +++
+  // 🎯 新的直接模式切换逻辑 - 右侧面板架构
   const handleGlobalCopilotModeChange = (mode: CopilotMode) => {
     setCurrentGlobalCopilotMode(mode);
-    // If a mode is selected from ModeCardsPanel, and AI panel is closed, open it.
-    if (!isAiCopilotPanelOpen) {
-      setIsAiCopilotPanelOpen(true);
-      setShowModeCardsPanel(false); // Hide cards when chat opens
+    
+    // 🎯 如果有选中的DAG节点，自动应用到对应的模式面板
+    if (copilotContextNodeInfo) {
+      if (mode === 'latex') {
+        setSelectedStepForLaTeX({
+          id: copilotContextNodeInfo.id,
+          content: copilotContextNodeInfo.content || '',
+          stepNumber: 1 // 从DAG节点数据中获取，如果有的话
+        });
+        toast.success(`📐 LaTeX格式化模式已激活！正在编辑节点: ${copilotContextNodeInfo.label || copilotContextNodeInfo.id}`);
+      } else if (mode === 'analysis') {
+        setSelectedStepForAnalysis({
+          id: copilotContextNodeInfo.id,
+          content: copilotContextNodeInfo.content || '',
+          stepNumber: 1
+        });
+        toast.success(`🧠 解析分析模式已激活！正在分析节点: ${copilotContextNodeInfo.label || copilotContextNodeInfo.id}`);
+              } else if (mode === 'summary') {
+          // 总结模式不需要特定的状态设置，直接使用copilotContextNodeInfo
+          toast.success(`📊 总结归纳模式已激活！正在总结节点: ${copilotContextNodeInfo.label || copilotContextNodeInfo.id}`);
+        }
+    } else {
+      // 🎯 没有选中节点时的通用提示
+      if (mode === 'latex') {
+        toast.success('📐 LaTeX格式化模式已激活！请先选择一个DAG节点。');
+      } else if (mode === 'analysis') {
+        toast.success('🧠 解析分析模式已激活！请先选择一个DAG节点。');
+      } else if (mode === 'summary') {
+        toast.success('📊 总结归纳模式已激活！请先选择一个DAG节点。');
+      }
     }
+    
+    console.log('🎯 模式切换:', mode, '选中节点:', copilotContextNodeInfo);
   };
 
-  const handleToggleModeCardsPanel = () => {
-    setShowModeCardsPanel(prev => !prev);
-  };
+
 
   const handleSelectAiModel = (modelId: string) => {
     setCurrentSelectedAiModel(modelId);
@@ -1865,13 +2089,31 @@ const MainLayout: React.FC = () => {
   };
 
   // 🔥 修复：使用页面级数据的 handleAddSolutionStepViaSolverActions
-  const handleAddSolutionStepViaSolverActions = useCallback((latexInput: string) => {
+  const handleAddSolutionStepViaSolverActions = useCallback((latexInput: string, direction: 'forward' | 'backward') => {
     if (!latexInput.trim()) return;
     
     const currentSolutionSteps = getCurrentPageSolutionSteps();
+    
+    let newStepNumber: number;
+    
+    if (direction === 'forward') {
+      // 向前思考：在第一个解题块前生成，步骤编号最小
+      newStepNumber = 1;
+      // 更新现有步骤的编号
+      setCurrentPageSolutionSteps(prevSteps => 
+        prevSteps.map(step => ({
+          ...step,
+          stepNumber: step.stepNumber + 1
+        }))
+      );
+    } else {
+      // 向后思考：在最后一个解题块后生成
+      newStepNumber = currentSolutionSteps.filter(s => !s.isDeleted).length + 1;
+    }
+    
     const newStep: SolutionStepData = {
       id: `step-${Date.now()}`,
-      stepNumber: currentSolutionSteps.filter(s => !s.isDeleted).length + 1,
+      stepNumber: newStepNumber,
       latexContent: latexInput,
       verificationStatus: VerificationStatus.NotVerified,
       isDeleted: false,
@@ -1879,8 +2121,15 @@ const MainLayout: React.FC = () => {
       backwardDerivationStatus: ForwardDerivationStatus.Undetermined,
     };
     
-    console.log('🔥 Adding new step via solver actions to current page:', newStep);
-    setCurrentPageSolutionSteps(prevSteps => [...prevSteps, newStep]);
+    console.log(`🔥 Adding new step via solver actions (${direction} thinking) to current page:`, newStep);
+    
+    if (direction === 'forward') {
+      // 向前思考：在开头插入
+      setCurrentPageSolutionSteps(prevSteps => [newStep, ...prevSteps]);
+    } else {
+      // 向后思考：在末尾添加
+      setCurrentPageSolutionSteps(prevSteps => [...prevSteps, newStep]);
+    }
   }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps]);
 
   const handleCopilotSendMessage = async (message: string, mode: CopilotMode, model: string, contextNode?: CopilotContextNodeInfo | null) => {
@@ -1933,20 +2182,29 @@ const MainLayout: React.FC = () => {
     setIsTestPanelVisible(!isTestPanelVisible);
   };
 
-  const handleToggleAiDemo = () => {
-    setIsAiDemoVisible(!isAiDemoVisible);
-  };
+
 
   const handleCloseWelcome = () => {
     setShowWelcome(false);
   };
 
   const handleTestLaTeX = () => {
-    toast.info('🔄 正在测试 LaTeX 渲染功能...');
-    // 实际的LaTeX测试逻辑
-    setTimeout(() => {
-      toast.success('✅ LaTeX 渲染测试通过！MathJax 和 KaTeX 都工作正常。');
-    }, 1000);
+    console.log('测试LaTeX格式化功能 - 使用右侧抽屉');
+    // 🎯 使用新的右侧抽屉而不是内嵌面板
+    const currentSteps = getCurrentPageSolutionSteps();
+    if (currentSteps.length > 0) {
+      const firstStep = currentSteps[0];
+      handleOpenRightDrawer({
+        id: firstStep.id,
+        content: firstStep.latexContent,
+        stepNumber: firstStep.stepNumber
+      });
+      toast.success('📐 右侧LaTeX编辑器已打开！');
+    } else {
+      // 如果没有步骤，直接打开抽屉
+      handleOpenRightDrawer();
+      toast.info('📐 LaTeX编辑器已打开，您可以开始编辑！');
+    }
   };
 
   const handleTestDAG = () => {
@@ -1973,11 +2231,140 @@ const MainLayout: React.FC = () => {
     }, 1200);
   };
 
+  const handleTestEnhancedMentions = () => {
+    setShowEnhancedMentionDemo(true);
+    toast.success('🌟 增强@逻辑演示已启动！');
+    console.log('[TEST] Enhanced mentions demo opened');
+  };
+
+  const handleCloseEnhancedMentionDemo = () => {
+    setShowEnhancedMentionDemo(false);
+  };
+
+  // +++ LaTeX格式化面板处理函数 +++
+  const handleOpenLaTeXPanel = (stepId?: string, content?: string, stepNumber?: number) => {
+    if (stepId && content && stepNumber) {
+      setSelectedStepForLaTeX({ id: stepId, content, stepNumber });
+    }
+    setIsLaTeXPanelVisible(true);
+    toast.success('📐 LaTeX格式化面板已打开！');
+  };
+
+  const handleCloseLaTeXPanel = () => {
+    setIsLaTeXPanelVisible(false);
+    setSelectedStepForLaTeX(null);
+  };
+
+  const handleLaTeXContentChange = (newContent: string) => {
+    if (selectedStepForLaTeX) {
+      handleStepContentChange(selectedStepForLaTeX.id, newContent);
+      setSelectedStepForLaTeX(prev => prev ? { ...prev, content: newContent } : null);
+    }
+  };
+
+  // +++ 解析分析面板处理函数 +++
+  const handleOpenAnalysisPanel = (stepId?: string, content?: string, stepNumber?: number) => {
+    if (stepId && content && stepNumber) {
+      setSelectedStepForAnalysis({ id: stepId, content, stepNumber });
+    }
+    setIsAnalysisPanelVisible(true);
+    toast.success('🧠 解析分析面板已打开！');
+  };
+
+  const handleCloseAnalysisPanel = () => {
+    setIsAnalysisPanelVisible(false);
+    setSelectedStepForAnalysis(null);
+  };
+
+  // +++ 右侧抽屉事件处理 +++
+  const handleToggleRightDrawer = useCallback((type: DrawerType) => {
+    if (type === rightDrawerType) {
+      // 如果点击的是当前激活的类型，则关闭抽屉
+      setIsRightDrawerOpen(false);
+      setRightDrawerType(null);
+    } else {
+      // 否则打开对应类型的抽屉
+      setRightDrawerType(type);
+      setIsRightDrawerOpen(type !== null);
+    }
+  }, [rightDrawerType]);
+
+  const handleOpenRightDrawer = useCallback((stepInfo?: { id: string; content: string; stepNumber: number }) => {
+    if (stepInfo) {
+      setDrawerContextStepInfo({
+        id: stepInfo.id,
+        stepNumber: stepInfo.stepNumber,
+        title: `步骤 ${stepInfo.stepNumber}`,
+        content: stepInfo.content,
+        preview: stepInfo.content.substring(0, 50) + '...'
+      });
+    }
+    setRightDrawerType('features'); // 默认打开功能选择
+    setIsRightDrawerOpen(true);
+  }, []);
+
+  const handleCloseRightDrawer = useCallback(() => {
+    setIsRightDrawerOpen(false);
+    setRightDrawerType(null);
+  }, []);
+
+  // 处理功能选择
+  const handleFeatureSelect = useCallback((featureId: string) => {
+    console.log('选择功能:', featureId);
+    // 根据功能ID执行相应操作
+    switch (featureId) {
+      case 'latex-format':
+        handleOpenLaTeXPanel();
+        break;
+      case 'math-analysis':
+        handleOpenAnalysisPanel();
+        break;
+      case 'step-summary':
+        // 实现步骤总结功能
+        toast.info('步骤总结功能开发中...');
+        break;
+      case 'error-check':
+        // 实现错误检查功能
+        toast.info('错误检查功能开发中...');
+        break;
+      default:
+        toast.info(`功能 ${featureId} 开发中...`);
+    }
+    // 选择功能后关闭抽屉
+    handleCloseRightDrawer();
+  }, []);
+
+  const handleDrawerContentChange = useCallback((newContent: string) => {
+    if (drawerContextStepInfo) {
+      // 更新对应步骤的内容
+      setCurrentPageSolutionSteps(prevSteps =>
+        prevSteps.map(step =>
+          step.id === drawerContextStepInfo.id
+            ? { ...step, latexContent: newContent }
+            : step
+        )
+      );
+
+      // 更新DAG节点中的内容
+      setDagNodes(prevNodes =>
+        prevNodes.map(node =>
+          node.id === drawerContextStepInfo.id
+            ? { ...node, data: { ...node.data, fullLatexContent: newContent } }
+            : node
+        )
+      );
+
+      // 更新抽屉中的context信息
+      setDrawerContextStepInfo(prev => prev ? { ...prev, content: newContent } : null);
+    }
+  }, [drawerContextStepInfo, setCurrentPageSolutionSteps, setDagNodes]);
+
   // +++ EDGE_SELECTION: Add edge selection and deletion handlers +++
   const handleEdgeSelect = useCallback((edgeId: string | null) => {
     setSelectedEdgeId(edgeId);
     if (edgeId) {
       console.log('Edge selected:', edgeId);
+      toast.info('连接线已选中。按Delete键删除，或点击其他地方取消选择。');
     }
   }, []);
 
@@ -2350,12 +2737,23 @@ const MainLayout: React.FC = () => {
     if (!Array.isArray(dagNodes)) {
       return [];
     }
-    return dagNodes.map(node => ({
-      id: node.id,
-      label: node.data.label,
-      content: node.data.fullLatexContent, // Or a summary
-    }));
-  }, [dagNodes]);
+    const currentSteps = getCurrentPageSolutionSteps();
+    return dagNodes.map(node => {
+      // 尝试从stepNumber或label中提取步骤号
+      const stepNumber = node.data.stepNumber || 
+        parseInt(node.data.label?.match(/\d+/)?.[0] || '0');
+      
+      // 从对应的SolutionStep中获取完整内容
+      const correspondingStep = currentSteps.find(step => step.id === node.id);
+      
+      return {
+        id: node.id,
+        label: node.data.label,
+        content: correspondingStep?.latexContent || node.data.fullLatexContent || '',
+        stepNumber: stepNumber || undefined,
+      };
+    });
+  }, [dagNodes, getCurrentPageSolutionSteps]);
 
   // Callback for SplitStepModal confirmation
   const handleConfirmSplitStepModal = useCallback((part1Content: string, part2Content: string) => {
@@ -2543,10 +2941,7 @@ const MainLayout: React.FC = () => {
     }));
   }, []);
 
-  const handleCancelNewPathCreation = useCallback(() => {
-    console.log("Cancel new path creation");
-    toast.info("取消创建新路径。");
-  }, []);
+
 
   const handleCopyNodeInfo = useCallback(async (stepId: string) => {
     const nodeToCopy = dagNodes.find(n => n.id === stepId);
@@ -2608,20 +3003,55 @@ ${fullLatex}
 
   const handleNewPathFromNode = useCallback((nodeId: string) => {
     console.log(`Create new path from node ${nodeId}`);
-    toast.info("创建新路径功能尚未实现。");
+    setIsCreatingNewPath(true);
+    setStartNewPathNodeId(nodeId);
+    toast.info(`从节点 ${nodeId} 开始创建新路径。请选择目标节点。`);
   }, []);
 
   const handleSelectNewPathTargetNode = useCallback((targetNodeId: string) => {
-    console.log(`Select target node for new path: ${targetNodeId}`);
-    toast.info("选择目标节点功能尚未实现。");
+    if (!startNewPathNodeId) return;
+    
+    console.log(`Select target node for new path: ${startNewPathNodeId} -> ${targetNodeId}`);
+    
+    const result = findPathBetweenNodes(startNewPathNodeId, targetNodeId, dagNodes, dagEdges);
+    if (result) {
+      setCurrentNewPathElements({ nodes: result.pathNodes, edges: result.pathEdges });
+      toast.success(`新路径已创建！包含 ${result.pathNodes.length} 个节点。`);
+    } else {
+      toast.warning("无法在选定的节点之间创建路径。");
+    }
+    
+    // 清理状态
+    setIsCreatingNewPath(false);
+    setStartNewPathNodeId(null);
+    setPreviewPathElements(null);
+  }, [startNewPathNodeId, dagNodes, dagEdges]);
+
+  const handleCancelNewPathCreation = useCallback(() => {
+    setIsCreatingNewPath(false);
+    setStartNewPathNodeId(null);
+    setPreviewPathElements(null);
+    setCurrentNewPathElements(null);
+    toast.info("新路径创建已取消。");
   }, []);
+
+  // 🔧 新增：为现有步骤创建初始版本历史
+  useEffect(() => {
+    const currentSteps = getCurrentPageSolutionSteps();
+    currentSteps.forEach(step => {
+      const existingHistory = getStepVersionHistory(step.id);
+      if (!existingHistory) {
+        createInitialVersionForStep(step);
+      }
+    });
+  }, [getCurrentPageSolutionSteps, getStepVersionHistory, createInitialVersionForStep]);
 
   return (
     <ReactFlowProvider> {/* Ensures React Flow context is available */}
       <div ref={mainLayoutRef} className={styles.mainLayoutContainer}>
         {/* Check if showing interpretation management */}
         {showInterpretationManagement ? (
-          <InterpretationManagementView
+          <ModernInterpretationView
             interpretationEntries={interpretationState.entries}
             onBack={handleCloseInterpretationManagement}
             onUpdateEntry={handleUpdateInterpretationEntry}
@@ -2681,6 +3111,7 @@ ${fullLatex}
                   onAddOrUpdateNote={handleOpenNoteModal}
                   onInterpretIdea={handleInterpretIdea}
                   onViewEditStepDetails={handleViewEditStepDetails}
+                  onRenameStep={handleRenameStep}
                   onCopyNodeInfo={handleCopyNodeInfo}
                   onCopyPathInfo={handleCopyPathInfo}
                   onNewPathFromNode={handleNewPathFromNode}
@@ -2705,6 +3136,8 @@ ${fullLatex}
                   // +++ End PATH_GROUPS +++
                 />
                 </div>
+
+
               </div>
               <DraggableSeparator orientation="vertical" onDrag={(delta) => handleDragVertical(delta.dx, 0)} />
             </>
@@ -2769,56 +3202,187 @@ ${fullLatex}
               </div>
           </div>
           
-          {/* Conditional Separator & Right Side Area (ModeCards or AICopilotPanel) */}
-          {/* This logic determines what to show on the right based on isAiCopilotPanelOpen */}
-
-          {isAiCopilotPanelOpen && (
-            <>
-              <DraggableSeparator orientation="vertical" onDrag={(delta) => handleDragVertical(delta.dx, 1)} />
-              <div className={styles.aiCopilotPanel} style={aiCopilotPanelStyle}>
-                <AICopilotPanel
-                  isOpen={isAiCopilotPanelOpen}
-                  onToggle={handleToggleAiCopilotPanel}
-                  dagNodes={dagNodesForCopilot}
-                  contextNodeInfo={copilotContextNodeInfo}
-                  onSendMessage={handleCopilotSendMessage}
-                  currentMode={currentGlobalCopilotMode}
-                  onModeChange={handleGlobalCopilotModeChange}
+          {/* 🎯 新架构：右侧区域根据模式显示不同面板 */}
+          <>
+            {/* Only show separator if solver region is also visible and has width */}
+            {panelWidths.solver > 0 && <DraggableSeparator orientation="vertical" onDrag={(delta) => handleDragVertical(delta.dx, 1)} />}
+            <div className={styles.rightSideAreaPanel} style={rightSideAreaStyle}>
+              {/* 根据当前模式渲染不同的面板 */}
+              {currentGlobalCopilotMode === 'latex' && (
+                <ModernLaTeXPanel
+                  isOpen={true}
+                  onClose={() => setCurrentGlobalCopilotMode(null)} // 🎯 返回模式选择
+                  contextStepInfo={selectedStepForLaTeX ? {
+                    id: selectedStepForLaTeX.id,
+                    stepNumber: selectedStepForLaTeX.stepNumber,
+                    title: `步骤 ${selectedStepForLaTeX.stepNumber}`,
+                    content: selectedStepForLaTeX.content,
+                    preview: selectedStepForLaTeX.content.substring(0, 50) + '...'
+                  } : undefined}
+                  onContentChange={handleLaTeXContentChange}
+                  // 传递真实DAG数据
+                  dagPages={dagPageState.pages.map(page => ({
+                    id: page.id,
+                    name: page.name,
+                    isActive: page.isActive
+                  }))}
+                  answerBlocks={getCurrentPageSolutionSteps().map(step => ({
+                    id: step.id,
+                    stepNumber: step.stepNumber,
+                    content: step.latexContent,
+                    title: `步骤 ${step.stepNumber}`
+                  }))}
+                  problemData={problemData ? {
+                    id: problemData.id,
+                    title: problemData.title,
+                    content: problemData.latexContent
+                  } : undefined}
+                  onPageSelect={(pageId) => {
+                    // 实现页面切换逻辑
+                    console.log('切换到页面:', pageId);
+                  }}
+                  onAnswerBlockSelect={(blockId) => {
+                    // 实现解答块选择逻辑
+                    if (blockId === 'problem-content') {
+                      // 选择题目内容
+                      setSelectedStepForLaTeX({
+                        id: 'problem-content',
+                        content: problemData?.latexContent || '',
+                        stepNumber: 0
+                      });
+                    } else {
+                      // 选择解题步骤
+                      const selectedStep = getCurrentPageSolutionSteps().find(step => step.id === blockId);
+                      if (selectedStep) {
+                        setSelectedStepForLaTeX({
+                          id: selectedStep.id,
+                          content: selectedStep.latexContent,
+                          stepNumber: selectedStep.stepNumber
+                        });
+                      }
+                    }
+                  }}
                 />
-              </div>
-            </>
-          )}
+              )}
+              
+              {currentGlobalCopilotMode === 'analysis' && (
+                <ModernAnalysisPanel
+                  isOpen={true}
+                  onClose={() => setCurrentGlobalCopilotMode(null)} // 🎯 返回模式选择
+                  currentStep={selectedStepForAnalysis?.stepNumber || 1}
+                  totalSteps={getCurrentPageSolutionSteps().length}
+                  contextStepInfo={selectedStepForAnalysis ? {
+                    id: selectedStepForAnalysis.id,
+                    content: selectedStepForAnalysis.content,
+                    stepNumber: selectedStepForAnalysis.stepNumber
+                  } : null}
+                  // 🎯 传递真实DAG数据
+                  dagPages={dagPageState.pages.map(page => ({
+                    id: page.id,
+                    name: page.name,
+                    isActive: page.isActive,
+                    highlightColor: page.highlightColor || undefined
+                  }))}
+                  stepBlocks={getCurrentPageSolutionSteps().map(step => ({
+                    id: step.id,
+                    stepNumber: step.stepNumber,
+                    content: step.latexContent,
+                    title: `步骤 ${step.stepNumber}`,
+                    verificationStatus: step.verificationStatus === VerificationStatus.VerifiedCorrect ? 'verified' :
+                                       step.verificationStatus === VerificationStatus.VerifiedIncorrect ? 'error' : 'unverified',
+                    forwardDerivationStatus: step.forwardDerivationStatus === ForwardDerivationStatus.Correct ? 'correct' :
+                                           step.forwardDerivationStatus === ForwardDerivationStatus.Incorrect ? 'incorrect' : 'undetermined',
+                    backwardDerivationStatus: step.backwardDerivationStatus === ForwardDerivationStatus.Correct ? 'correct' :
+                                            step.backwardDerivationStatus === ForwardDerivationStatus.Incorrect ? 'incorrect' : 'undetermined',
+                    hasInterpretation: !!step.interpretationIdea,
+                    hasNotes: !!step.notes,
+                    isHighlighted: !!step.notes, // 简化判断
+                    highlightColor: '#fbbf24', // 默认高亮颜色
+                    isFocused: step.id === selectedStepForAnalysis?.id
+                  }))}
+                  selectedDagPageId={dagPageState.activePageId || undefined}
+                  selectedStepId={selectedStepForAnalysis?.id}
+                  onPageSelect={(pageId) => {
+                    // 实现页面切换逻辑
+                    console.log('Analysis面板切换到页面:', pageId);
+                  }}
+                  onStepSelect={(stepId) => {
+                    // 实现步骤选择逻辑
+                    const selectedStep = getCurrentPageSolutionSteps().find(step => step.id === stepId);
+                    if (selectedStep) {
+                      setSelectedStepForAnalysis({
+                        id: selectedStep.id,
+                        content: selectedStep.latexContent,
+                        stepNumber: selectedStep.stepNumber
+                      });
+                    }
+                  }}
+                />
+              )}
+              
+              {currentGlobalCopilotMode === 'summary' && (
+                <ModernSummaryPanel
+                  isOpen={true}
+                  onClose={() => setCurrentGlobalCopilotMode(null)} // 🎯 返回模式选择
+                  contextStepInfo={copilotContextNodeInfo ? {
+                    id: copilotContextNodeInfo.id,
+                    content: copilotContextNodeInfo.content || '',
+                    stepNumber: 1 // 总结模式可以基于当前选中的节点
+                  } : null}
+                  onContentChange={(content: string) => console.log('Summary content changed:', content)}
+                  // 🎯 传递真实DAG数据
+                  dagPages={dagPageState.pages.map(page => ({
+                    id: page.id,
+                    name: page.name,
+                    isActive: page.isActive,
+                    highlightColor: page.highlightColor || undefined
+                  }))}
+                  stepBlocks={getCurrentPageSolutionSteps().map(step => ({
+                    id: step.id,
+                    stepNumber: step.stepNumber,
+                    content: step.latexContent,
+                    title: `步骤 ${step.stepNumber}`,
+                    verificationStatus: step.verificationStatus === VerificationStatus.VerifiedCorrect ? 'verified' :
+                                       step.verificationStatus === VerificationStatus.VerifiedIncorrect ? 'error' : 'unverified',
+                    forwardDerivationStatus: step.forwardDerivationStatus === ForwardDerivationStatus.Correct ? 'correct' :
+                                           step.forwardDerivationStatus === ForwardDerivationStatus.Incorrect ? 'incorrect' : 'undetermined',
+                    backwardDerivationStatus: step.backwardDerivationStatus === ForwardDerivationStatus.Correct ? 'correct' :
+                                            step.backwardDerivationStatus === ForwardDerivationStatus.Incorrect ? 'incorrect' : 'undetermined',
+                    hasInterpretation: !!step.interpretationIdea,
+                    hasNotes: !!step.notes,
+                    isHighlighted: !!step.notes, // 简化判断
+                    highlightColor: '#fbbf24', // 默认高亮颜色
+                    isFocused: false // 总结模式下不需要聚焦特定步骤
+                  }))}
+                  selectedDagPageId={dagPageState.activePageId || undefined}
+                  selectedStepId={selectedStepForSummary}
+                  onPageSelect={(pageId) => {
+                    // 实现页面切换逻辑
+                    console.log('Summary面板切换到页面:', pageId);
+                  }}
+                  onStepSelect={(stepId) => {
+                    // 实现步骤选择逻辑
+                    console.log('Summary面板选择步骤:', stepId);
+                    setSelectedStepForSummary(stepId);
+                  }}
+                  // 🎯 传递题目数据
+                  problemData={problemData ? {
+                    id: problemData.id,
+                    title: problemData.title,
+                    content: problemData.latexContent
+                  } : null}
+                />
+              )}
 
-          {!isAiCopilotPanelOpen && (
-            <>
-              {/* Only show separator if solver region is also visible and has width */}
-              {panelWidths.solver > 0 && <DraggableSeparator orientation="vertical" onDrag={(delta) => handleDragVertical(delta.dx, 1)} />}
-              <div className={styles.rightSideModePanel} style={rightSideAreaStyle}> {/* New CSS class */}
-                <div className={styles.modeCardsToggleBar}> {/* Bar for the 'three-lines' button */}
-                  <button 
-                    onClick={handleToggleModeCardsPanel} 
-                    className={styles.modeCardsPanelToggleButton} /* New CSS class for the button */
-                    title={showModeCardsPanel ? "Hide Modes" : "Show Modes"}
-                  >
-                    <Menu size={20} />
-                  </button>
-                  {/* You can add a title like "AI Modes" here if needed */}
-                </div>
-                {showModeCardsPanel ? (
-                  <ModeCardsPanel
-                    currentMode={currentGlobalCopilotMode}
-                    onModeSelect={handleGlobalCopilotModeChange}
-                  />
-                ) : (
-                  <RightPanelContent
-                    currentMode={currentGlobalCopilotMode}
-                    solutionSteps={mainPathSteps}
-                    problemContent={problemData?.latexContent || ''}
-                  />
-                )}
-              </div>
-            </>
-          )}
+              {/* 无模式状态时显示模式选择卡片 */}
+              {currentGlobalCopilotMode === null && (
+                <ModeCardsPanel
+                  currentMode={currentGlobalCopilotMode}
+                  onModeSelect={handleGlobalCopilotModeChange}
+                />
+              )}
+            </div>
+          </>
         </div>
         )}
 
@@ -2875,27 +3439,36 @@ ${fullLatex}
           <NewPathCreationHintBar onCancel={handleCancelNewPathCreation} />
         )}
 
-        {/* AI Assistant Demo */}
-        <AIAssistantDemo
-          isActive={isAiDemoVisible}
-          onToggle={handleToggleAiDemo}
-        />
 
-        {/* Feature Test Panel */}
-        <FeatureTestPanel
-          isVisible={isTestPanelVisible}
-          onToggle={handleToggleTestPanel}
-          onTestLaTeX={handleTestLaTeX}
-          onTestDAG={handleTestDAG}
-          onTestAI={handleTestAI}
-          onTestSolver={handleTestSolver}
-        />
+
+        {/* Feature Test Panel - 只在非思路解读管理模式下显示 */}
+        {!showInterpretationManagement && (
+          <FeatureTestPanel
+            isVisible={isTestPanelVisible}
+            onToggle={handleToggleTestPanel}
+            isAiDemoVisible={isAiDemoVisible}
+            onTestLaTeX={handleTestLaTeX}
+            onTestDAG={handleTestDAG}
+            onTestAI={handleTestAI}
+            onTestSolver={handleTestSolver}
+            onTestEnhancedMentions={handleTestEnhancedMentions}
+            onOpenLaTeXPanel={handleOpenLaTeXPanel}
+          />
+        )}
 
         {/* Welcome Message */}
         <WelcomeMessage
           autoShow={showWelcome}
           onClose={handleCloseWelcome}
         />
+
+        {/* Enhanced Mention Demo */}
+        <EnhancedMentionDemo
+          isVisible={showEnhancedMentionDemo}
+          onClose={handleCloseEnhancedMentionDemo}
+        />
+
+        {/* 🎯 移除浮窗面板 - 现在集成到右侧区域 */}
 
         {/* Path Group Indicator */}
         {/* 暂时移除PathGroupIndicator的独立显示，避免在右侧显示"丑东西" */}
@@ -2904,6 +3477,64 @@ ${fullLatex}
           mainPathGroupId={mainPathGroupId}
           onSetMainPath={handleSetMainPathGroup}
         /> */}
+
+        {/* +++ RIGHT_DRAWER: 右侧抽屉组件 +++ */}
+        <RightDrawer
+          isOpen={isRightDrawerOpen}
+          drawerType={rightDrawerType}
+          onToggle={handleToggleRightDrawer}
+          contextStepInfo={drawerContextStepInfo || undefined}
+          onContentChange={handleDrawerContentChange}
+          dagPages={dagPageState.pages.map(page => ({
+            id: page.id,
+            name: page.name,
+            createdAt: page.createdAt,
+            isActive: page.isActive,
+            highlightColor: page.highlightColor || undefined
+          }))}
+          // 🔧 修复：添加真实的answerBlocks数据传递
+          answerBlocks={getCurrentPageSolutionSteps().map(step => ({
+            id: step.id,
+            stepNumber: step.stepNumber,
+            content: step.latexContent,
+            title: `步骤 ${step.stepNumber}`,
+            verificationStatus: step.verificationStatus === VerificationStatus.VerifiedCorrect ? 'verified' :
+                               step.verificationStatus === VerificationStatus.VerifiedIncorrect ? 'error' : 'unverified'
+          }))}
+          onPageSelect={(pageId) => {
+            console.log('选择DAG页面:', pageId);
+            // 实现页面切换逻辑
+          }}
+          onPageCreate={() => {
+            console.log('创建新DAG页面');
+            // 实现页面创建逻辑
+          }}
+          onPageDelete={(pageId) => {
+            console.log('删除DAG页面:', pageId);
+            // 实现页面删除逻辑
+          }}
+          onAnswerBlockSelect={(blockId) => {
+            console.log('选择解答块:', blockId);
+            // 🔧 修复：实现解答块选择逻辑
+            const selectedStep = getCurrentPageSolutionSteps().find(step => step.id === blockId);
+            if (selectedStep) {
+              setDrawerContextStepInfo({
+                id: selectedStep.id,
+                stepNumber: selectedStep.stepNumber,
+                title: `步骤 ${selectedStep.stepNumber}`,
+                content: selectedStep.latexContent,
+                preview: selectedStep.latexContent.substring(0, 50) + '...'
+              });
+            }
+          }}
+          onFeatureSelect={handleFeatureSelect}
+          isLaTeXPanelVisible={currentGlobalCopilotMode === 'latex'}
+          // 🔧 新增：版本历史相关函数
+          getStepVersionHistory={getStepVersionHistory}
+          switchStepVersion={switchStepVersion}
+          addVersionToStep={addVersionToStep}
+        />
+        {/* +++ End RIGHT_DRAWER +++ */}
       </div>
     </ReactFlowProvider>
   );
