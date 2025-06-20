@@ -21,12 +21,12 @@ const ProblemBlock: React.FC<ProblemBlockProps> = ({ data, onContentChange }) =>
   }, [data, isEditing]);
 
   const handleEditToggle = () => {
-    if (isEditing && data) {
-      if (editText !== data.latexContent) {
-        onContentChange(editText);
-      }
+    if (isEditing) {
+      // 当从编辑模式切换到显示模式时，保存更改
+      onContentChange(editText);
     } else if (data) {
-      setEditText(data.latexContent); // Load current content when starting to edit
+      // 当从显示模式切换到编辑模式时，加载当前内容
+      setEditText(data.latexContent);
     }
     setIsEditing(!isEditing);
   };

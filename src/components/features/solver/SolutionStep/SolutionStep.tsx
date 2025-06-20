@@ -8,6 +8,7 @@ import {
   ArrowRightCircle, ArrowLeftCircle, Wand2, // <<< ADDED: Wand2 for AI Analysis
   FileText // <<< ADDED: FileText for LaTeX formatting
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 // Placeholder icons
 const EditIcon = () => <span>✏️</span>;
@@ -25,10 +26,23 @@ interface SolutionStepProps {
   onSplit: (originalStepId: string, part1Content: string, part2Content: string) => void;
   onCheckForwardDerivation?: (stepId: string) => void;
   onCheckBackwardDerivation?: (stepId: string) => void;
-  onOpenLatexFormat?: (stepId: string, content: string) => void;
+  getCurrentPageSolutionSteps: () => SolutionStepData[];
+  problemLatex: string;
+  onUpdateStepAiAnalysis?: (stepId: string, aiAnalysisContent: string | null) => void;
 }
 
-const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDelete, onInitiateAiAnalysisWithChecks, onSplit, onCheckForwardDerivation, onCheckBackwardDerivation }) => {
+const SolutionStep: React.FC<SolutionStepProps> = ({ 
+  step, 
+  onContentChange, 
+  onDelete, 
+  onInitiateAiAnalysisWithChecks, 
+  onSplit, 
+  onCheckForwardDerivation, 
+  onCheckBackwardDerivation,
+  getCurrentPageSolutionSteps,
+  problemLatex,
+  onUpdateStepAiAnalysis
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentEditText, setCurrentEditText] = useState(step.latexContent);
 
@@ -37,9 +51,8 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
   const [splitPart2Text, setSplitPart2Text] = useState('');
 
   // --- States for AI Analysis ---
-  const [aiAnalysisContent, setAiAnalysisContent] = useState<string | null>(null);
   const [isAiAnalysisLoading, setIsAiAnalysisLoading] = useState<boolean>(false);
-  const [isAiOutputVisible, setIsAiOutputVisible] = useState<boolean>(false);
+  const [isAiOutputVisible, setIsAiOutputVisible] = useState<boolean>(!!step.aiAnalysisContent);
   // --- End States for AI Analysis ---
 
   // Log when the component receives step prop updates
@@ -84,31 +97,61 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
     onDelete(step.id);
   }, [step.id, onDelete]);
 
-  const handleAiAnalysisClick = useCallback(() => {
-    // AI Analysis button itself no longer directly shows loading or content.
-    // It delegates to MainLayout, which will handle the sequence of checks and then the actual AI call.
-    // The UI for loading/content of AI analysis will still be managed by SolutionStep based on props from MainLayout if needed,
-    // or MainLayout could manage a global AI analysis display.
-    // For now, SolutionStep retains its local AI display state, assuming onInitiateAiAnalysisWithChecks will trigger MainLayout
-    // which then might update props that cause SolutionStep to show loading/results.
-
-    // Call the new handler in MainLayout, passing current derivation statuses
-    onInitiateAiAnalysisWithChecks(step.id, step.forwardDerivationStatus, step.backwardDerivationStatus);
-    
-    // We can optimistically show the AI output area and a loading state here, 
-    // assuming the MainLayout will proceed with the AI call.
-    // However, the actual API call and content setting should be driven by MainLayout.
-    // For this iteration, to keep SolutionStep simpler, we'll let MainLayout manage the AI call fully.
-    // The local AI display state in SolutionStep might become redundant or repurposed later.
-    // For now, let's just ensure the AI panel opens and shows a generic loading message
-    // if it's not already visible.
-    if (!isAiOutputVisible) {
-        setIsAiOutputVisible(true); // Show the panel
-        setIsAiAnalysisLoading(true); // Assume loading will start
-        setAiAnalysisContent(null); // Clear previous content
+  const handleAiAnalysisClick = useCallback(async () => {
+    if (!step.latexContent) {
+      toast.error('此步骤没有内容可供分析');
+      return;
     }
 
-  }, [step.id, step.forwardDerivationStatus, step.backwardDerivationStatus, onInitiateAiAnalysisWithChecks, isAiOutputVisible]);
+    try {
+      setIsAiAnalysisLoading(true);
+      setIsAiOutputVisible(true);
+
+      // 获取当前页面的所有步骤
+      const currentSolutionSteps = getCurrentPageSolutionSteps();
+      
+      // 构建历史步骤字符串
+      const historySteps = currentSolutionSteps
+        .filter((s: SolutionStepData) => s.stepNumber < step.stepNumber)
+        .map((s: SolutionStepData) => `步骤 ${s.stepNumber}: ${s.latexContent}`)
+        .join('\n');
+
+      // 调用 API
+      const response = await fetch('http://localhost:8000/chat/explain_step', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rawLatex: problemLatex,
+          history_steps: historySteps,
+          current_step: `步骤 ${step.stepNumber}: ${step.latexContent}`
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.payload?.explanation) {
+        if (onUpdateStepAiAnalysis) {
+          onUpdateStepAiAnalysis(step.id, data.payload.explanation);
+        }
+      } else {
+        throw new Error('返回数据格式不正确');
+      }
+    } catch (error) {
+      console.error('Error analyzing step:', error);
+      toast.error('分析步骤时出错，请重试');
+      if (onUpdateStepAiAnalysis) {
+        onUpdateStepAiAnalysis(step.id, null);
+      }
+    } finally {
+      setIsAiAnalysisLoading(false);
+    }
+  }, [step.id, step.stepNumber, step.latexContent, getCurrentPageSolutionSteps, problemLatex]);
 
   const handleCheckForwardDerivationClick = useCallback(() => {
     if (step.forwardDerivationStatus === ForwardDerivationStatus.Pending) {
@@ -330,7 +373,7 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
                 <span>AI 分析中...</span>
               </div>
             ) : (
-              aiAnalysisContent && (
+              step.aiAnalysisContent && (
                 <div className={styles.aiAnalysisContent}>
                   <Latex delimiters={[
                     { left: "$$", right: "$$", display: true },
@@ -338,7 +381,7 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
                     { left: "\(", right: "\)", display: false },
                     { left: "\[", right: "\]", display: true }
                   ]}>
-                    {aiAnalysisContent}
+                    {step.aiAnalysisContent}
                   </Latex>
                 </div>
               )
@@ -346,6 +389,14 @@ const SolutionStep: React.FC<SolutionStepProps> = ({ step, onContentChange, onDe
           </div>
         )}
         {/* --- End AI Analysis Output Area --- */}
+        
+        {/* 备注区域 - 显示验证失败的错误原因 */}
+        {step.notes && (
+          <div className={styles.notes}>
+            <span className={styles.notesLabel}>备注:</span>
+            <span className={styles.notesContent}>{step.notes}</span>
+          </div>
+        )}
       </div>
       <div className={styles.actions}>
         {isEditing ? (

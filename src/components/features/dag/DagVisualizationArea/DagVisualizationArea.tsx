@@ -460,7 +460,15 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       targetPosition: appNode.targetPosition as Position | undefined,
     }));
     setRfNodes(reactFlowNodes);
-  }, [initialNodesFromProps, setRfNodes]);
+    
+    // 🔥 修复：当节点数据更新后，自动居中显示DAG
+    if (reactFlowNodes.length > 0) {
+      // 使用setTimeout确保DOM更新完成后再调用fitView
+      setTimeout(() => {
+        fitView({ duration: 500, padding: 0.1 });
+      }, 100);
+    }
+  }, [initialNodesFromProps, setRfNodes, fitView]);
 
   useEffect(() => {
     const reactFlowEdges: Edge[] = initialEdgesFromProps.map(e => ({
@@ -480,7 +488,14 @@ const DagVisualizationArea: React.FC<DagVisualizationAreaProps> = ({
       zIndex: e.zIndex,
     }));
     setRfEdges(reactFlowEdges);
-  }, [initialEdgesFromProps, setRfEdges]);
+    
+    // 🔥 修复：当边数据更新且有节点时，确保视图居中
+    if (reactFlowEdges.length > 0 && rfNodes.length > 0) {
+      setTimeout(() => {
+        fitView({ duration: 300, padding: 0.1 });
+      }, 50);
+    }
+  }, [initialEdgesFromProps, setRfEdges, rfNodes.length, fitView]);
 
   const onConnect = useCallback(
     (params: Connection | Edge) => {

@@ -121,6 +121,7 @@ export interface SolutionStepData {
   interpretationIdea?: string; // 思路解读内容，支持LaTeX
   interpretationStatus?: 'pending' | 'reviewed' | 'replied'; // 思路解读状态
   interpretationTimestamp?: Date; // 思路解读提交时间
+  aiAnalysisContent?: string; // AI解析内容
 }
 
 /**
@@ -160,6 +161,14 @@ export interface PathGroupState {
   selectedEdgeId: string | null;
 }
 
+// +++ SIMILAR_PROBLEMS: Add similar problems types +++
+export interface SimilarProblem {
+  id: string;
+  stem: string;
+  score: number;
+}
+// +++ End SIMILAR_PROBLEMS +++
+
 // +++ DAG_PAGES: Add DAG page management types +++
 export interface DagPage {
   id: string;
@@ -170,9 +179,14 @@ export interface DagPage {
   mainPathGroupId: string | null;
   createdAt: Date;
   isActive: boolean;
-  // 🔥 每个页面独立的解题步骤（从全局solutionSteps中筛选出的）
-  solutionSteps: SolutionStepData[]; // 每个页面独立的解题步骤
-  // 注意：题目数据（problemData）应该是全局共享的，不存储在单个页面中
+  // 🔥 每个页面独立的解题步骤
+  solutionSteps: SolutionStepData[];
+  // 🔥 每个页面独立的题目数据
+  problemData: ProblemData | null;
+  // 🔥 每个页面独立的总结内容
+  summaryContent: string;
+  // 🔥 每个页面独立的类似题目
+  similarProblems: SimilarProblem[];
   highlightColor?: string | null; // 🔥 页面高亮颜色
 }
 

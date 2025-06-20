@@ -21,11 +21,13 @@ import {
   type InterpretationEntry,
   type StepVersion,
   type StepVersionHistory,
-  type VersionHistoryState
+  type VersionHistoryState,
+  type SimilarProblem
 } from '../../../types';
 import { MarkerType, ReactFlowProvider } from '@reactflow/core';
 import ConfirmationDialog from '../../common/ConfirmationDialog/ConfirmationDialog';
-import { testProblemData, testSolutionSteps, testDagNodes, testDagEdges } from '../../../test-data';
+// 🔥 移除测试数据导入，避免强制覆盖持久化数据
+// import { testProblemData, testSolutionSteps, testDagNodes, testDagEdges } from '../../../test-data';
 import { 
   detectPathGroups, 
   getMainPathSteps, 
@@ -34,10 +36,27 @@ import {
 } from '../../../utils/pathGroupUtils';
 
 import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { aiModelService } from '../../../services/aiModelService';
+import { 
+  saveDagPageState, 
+  loadDagPageState, 
+  saveProblemData, 
+  loadProblemData,
+  saveVersionHistory,
+  loadVersionHistory,
+  saveInterpretationState,
+  loadInterpretationState,
+  saveSummaryContent,
+  loadSummaryContent,
+  saveAIAnalysisData,
+  loadAIAnalysisData,
+  type AIAnalysisData
+} from '../../../utils/persistence';
 import NodeNoteModal from '../../common/NodeNoteModal/NodeNoteModal';
 import SplitStepModal from '../../common/SplitStepModal/SplitStepModal';
 import InterpretationModal from '../../common/InterpretationModal/InterpretationModal';
+import DataManagement from '../../common/DataManagement/DataManagement';
 import AICopilotPanel, { 
   type AICopilotPanelProps, 
   type Message as AICopilotMessage, 
@@ -46,6 +65,7 @@ import AICopilotPanel, {
 } from '../../features/ai/AICopilotPanel/AICopilotPanel';
 import { Bot, Save, X as IconX, AlertTriangle, Menu } from 'lucide-react'; // Menu added
 import { BlockMath, InlineMath } from 'react-katex';
+import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
 import ModeCardsPanel from '../../features/ai/ModeCardsPanel/ModeCardsPanel'; // Added for new right panel
 import RightPanelContent from '../../features/solver/RightPanelContent/RightPanelContent';
@@ -69,7 +89,8 @@ import RightDrawer, { DrawerType } from './RightDrawer';
 // +++ End RIGHT_DRAWER +++
 
 const MIN_PANEL_PERCENTAGE = 5; // Define MIN_PANEL_PERCENTAGE
-const initialSolutionStepsData: SolutionStepData[] = testSolutionSteps; // 使用测试数据
+// 🔥 移除测试数据引用，避免强制覆盖持久化数据
+// const initialSolutionStepsData: SolutionStepData[] = testSolutionSteps; // 使用测试数据
 
 interface PanelWidthsType {
   dag: number;
@@ -502,17 +523,27 @@ const MainLayout: React.FC = () => {
   // ... (rest of the MainLayout component's state, effects, callbacks, and return JSX) ...
   // ... ENSURE ALL OTHER HOOKS (useState, useEffect, useCallback, useMemo, useRef) ARE WITHIN THIS MainLayout SCOPE ...
 
-  const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
-    return initialSolutionStepsData.map(step => ({ 
-      ...step, 
-      isDeleted: step.isDeleted || false,
-      forwardDerivationStatus: step.forwardDerivationStatus || ForwardDerivationStatus.Undetermined, // Ensure it has a default
-      backwardDerivationStatus: step.backwardDerivationStatus || ForwardDerivationStatus.Undetermined // Ensure it has a default for backward
-    }));
-  });
-  const [dagNodes, setDagNodes] = useState<DagNode[]>(testDagNodes);
-  const [dagEdges, setDagEdges] = useState<DagEdge[]>(testDagEdges);
-  const [problemData, setProblemData] = useState<ProblemData | null>(testProblemData);
+  // 🔥 移除旧的全局solutionSteps状态，现在使用页面级数据管理
+  // const [solutionSteps, setSolutionSteps] = useState<SolutionStepData[]>(() => {
+  //   return initialSolutionStepsData.map(step => ({ 
+  //     ...step, 
+  //     isDeleted: step.isDeleted || false,
+  //     forwardDerivationStatus: step.forwardDerivationStatus || ForwardDerivationStatus.Undetermined, // Ensure it has a default
+  //     backwardDerivationStatus: step.backwardDerivationStatus || ForwardDerivationStatus.Undetermined // Ensure it has a default for backward
+  //   }));
+  // });
+  // 🔥 修复：移除测试数据的强制初始化，让数据从持久化存储中恢复
+  const [dagNodes, setDagNodes] = useState<DagNode[]>([]);
+  const [dagEdges, setDagEdges] = useState<DagEdge[]>([]);
+  const [problemData, setProblemData] = useState<ProblemData | null>(null);
+  const [problemLatex, setProblemLatex] = useState<string>(problemData?.latexContent || '');
+
+  // 监听problemData的变化，更新problemLatex
+  useEffect(() => {
+    if (problemData?.latexContent) {
+      setProblemLatex(problemData.latexContent);
+    }
+  }, [problemData]);
   
   const initialPanelWidths = useRef<PanelWidthsType>({ dag: 25, solver: 50, ai: 25 });
   
@@ -629,18 +660,25 @@ const MainLayout: React.FC = () => {
   // +++ End PATH_GROUPS +++
 
   // +++ INTERPRETATION: Add interpretation state management +++
-  const [interpretationState, setInterpretationState] = useState<InterpretationState>({
+  const [interpretationState, setInterpretationState] = useState<InterpretationState>(() => {
+    const saved = loadInterpretationState();
+    return saved || {
     entries: [],
     selectedEntryId: null,
+    };
   });
   const [showInterpretationManagement, setShowInterpretationManagement] = useState<boolean>(false);
+  const [showDataManagement, setShowDataManagement] = useState<boolean>(false);
   // +++ End INTERPRETATION +++
 
   // +++ DAG_PAGES: Add DAG page state management +++
-  const [dagPageState, setDagPageState] = useState<DagPageState>({
+  const [dagPageState, setDagPageState] = useState<DagPageState>(() => {
+    const saved = loadDagPageState();
+    return saved || {
     pages: [],
     activePageId: null,
     maxPages: 20, // 🔥 扩大到20个DAG页面
+    };
   });
 
   // 🔥 辅助函数：获取当前页面的解题步骤
@@ -664,40 +702,180 @@ const MainLayout: React.FC = () => {
   }, [dagPageState.activePageId]);
 
   // Initialize with default page if no pages exist
+  // 🔥 修复：只在真正没有持久化数据时才创建默认页面
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
   useEffect(() => {
-    // 🔥 改进：立即初始化默认页面，无需等待solutionSteps
-    if (dagPageState.pages.length === 0) {
-      console.log('初始化默认DAG页面');
-      const defaultPage: DagPage = {
-        id: 'page-1',
-        name: 'DAG 1',
-        nodes: [],
-        edges: [],
-        pathGroups: [],
-        mainPathGroupId: null,
-        createdAt: new Date(),
-        isActive: true,
-        // 🔥 添加独立数据：初始示例数据
-        solutionSteps: [
-          { id: 'step-init-1', stepNumber: 1, latexContent: '$$\\lambda^2 + 5\\lambda + 6 = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
-          { id: 'step-init-2', stepNumber: 2, latexContent: '$$(\\lambda+2)(\\lambda+3) = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
-          { id: 'step-init-3', stepNumber: 3, latexContent: '$$\\lambda_1 = -2, \\lambda_2 = -3$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
-        ]
-        // 注意：题目数据现在是全局的，不存储在单个页面中
-      };
+    // 只在组件首次加载时执行一次初始化检查
+    if (!hasInitialized) {
+      console.log('检查是否需要初始化默认页面，当前页面数量:', dagPageState.pages.length);
       
-      setDagPageState(prev => ({
-        ...prev,
-        pages: [defaultPage],
-        activePageId: defaultPage.id,
-      }));
+      // 如果没有任何页面，创建默认页面
+      if (dagPageState.pages.length === 0) {
+        console.log('没有持久化数据，创建默认DAG页面');
+        const defaultPage: DagPage = {
+          id: 'page-1',
+          name: 'DAG 1',
+          nodes: [],
+          edges: [],
+          pathGroups: [],
+          mainPathGroupId: null,
+          createdAt: new Date(),
+          isActive: true,
+          // 🔥 添加独立数据：初始示例数据
+          solutionSteps: [
+            { id: 'step-init-1', stepNumber: 1, latexContent: '$$\\lambda^2 + 5\\lambda + 6 = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+            { id: 'step-init-2', stepNumber: 2, latexContent: '$$(\\lambda+2)(\\lambda+3) = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+            { id: 'step-init-3', stepNumber: 3, latexContent: '$$\\lambda_1 = -2, \\lambda_2 = -3$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
+          ],
+          // 🔥 每个页面独立的题目数据
+          problemData: {
+            id: 'problem-1',
+            title: '求解二次方程',
+            latexContent: '$$\\text{求解方程：} \\lambda^2 + 5\\lambda + 6 = 0$$'
+          },
+          // 🔥 每个页面独立的总结内容
+          summaryContent: '',
+          // 🔥 每个页面独立的类似题目
+          similarProblems: []
+        };
+        
+        setDagPageState(prev => ({
+          ...prev,
+          pages: [defaultPage],
+          activePageId: defaultPage.id,
+        }));
+      } else {
+        console.log('发现持久化数据，页面数量:', dagPageState.pages.length, '活动页面:', dagPageState.activePageId);
+      }
+      
+      setHasInitialized(true);
     }
-  }, [dagPageState.pages.length]); // 🔥 简化依赖
+  }, [dagPageState.pages.length, hasInitialized]); // 依赖hasInitialized确保只执行一次
+
+  // 🔥 修复：在初始化完成后，立即设置当前活动页面的数据
+  useEffect(() => {
+    if (hasInitialized && dagPageState.activePageId && dagPageState.pages.length > 0) {
+      const activePage = dagPageState.pages.find(p => p.id === dagPageState.activePageId);
+      if (activePage) {
+        console.log('恢复活动页面数据:', activePage.name);
+        
+        // 🔥 修复：不直接恢复DAG的nodes和edges，让它们由步骤数据重新生成
+        // 这样可以确保DAG图形与步骤数据保持一致
+        // setDagNodes(activePage.nodes);
+        // setDagEdges(activePage.edges);
+        
+        // 恢复路径组数据
+        setPathGroups(activePage.pathGroups);
+        setMainPathGroupId(activePage.mainPathGroupId);
+        
+        // 恢复题目数据和总结内容
+        if (activePage.problemData) {
+          setProblemData(activePage.problemData);
+        } else {
+          // 🔥 修复：为没有题目数据的页面创建独立的默认题目
+          const defaultProblemData = {
+            id: `problem-${activePage.id}`,
+            title: `${activePage.name}的题目`,
+            latexContent: '$$\\text{请输入题目内容...}$$'
+          };
+          setProblemData(defaultProblemData);
+          
+          // 同时更新页面状态
+          setDagPageState(prev => ({
+            ...prev,
+            pages: prev.pages.map(p => 
+              p.id === activePage.id ? { ...p, problemData: defaultProblemData } : p
+            )
+          }));
+        }
+        setSummaryContent(activePage.summaryContent);
+        
+        console.log('页面数据恢复完成，步骤数量:', activePage.solutionSteps.length);
+      }
+    }
+  }, [hasInitialized, dagPageState.activePageId, dagPageState.pages.length]); // 在初始化完成且活动页面变化时触发
+
+  // 恢复AI解析数据
+  useEffect(() => {
+    if (hasInitialized && dagPageState.pages.length > 0) {
+      const savedAiAnalysisData = loadAIAnalysisData();
+      if (savedAiAnalysisData && Object.keys(savedAiAnalysisData).length > 0) {
+        console.log('恢复AI解析数据:', savedAiAnalysisData);
+        
+        // 将AI解析数据恢复到对应的步骤中
+        setDagPageState(prev => ({
+          ...prev,
+          pages: prev.pages.map(page => ({
+            ...page,
+            solutionSteps: page.solutionSteps.map(step => ({
+              ...step,
+              aiAnalysisContent: savedAiAnalysisData[step.id] || step.aiAnalysisContent
+            }))
+          }))
+        }));
+      }
+    }
+  }, [hasInitialized, dagPageState.pages.length]); // 在初始化完成且有页面数据时执行
   
   // 🔧 新增：版本历史状态管理
-  const [versionHistoryState, setVersionHistoryState] = useState<VersionHistoryState>({
+  const [versionHistoryState, setVersionHistoryState] = useState<VersionHistoryState>(() => {
+    const saved = loadVersionHistory();
+    return saved || {
     stepVersions: {}
+    };
   });
+
+  // +++ PERSISTENCE: 自动保存状态到 localStorage +++
+  useEffect(() => {
+    // 保存 DAG 页面状态
+    saveDagPageState(dagPageState);
+  }, [dagPageState]);
+
+  useEffect(() => {
+    // 保存问题数据
+    if (problemData) {
+      saveProblemData(problemData);
+    }
+  }, [problemData]);
+
+  useEffect(() => {
+    // 保存版本历史
+    saveVersionHistory(versionHistoryState);
+  }, [versionHistoryState]);
+
+    useEffect(() => {
+    // 保存解释状态
+    saveInterpretationState(interpretationState);
+  }, [interpretationState]);
+
+  // +++ End PERSISTENCE +++
+
+  // 🔧 新增：获取步骤的版本历史
+  const getStepVersionHistory = useCallback((stepId: string): StepVersionHistory | null => {
+    return versionHistoryState.stepVersions[stepId] || null;
+  }, [versionHistoryState]);
+
+  // 🔧 新增：切换步骤版本
+  const switchStepVersion = useCallback((stepId: string, versionIndex: number) => {
+    setVersionHistoryState(prev => {
+      const existingHistory = prev.stepVersions[stepId];
+      if (!existingHistory || versionIndex < 0 || versionIndex >= existingHistory.versions.length) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        stepVersions: {
+          ...prev.stepVersions,
+          [stepId]: {
+            ...existingHistory,
+            currentVersionIndex: versionIndex
+          }
+        }
+      };
+    });
+  }, []);
 
   // 🔧 新增：为步骤创建初始版本
   const createInitialVersionForStep = useCallback((step: SolutionStepData) => {
@@ -759,31 +937,16 @@ const MainLayout: React.FC = () => {
     });
   }, []);
 
-  // 🔧 新增：获取步骤的版本历史
-  const getStepVersionHistory = useCallback((stepId: string): StepVersionHistory | null => {
-    return versionHistoryState.stepVersions[stepId] || null;
-  }, [versionHistoryState]);
-
-  // 🔧 新增：切换步骤版本
-  const switchStepVersion = useCallback((stepId: string, versionIndex: number) => {
-    setVersionHistoryState(prev => {
-      const existingHistory = prev.stepVersions[stepId];
-      if (!existingHistory || versionIndex < 0 || versionIndex >= existingHistory.versions.length) {
-        return prev;
+  // 🔧 新增：为现有步骤创建初始版本历史
+  useEffect(() => {
+    const currentSteps = getCurrentPageSolutionSteps();
+    currentSteps.forEach(step => {
+      const existingHistory = getStepVersionHistory(step.id);
+      if (!existingHistory) {
+        createInitialVersionForStep(step);
       }
-
-      return {
-        ...prev,
-        stepVersions: {
-          ...prev.stepVersions,
-          [stepId]: {
-            ...existingHistory,
-            currentVersionIndex: versionIndex
-          }
-        }
-      };
     });
-  }, []);
+  }, [getCurrentPageSolutionSteps, getStepVersionHistory, createInitialVersionForStep]);
   
   // 🔥 更新：使用页面级数据的 handleStepContentChange (移动到版本历史函数之后)
   const handleStepContentChange = useCallback((stepId: string, newLatexContent: string) => {
@@ -1147,25 +1310,8 @@ const MainLayout: React.FC = () => {
   }, [dagPageState.activePageId, dagPageState.pages]);
   // 通过监听整个pages数组的变化，能够捕获到页面内solutionSteps的更新
 
-  useEffect(() => {
-    setProblemData({
-      id: 'problem-init-1',
-      title: '示例题目',
-      latexContent: '$$\\frac{d^2y}{dx^2} + 5\\frac{dy}{dx} + 6y = 0$$'
-    });
-
-    // 🔥 删除全局 solutionSteps 的初始化，现在使用页面级数据
-    // const initialStepsExample: SolutionStepData[] = [
-    //   { id: 'step-init-1', stepNumber: 1, latexContent: '$$\\lambda^2 + 5\\lambda + 6 = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
-    //   { id: 'step-init-2', stepNumber: 2, latexContent: '$$(\\lambda+2)(\\lambda+3) = 0$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
-    //   { id: 'step-init-3', stepNumber: 3, latexContent: '$$\\lambda_1 = -2, \\lambda_2 = -3$$', verificationStatus: VerificationStatus.NotVerified, isDeleted: false, forwardDerivationStatus: ForwardDerivationStatus.Undetermined, backwardDerivationStatus: ForwardDerivationStatus.Undetermined },
-    // ];
-    // setSolutionSteps(initialStepsExample.map(step => ({ // Ensure mapping includes new status on init
-    //   ...step,
-    //   forwardDerivationStatus: step.forwardDerivationStatus || ForwardDerivationStatus.Undetermined,
-    //   backwardDerivationStatus: step.backwardDerivationStatus || ForwardDerivationStatus.Undetermined
-    // })));
-  }, []);
+    // 🔥 移除独立的题目数据初始化，现在由页面数据恢复逻辑统一处理
+  // 这样可以避免题目闪烁问题
 
   // 🔥 修复：使用页面级数据的 handleAddSolutionStep
   const handleAddSolutionStep = useCallback((latexInput: string) => {
@@ -1239,7 +1385,7 @@ const MainLayout: React.FC = () => {
     };
   }, []);
 
-  const handleCheckForwardDerivation = useCallback((stepId: string) => {
+  const handleCheckForwardDerivation = useCallback(async (stepId: string) => {
     const currentSolutionSteps = getCurrentPageSolutionSteps();
     const targetStep = currentSolutionSteps.find(s => s.id === stepId);
     
@@ -1247,44 +1393,108 @@ const MainLayout: React.FC = () => {
       return;
     }
     
-    const timeoutKey = `forward-${stepId}`;
-    if (timeoutRefs.current[timeoutKey]) {
-      clearTimeout(timeoutRefs.current[timeoutKey]);
+    if (!targetStep) {
+      toast.error('找不到要验证的步骤');
+      return;
     }
-    
-    // 🔥 使用页面级数据的更新函数
-    setCurrentPageSolutionSteps(prevSteps => {
-      return prevSteps.map(step => {
+
+    try {
+      // 设置为 Pending 状态
+      setCurrentPageSolutionSteps(prevSteps => 
+        prevSteps.map(step => 
+          step.id === stepId 
+            ? { ...step, forwardDerivationStatus: ForwardDerivationStatus.Pending }
+            : step
+        )
+      );
+
+      // 构建历史步骤字符串
+      const historySteps = currentSolutionSteps
+        .filter(s => s.stepNumber < targetStep.stepNumber)
+        .map(s => `第${s.stepNumber}步: ${s.latexContent}`)
+        .join('\n');
+
+      // 调用 API
+      const response = await fetch('http://localhost:8000/chat/verify_step_forward', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rawLatex: problemLatex,
+          current_step: `第${targetStep.stepNumber}步: ${targetStep.latexContent}`,
+          history_steps: historySteps
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.payload) {
+        const isCorrect = data.payload.is_correct;
+        const explanation = data.payload.explanation || '';
+        const errorReason = data.payload.error_reason || '';
+        
+        const nextStatus = isCorrect ? ForwardDerivationStatus.Correct : ForwardDerivationStatus.Incorrect;
+        
+        // 更新步骤状态
+        setCurrentPageSolutionSteps(prevSteps => 
+          prevSteps.map(step => {
         if (step.id === stepId) {
-          const pendingStep = { ...step, forwardDerivationStatus: ForwardDerivationStatus.Pending };
-          timeoutRefs.current[timeoutKey] = setTimeout(() => {
-            setCurrentPageSolutionSteps(currentSteps => {
-              const updatedSteps = currentSteps.map(s => {
-                if (s.id === stepId) {
-                  const nextStatus = Math.random() < 0.7 ? ForwardDerivationStatus.Correct : ForwardDerivationStatus.Incorrect;
-                  const finalStepWithStatus = { ...s, forwardDerivationStatus: nextStatus };
-                  // Update DAG node data directly for immediate visual feedback
-                  setDagNodes(prevDagNodes => prevDagNodes.map(node => 
-                    node.id === stepId 
-                      ? { ...node, data: { ...node.data, forwardDerivationDisplayStatus: nextStatus } } 
-                      : node
-                  ));
-                  return finalStepWithStatus;
-                }
-                return s;
-              });
-              delete timeoutRefs.current[timeoutKey];
-              return updatedSteps;
-            });
-          }, 1500);
-          return pendingStep;
+              return { 
+                ...step, 
+                forwardDerivationStatus: nextStatus,
+                // 管理正向验证的备注信息
+                notes: (() => {
+                  const currentNotes = step.notes || '';
+                  // 移除之前的正向验证失败信息
+                  const notesWithoutForward = currentNotes.replace(/正向验证失败:.*?(?=\n|$)/g, '').trim();
+                  
+                  if (!isCorrect) {
+                    // 添加新的正向验证失败信息
+                    const newForwardError = `正向验证失败: ${errorReason}`;
+                    return notesWithoutForward ? `${notesWithoutForward}\n${newForwardError}` : newForwardError;
+                  } else {
+                    // 验证成功，只保留非正向验证失败的备注
+                    return notesWithoutForward || undefined;
+                  }
+                })()
+              };
         }
         return step;
-      });
-    });
-  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, setDagNodes]);
+          })
+        );
 
-  const handleCheckBackwardDerivation = useCallback((stepId: string) => {
+        // 注意：不需要手动更新 DAG 节点，因为 DAG 会根据 solutionSteps 的变化自动重新生成
+
+        // 显示结果消息
+        if (isCorrect) {
+          toast.success(`步骤 ${targetStep.stepNumber} 正向推导验证通过！`);
+        } else {
+          toast.error(`步骤 ${targetStep.stepNumber} 正向推导验证失败！`);
+        }
+      } else {
+        throw new Error('返回数据格式不正确');
+      }
+    } catch (error) {
+      console.error('Error verifying forward derivation:', error);
+      toast.error('验证正向推导时出错，请重试');
+      
+      // 重置为 Undetermined 状态
+      setCurrentPageSolutionSteps(prevSteps => 
+        prevSteps.map(step => 
+          step.id === stepId 
+            ? { ...step, forwardDerivationStatus: ForwardDerivationStatus.Undetermined }
+            : step
+        )
+      );
+    }
+  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, setDagNodes, problemLatex]);
+
+  const handleCheckBackwardDerivation = useCallback(async (stepId: string) => {
     const currentSolutionSteps = getCurrentPageSolutionSteps();
     const targetStep = currentSolutionSteps.find(s => s.id === stepId);
     
@@ -1292,42 +1502,106 @@ const MainLayout: React.FC = () => {
       return;
     }
     
-    const timeoutKey = `backward-${stepId}`;
-    if (timeoutRefs.current[timeoutKey]) {
-      clearTimeout(timeoutRefs.current[timeoutKey]);
+    if (!targetStep) {
+      toast.error('找不到要验证的步骤');
+      return;
     }
-    
-    // 🔥 使用页面级数据的更新函数
-    setCurrentPageSolutionSteps(prevSteps => {
-      return prevSteps.map(step => {
+
+    try {
+      // 设置为 Pending 状态
+      setCurrentPageSolutionSteps(prevSteps => 
+        prevSteps.map(step => 
+          step.id === stepId 
+            ? { ...step, backwardDerivationStatus: ForwardDerivationStatus.Pending }
+            : step
+        )
+      );
+
+      // 构建后续步骤字符串
+      const futureSteps = currentSolutionSteps
+        .filter(s => s.stepNumber > targetStep.stepNumber)
+        .map(s => `第${s.stepNumber}步: ${s.latexContent}`)
+        .join('\n');
+
+      // 调用 API
+      const response = await fetch('http://localhost:8000/chat/verify_step_backward', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rawLatex: problemLatex,
+          current_step: `第${targetStep.stepNumber}步: ${targetStep.latexContent}`,
+          future_steps: futureSteps
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.payload) {
+        const isCorrect = data.payload.is_correct;
+        const explanation = data.payload.explanation || '';
+        const errorReason = data.payload.error_reason || '';
+        
+        const nextStatus = isCorrect ? ForwardDerivationStatus.Correct : ForwardDerivationStatus.Incorrect;
+        
+        // 更新步骤状态
+        setCurrentPageSolutionSteps(prevSteps => 
+          prevSteps.map(step => {
         if (step.id === stepId) {
-          const pendingStep = { ...step, backwardDerivationStatus: ForwardDerivationStatus.Pending };
-          timeoutRefs.current[timeoutKey] = setTimeout(() => {
-            setCurrentPageSolutionSteps(currentSteps => {
-              const updatedSteps = currentSteps.map(s => {
-                if (s.id === stepId) {
-                  const nextStatus = Math.random() < 0.7 ? ForwardDerivationStatus.Correct : ForwardDerivationStatus.Incorrect;
-                  const finalStepWithStatus = { ...s, backwardDerivationStatus: nextStatus };
-                  // Update DAG node data directly for immediate visual feedback
-                  setDagNodes(prevDagNodes => prevDagNodes.map(node => 
-                    node.id === stepId 
-                      ? { ...node, data: { ...node.data, backwardDerivationDisplayStatus: nextStatus } } 
-                      : node
-                  ));
-                  return finalStepWithStatus;
-                }
-                return s;
-              });
-              delete timeoutRefs.current[timeoutKey];
-              return updatedSteps;
-            });
-          }, 1500);
-          return pendingStep;
+              return { 
+                ...step, 
+                backwardDerivationStatus: nextStatus,
+                // 管理反向验证的备注信息
+                notes: (() => {
+                  const currentNotes = step.notes || '';
+                  // 移除之前的反向验证失败信息
+                  const notesWithoutBackward = currentNotes.replace(/反向验证失败:.*?(?=\n|$)/g, '').trim();
+                  
+                  if (!isCorrect) {
+                    // 添加新的反向验证失败信息
+                    const newBackwardError = `反向验证失败: ${errorReason}`;
+                    return notesWithoutBackward ? `${notesWithoutBackward}\n${newBackwardError}` : newBackwardError;
+                  } else {
+                    // 验证成功，只保留非反向验证失败的备注
+                    return notesWithoutBackward || undefined;
+                  }
+                })()
+              };
         }
         return step;
-      });
-    });
-  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, setDagNodes]);
+          })
+        );
+
+        // 注意：不需要手动更新 DAG 节点，因为 DAG 会根据 solutionSteps 的变化自动重新生成
+
+        // 显示结果消息
+        if (isCorrect) {
+          toast.success(`步骤 ${targetStep.stepNumber} 反向推导验证通过！`);
+        } else {
+          toast.error(`步骤 ${targetStep.stepNumber} 反向推导验证失败！`);
+        }
+      } else {
+        throw new Error('返回数据格式不正确');
+      }
+    } catch (error) {
+      console.error('Error verifying backward derivation:', error);
+      toast.error('验证反向推导时出错，请重试');
+      
+      // 重置为 Undetermined 状态
+      setCurrentPageSolutionSteps(prevSteps => 
+        prevSteps.map(step => 
+          step.id === stepId 
+            ? { ...step, backwardDerivationStatus: ForwardDerivationStatus.Undetermined }
+            : step
+        )
+      );
+    }
+  }, [getCurrentPageSolutionSteps, setCurrentPageSolutionSteps, problemLatex]);
 
   // <<< 辅助函数：确保宽度总和为100%并处理精度 >>>
   const ensurePanelWidthsSumTo100AndPrecision = useCallback((
@@ -1646,6 +1920,26 @@ const MainLayout: React.FC = () => {
   );
 
   const handleProblemChange = (newLatexContent: string) => {
+    // 🔥 更新当前页面的题目数据
+    if (dagPageState.activePageId) {
+      setDagPageState(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+          p.id === prev.activePageId 
+            ? { 
+                ...p, 
+                problemData: p.problemData ? { ...p.problemData, latexContent: newLatexContent } : {
+                  id: `problem-${Date.now()}`,
+                  title: '新问题',
+                  latexContent: newLatexContent,
+                }
+              }
+            : p
+        )
+      }));
+    }
+    
+    // 同时更新全局状态以保持同步
     if (problemData) {
       setProblemData({ ...problemData, latexContent: newLatexContent });
     } else {
@@ -1656,6 +1950,7 @@ const MainLayout: React.FC = () => {
         latexContent: newLatexContent,
       });
     }
+    setProblemLatex(newLatexContent);
   };
 
   const handleDeleteStep = (stepId: string) => {
@@ -2456,37 +2751,7 @@ const MainLayout: React.FC = () => {
   // +++ End PATH_GROUPS +++
 
   // +++ DAG_PAGES: Add page management handlers +++
-  const handlePageSelect = useCallback((pageId: string) => {
-    const targetPage = dagPageState.pages.find(p => p.id === pageId);
-    if (!targetPage) return;
-
-    // 保存当前页面状态
-    if (dagPageState.activePageId) {
-      setDagPageState(prev => ({
-        ...prev,
-        pages: prev.pages.map(p => 
-          p.id === prev.activePageId 
-            ? { ...p, nodes: dagNodes, edges: dagEdges, pathGroups: pathGroups, mainPathGroupId: mainPathGroupId }
-            : p
-        )
-      }));
-    }
-
-    // 切换到目标页面
-    setDagNodes(targetPage.nodes);
-    setDagEdges(targetPage.edges);
-    setPathGroups(targetPage.pathGroups);
-    setMainPathGroupId(targetPage.mainPathGroupId);
-
-    // 更新活动页面
-    setDagPageState(prev => ({
-      ...prev,
-      activePageId: pageId,
-      pages: prev.pages.map(p => ({ ...p, isActive: p.id === pageId }))
-    }));
-
-    toast.success(`已切换到 ${targetPage.name}`);
-  }, [dagPageState, dagNodes, dagEdges, pathGroups, mainPathGroupId]);
+  // handlePageSelect 函数移到 summaryContent 声明之后
 
   const handleAddPage = useCallback(() => {
     if (dagPageState.pages.length >= dagPageState.maxPages) {
@@ -2505,7 +2770,16 @@ const MainLayout: React.FC = () => {
       createdAt: new Date(),
       isActive: false,
       // 🔥 添加必需的新字段：空的独立数据
-      solutionSteps: [] // 题目数据现在是全局共享的，不存储在页面中
+      solutionSteps: [],
+      // 🔥 修复：每个页面都有独立的题目数据
+      problemData: {
+        id: `problem-${newPageNumber}`,
+        title: `题目 ${newPageNumber}`,
+        latexContent: '$$\\text{请输入题目内容...}$$'
+      },
+      summaryContent: '',
+      // 🔥 每个页面独立的类似题目
+      similarProblems: []
     };
 
     setDagPageState(prev => ({
@@ -2932,6 +3206,14 @@ const MainLayout: React.FC = () => {
     setShowInterpretationManagement(false);
   }, []);
 
+  const handleOpenDataManagement = useCallback(() => {
+    setShowDataManagement(true);
+  }, []);
+
+  const handleCloseDataManagement = useCallback(() => {
+    setShowDataManagement(false);
+  }, []);
+
   const handleUpdateInterpretationEntry = useCallback((entryId: string, updates: Partial<InterpretationEntry>) => {
     setInterpretationState(prev => ({
       ...prev,
@@ -3035,16 +3317,284 @@ ${fullLatex}
     toast.info("新路径创建已取消。");
   }, []);
 
-  // 🔧 新增：为现有步骤创建初始版本历史
+  const [summaryContent, setSummaryContent] = useState<string>(() => {
+    const saved = loadSummaryContent();
+    return saved || '';
+  });
+
+  // AI解析数据会在DAG页面状态初始化时一起恢复，这里不需要单独的状态
+
+  const handleSummaryContentChange = (content: string) => {
+    // 🔥 更新当前页面的总结内容
+    if (dagPageState.activePageId) {
+      setDagPageState(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+          p.id === prev.activePageId 
+            ? { ...p, summaryContent: content }
+            : p
+        )
+      }));
+    }
+    
+    // 同时更新全局状态以保持同步
+    setSummaryContent(content);
+  };
+
+  const handleUpdateStepAiAnalysis = useCallback((stepId: string, aiAnalysisContent: string | null) => {
+    setCurrentPageSolutionSteps(prevSteps =>
+      prevSteps.map(step =>
+        step.id === stepId
+          ? { ...step, aiAnalysisContent: aiAnalysisContent ?? undefined }
+          : step
+      )
+    );
+  }, [setCurrentPageSolutionSteps]);
+
+  // +++ DAG_PAGES: 页面切换处理函数 +++
+  const handlePageSelect = useCallback((pageId: string) => {
+    const targetPage = dagPageState.pages.find(p => p.id === pageId);
+    if (!targetPage) return;
+
+    // 保存当前页面状态（包括题目数据和总结内容）
+    if (dagPageState.activePageId) {
+      setDagPageState(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+          p.id === prev.activePageId 
+            ? { 
+                ...p, 
+                nodes: dagNodes, 
+                edges: dagEdges, 
+                pathGroups: pathGroups, 
+                mainPathGroupId: mainPathGroupId,
+                problemData: problemData,
+                summaryContent: summaryContent
+              }
+            : p
+        )
+      }));
+    }
+
+    // 切换到目标页面
+    setDagNodes(targetPage.nodes);
+    setDagEdges(targetPage.edges);
+    setPathGroups(targetPage.pathGroups);
+    setMainPathGroupId(targetPage.mainPathGroupId);
+    
+    // 🔥 修复：每个页面都有独立的题目数据，直接切换
+    if (targetPage.problemData) {
+      setProblemData(targetPage.problemData);
+    } else {
+      // 如果目标页面没有题目数据，创建默认题目数据
+      const defaultProblemData = {
+        id: `problem-${targetPage.id}`,
+        title: `${targetPage.name}的题目`,
+        latexContent: '$$\\text{请输入题目内容...}$$'
+      };
+      setProblemData(defaultProblemData);
+      
+      // 同时更新页面状态
+      setDagPageState(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+          p.id === targetPage.id ? { ...p, problemData: defaultProblemData } : p
+        )
+      }));
+    }
+    setSummaryContent(targetPage.summaryContent);
+
+    // 更新活动页面
+    setDagPageState(prev => ({
+      ...prev,
+      activePageId: pageId,
+      pages: prev.pages.map(p => ({ ...p, isActive: p.id === pageId }))
+    }));
+
+    toast.success(`已切换到 ${targetPage.name}`);
+  }, [dagPageState, dagNodes, dagEdges, pathGroups, mainPathGroupId, problemData, summaryContent]);
+  // +++ End DAG_PAGES +++
+
+  // +++ PERSISTENCE: 保存总结内容和AI解析数据 +++
   useEffect(() => {
-    const currentSteps = getCurrentPageSolutionSteps();
-    currentSteps.forEach(step => {
-      const existingHistory = getStepVersionHistory(step.id);
-      if (!existingHistory) {
-        createInitialVersionForStep(step);
+    // 保存总结内容
+    if (summaryContent) {
+      saveSummaryContent(summaryContent);
+    }
+  }, [summaryContent]);
+
+  useEffect(() => {
+    // 从当前页面的步骤中提取AI解析数据
+    const currentAiAnalysisData: AIAnalysisData = {};
+    getCurrentPageSolutionSteps().forEach(step => {
+      if (step.aiAnalysisContent) {
+        currentAiAnalysisData[step.id] = step.aiAnalysisContent;
       }
     });
-  }, [getCurrentPageSolutionSteps, getStepVersionHistory, createInitialVersionForStep]);
+    
+    // 保存AI解析数据
+    saveAIAnalysisData(currentAiAnalysisData);
+  }, [getCurrentPageSolutionSteps]);
+  // +++ End PERSISTENCE +++
+
+  // 添加一个通用的 LaTeX 公式处理函数
+  const processLatexContent = (content: string): string => {
+    if (!content) return '';
+    
+    try {
+      // 1. 清理内容，移除多余的空白字符
+      let cleanedContent = content.trim();
+      
+      // 2. 如果内容已经是完整的 LaTeX 公式（被 $$ 包围），直接返回
+      if (cleanedContent.startsWith('$$') && cleanedContent.endsWith('$$')) {
+        return cleanedContent;
+      }
+      
+      // 3. 处理行内公式（$...$）
+      cleanedContent = cleanedContent.replace(/\$([^$]+)\$/g, '$$$1$$');
+      
+      // 4. 处理可能存在的多个相邻公式
+      cleanedContent = cleanedContent.replace(/\$\$\s*\$\$/g, '$$');
+      
+      // 5. 确保公式被正确包裹
+      if (!cleanedContent.startsWith('$$')) {
+        cleanedContent = '$$' + cleanedContent;
+      }
+      if (!cleanedContent.endsWith('$$')) {
+        cleanedContent = cleanedContent + '$$';
+      }
+      
+      return cleanedContent;
+    } catch (error) {
+      console.error('Error processing LaTeX content:', error);
+      return content; // 如果处理出错，返回原始内容
+    }
+  };
+
+  const handleAnalysisComplete = (result: any) => {
+    console.log('Analysis complete:', result);
+    
+    if (result.payload?.steps && Array.isArray(result.payload.steps)) {
+      // 创建新的步骤数组
+      const newSteps: SolutionStepData[] = result.payload.steps.map((step: any, index: number) => {
+        // 确保LaTeX内容被正确包装
+        let latexContent = step.latex;
+        if (!latexContent.startsWith('$') && !latexContent.startsWith('\\[')) {
+          latexContent = `$${latexContent}$`;
+        }
+        
+        return {
+          id: `step-${Date.now()}-${index}`,
+          latexContent: latexContent,
+          stepNumber: index + 1,
+          isDeleted: false,
+          verificationStatus: VerificationStatus.NotVerified,
+          forwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+          backwardDerivationStatus: ForwardDerivationStatus.Undetermined,
+          // 不将解释保存为备注，避免在解题框中显示
+          // notes: step.explanation
+        };
+      });
+      
+      // 一次性更新所有步骤
+      setCurrentPageSolutionSteps((prev: SolutionStepData[]) => newSteps);
+      
+      // 如果有总结，更新总结面板
+      if (result.payload.summary?.summary) {
+        // 处理总结内容中的LaTeX公式
+        let summaryContent = result.payload.summary.summary;
+        
+        // 使用通用处理函数处理 LaTeX 内容
+        summaryContent = processLatexContent(summaryContent);
+        
+        // 创建一个新的总结条目
+        const summaryEntry = {
+          id: `summary-${Date.now()}`,
+          title: '解题过程总结',
+          content: summaryContent,
+          stepNumbers: newSteps.map(step => step.stepNumber),
+          timestamp: new Date(),
+          type: 'auto' as const
+        };
+        
+        // 更新总结面板的内容
+        handleSummaryContentChange(summaryContent);
+      }
+      
+      // 显示成功提示
+      toast.success('分析完成！已生成解题步骤');
+    } else {
+      toast.error('返回的数据格式不正确');
+    }
+  };
+
+  const handleSummarize = async (summaryContent: string) => {
+    try {
+      // 处理总结内容中的LaTeX公式
+      let processedContent = processLatexContent(summaryContent);
+      
+      // 更新总结面板的内容
+      handleSummaryContentChange(processedContent);
+    } catch (error) {
+      console.error('Error processing summary:', error);
+      toast.error('处理总结内容时出错，请重试');
+    }
+  };
+
+  // 🔥 移除全局类似题目状态，改为页面级管理
+  // const [similarProblems, setSimilarProblems] = useState<SimilarProblem[]>([]);
+
+  const handleFindSimilar = (problems: SimilarProblem[]): void => {
+    // 处理每个问题的 LaTeX 内容
+    const processedProblems = problems.map((problem: SimilarProblem) => {
+      // 处理 LaTeX 内容
+      let processedStem = problem.stem
+        // 先处理 HTML 实体
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#32;/g, ' ')
+        .replace(/&#(\d+);/g, (_: string, code: string) => String.fromCharCode(parseInt(code, 10)))
+        // 处理 \text 命令
+        .replace(/\\text{([^}]*)}/g, '\\text{$1}')
+        // 处理其他特殊字符
+        .replace(/&/g, '\\&')
+        .replace(/%/g, '\\%')
+        .replace(/#/g, '\\#')
+        .replace(/_/g, '\\_')
+        .replace(/\^/g, '\\^')
+        .replace(/~/g, '\\~')
+        .replace(/</g, '\\lt ')
+        .replace(/>/g, '\\gt ');
+
+      // 确保内容被 $$ 包围
+      if (!processedStem.startsWith('$$')) {
+        processedStem = '$$' + processedStem;
+      }
+      if (!processedStem.endsWith('$$')) {
+        processedStem = processedStem + '$$';
+      }
+
+      return {
+        ...problem,
+        stem: processedStem
+      };
+    });
+    
+    // 🔥 修复：将类似题目保存到当前活动页面
+    if (dagPageState.activePageId) {
+      setDagPageState(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+          p.id === prev.activePageId 
+            ? { ...p, similarProblems: processedProblems }
+            : p
+        )
+      }));
+    }
+    setShowSimilarProblems(true);
+  };
 
   return (
     <ReactFlowProvider> {/* Ensures React Flow context is available */}
@@ -3055,6 +3605,10 @@ ${fullLatex}
             interpretationEntries={interpretationState.entries}
             onBack={handleCloseInterpretationManagement}
             onUpdateEntry={handleUpdateInterpretationEntry}
+          />
+        ) : showDataManagement ? (
+          <DataManagement
+            onBack={handleCloseDataManagement}
           />
         ) : (
           <div className={styles.contentArea}> {/* Assuming a main content area wrapper */}
@@ -3086,6 +3640,7 @@ ${fullLatex}
                     onExpandDagFully={handleExpandDagFully}
                     onActivateAiPanel={handleActivateAiPanel}
                     onOpenInterpretationManagement={handleOpenInterpretationManagement}
+                    onOpenDataManagement={handleOpenDataManagement}
                   />
                   {/* 🔥 在DAG区域内部显示PathGroupIndicator */}
                   {pathGroups.length > 1 && (
@@ -3159,11 +3714,21 @@ ${fullLatex}
                     onSplit={handleSplitStep}
                     onCheckForwardDerivation={handleCheckForwardDerivation}
                     onCheckBackwardDerivation={handleCheckBackwardDerivation}
+                    getCurrentPageSolutionSteps={getCurrentPageSolutionSteps}
+                    problemLatex={problemLatex}
+                    onUpdateStepAiAnalysis={handleUpdateStepAiAnalysis}
                   />
                 ))}
                 {/* +++ End PATH_GROUPS +++ */}
               </div>
-              <SolverActions onAddStep={handleAddSolutionStepViaSolverActions} />
+              <SolverActions
+                onAddStep={handleAddSolutionStepViaSolverActions}
+                problemLatex={problemLatex}
+                onAnalysisComplete={handleAnalysisComplete}
+                onSummarize={handleSummarize}
+                getCurrentPageSolutionSteps={getCurrentPageSolutionSteps}
+                onFindSimilar={handleFindSimilar}
+              />
               
               {/* Additional Solver Content - Similar Problems, AI Hints, Summary */}
               <div className={styles.solverZusatzContentContainer}>
@@ -3171,10 +3736,36 @@ ${fullLatex}
                 {showSimilarProblems && (
                   <div className={styles.similarProblemsSection}>
                     <h4>类似题目</h4>
+                    {(dagPageState.pages.find(p => p.id === dagPageState.activePageId)?.similarProblems || []).length > 0 ? (
+                      <div className={styles.similarProblemsList}>
+                        {(dagPageState.pages.find(p => p.id === dagPageState.activePageId)?.similarProblems || []).map((problem: SimilarProblem, index: number) => (
+                          <div key={problem.id} className={styles.similarProblemItem}>
+                            <div className={styles.problemNumber}>{index + 1}</div>
+                            <div className={styles.problemContent}>
+                              <Latex
+                                delimiters={[
+                                  { left: "$$", right: "$$", display: true },
+                                  { left: "$", right: "$", display: false },
+                                  { left: "\\(", right: "\\)", display: false },
+                                  { left: "\\[", right: "\\]", display: true }
+                                ]}
+                                strict={false}
+                              >
+                                {problem.stem}
+                              </Latex>
+                            </div>
+                            <div className={styles.problemScore}>
+                              相似度: {(problem.score * 100).toFixed(2)}%
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
                     <div className={styles.placeholderText}>
                       <p>AI将为您推荐相关的类似题目...</p>
                       <p>这里会显示系统找到的相似问题和解法。</p>
                     </div>
+                    )}
                   </div>
                 )}
 
@@ -3194,8 +3785,23 @@ ${fullLatex}
                   <div className={styles.summarySection}>
                     <h4>解答总结</h4>
                     <div className={styles.placeholderText}>
+                      {summaryContent ? (
+                        <div className={styles.latexSummaryContent}>
+                          <Latex delimiters={[
+                            { left: "$$", right: "$$", display: true },
+                            { left: "$", right: "$", display: false },
+                            { left: "\\(", right: "\\)", display: false },
+                            { left: "\\[", right: "\\]", display: true }
+                          ]}>
+                            {summaryContent}
+                          </Latex>
+                        </div>
+                      ) : (
+                        <>
                       <p>AI将为您的完整解答过程生成总结...</p>
                       <p>包括关键步骤、核心思路、验证结果等。</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -3323,14 +3929,13 @@ ${fullLatex}
               {currentGlobalCopilotMode === 'summary' && (
                 <ModernSummaryPanel
                   isOpen={true}
-                  onClose={() => setCurrentGlobalCopilotMode(null)} // 🎯 返回模式选择
-                  contextStepInfo={copilotContextNodeInfo ? {
-                    id: copilotContextNodeInfo.id,
-                    content: copilotContextNodeInfo.content || '',
-                    stepNumber: 1 // 总结模式可以基于当前选中的节点
+                  onClose={() => setCurrentGlobalCopilotMode('analysis')}
+                  contextStepInfo={selectedStepForSummary ? {
+                    id: selectedStepForSummary,
+                    content: summaryContent,
+                    stepNumber: 0
                   } : null}
-                  onContentChange={(content: string) => console.log('Summary content changed:', content)}
-                  // 🎯 传递真实DAG数据
+                  onContentChange={handleSummaryContentChange}
                   dagPages={dagPageState.pages.map(page => ({
                     id: page.id,
                     name: page.name,
